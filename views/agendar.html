@@ -1,186 +1,540 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<title>Agendar Horário | Gold Barber</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Agendar Horário | Gold Barber</title>
 
-<style>
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: linear-gradient(180deg, #000, #1a1a1a);
-  color: #fff;
-}
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #0b0b0b;
+      color: #f5f5f5;
+      padding: 20px;
+    }
 
-.container {
-  max-width: 420px;
-  margin: auto;
-  padding: 20px;
-}
+    .container {
+      max-width: 760px;
+      margin: 0 auto;
+      background: #121212;
+      border: 1px solid #222;
+      border-radius: 16px;
+      padding: 18px;
+    }
 
-h2 {
-  text-align: center;
-  color: #d4af37;
-  margin-bottom: 20px;
-}
+    h1 { margin: 0 0 8px; font-size: 22px; }
+    p { margin: 0 0 14px; color: #bdbdbd; }
 
-label {
-  font-size: 14px;
-  color: #ccc;
-}
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .full { grid-column: 1 / -1; }
 
-input {
-  width: 100%;
-  padding: 14px;
-  margin-bottom: 14px;
-  border-radius: 8px;
-  border: none;
-  background: #222;
-  color: #fff;
-  font-size: 16px;
-}
+    label {
+      font-size: 14px;
+      color: #fff;
+      font-weight: 800;
+      margin-bottom: 6px;
+      display: block;
+    }
 
-.data-btn {
-  background: #111;
-  border: 1px solid #d4af37;
-  color: #d4af37;
-  padding: 14px;
-  border-radius: 8px;
-  text-align: center;
-  font-size: 16px;
-  margin-bottom: 14px;
-  cursor: pointer;
-}
+    input {
+      width: 100%;
+      padding: 14px;
+      border-radius: 14px;
+      border: 2px solid #3a3a3a;
+      background: #0f0f0f;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+      outline: none;
+    }
 
-.data-btn span {
-  display: block;
-  font-size: 13px;
-  color: #aaa;
-}
+    input:focus {
+      border-color: #c9a227;
+      box-shadow: 0 0 0 3px rgba(201,162,39,.25);
+    }
 
-.horarios {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-top: 10px;
-}
+    .hint {
+      font-size: 13px;
+      color: #d7d7d7;
+      margin-top: 8px;
+      font-weight: 700;
+    }
 
-.horario-btn {
-  padding: 14px 0;
-  background: #222;
-  border: 1px solid #d4af37;
-  color: #d4af37;
-  border-radius: 8px;
-  text-align: center;
-  cursor: pointer;
-  font-size: 15px;
-}
+    .card {
+      margin-top: 16px;
+      background: #0f0f0f;
+      border: 1px solid #222;
+      border-radius: 16px;
+      padding: 14px;
+    }
 
-.horario-btn.selected {
-  background: #d4af37;
-  color: #000;
-  font-weight: bold;
-}
+    .subinfo {
+      font-size: 12px;
+      color: #bdbdbd;
+      margin-top: 6px;
+    }
 
-button {
-  width: 100%;
-  padding: 16px;
-  margin-top: 20px;
-  background: #d4af37;
-  border: none;
-  border-radius: 8px;
-  font-weight: bold;
-  font-size: 16px;
-  cursor: pointer;
-}
-</style>
+    .horarios {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .hora {
+      border: 2px solid #2a2a2a;
+      background: #121212;
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 800;
+    }
+    .hora:hover { border-color: #555; }
+    .hora.selected {
+      border-color: #c9a227;
+      box-shadow: 0 0 0 2px rgba(201, 162, 39, 0.25);
+    }
+
+    button.confirmar {
+      margin-top: 14px;
+      width: 100%;
+      padding: 14px;
+      border-radius: 14px;
+      border: none;
+      background: #c9a227;
+      color: #111;
+      font-weight: 900;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    button.confirmar:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .msg {
+      margin-top: 10px;
+      padding: 12px;
+      border-radius: 12px;
+      background: #0c0c0c;
+      border: 1px solid #333;
+      display: none;
+      font-size: 13px;
+      color: #ddd;
+      white-space: pre-line;
+    }
+    .msg.show { display: block; }
+    .msg.error { border-color: #7a2b2b; color: #ffbaba; }
+
+    /* ===== Modal Calendário ===== */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.65);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      z-index: 999;
+    }
+    .overlay.show { display: flex; }
+
+    .cal {
+      width: 360px;
+      max-width: 100%;
+      background: #111;
+      border: 1px solid #2a2a2a;
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 14px 40px rgba(0,0,0,.55);
+    }
+
+    .cal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 12px;
+      background: #0d0d0d;
+      border-bottom: 1px solid #222;
+    }
+    .cal-title {
+      font-weight: 900;
+      color: #fff;
+      font-size: 14px;
+      letter-spacing: .2px;
+    }
+
+    .cal-nav {
+      display: flex;
+      gap: 8px;
+    }
+    .cal-nav button {
+      border: 1px solid #2a2a2a;
+      background: #151515;
+      color: #fff;
+      border-radius: 10px;
+      padding: 8px 10px;
+      cursor: pointer;
+      font-weight: 900;
+    }
+    .cal-nav button:hover { border-color: #555; }
+
+    .cal-body {
+      padding: 12px;
+    }
+
+    .dow {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      margin-bottom: 8px;
+      font-size: 11px;
+      color: #bdbdbd;
+      text-align: center;
+      font-weight: 800;
+    }
+
+    .days {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+    }
+
+    .day {
+      border: 1px solid #2a2a2a;
+      background: #141414;
+      color: #fff;
+      border-radius: 12px;
+      padding: 10px 0;
+      text-align: center;
+      cursor: pointer;
+      font-weight: 900;
+      user-select: none;
+    }
+    .day:hover { border-color: #555; }
+    .day.muted {
+      opacity: .35;
+      cursor: default;
+    }
+    .day.disabled {
+      opacity: .25;
+      cursor: not-allowed;
+    }
+    .day.selected {
+      border-color: #c9a227;
+      box-shadow: 0 0 0 2px rgba(201, 162, 39, 0.25);
+    }
+
+    .cal-foot {
+      display: flex;
+      gap: 10px;
+      padding: 12px;
+      border-top: 1px solid #222;
+      background: #0d0d0d;
+    }
+    .cal-foot button {
+      flex: 1;
+      border-radius: 12px;
+      padding: 12px;
+      cursor: pointer;
+      font-weight: 900;
+      border: 1px solid #2a2a2a;
+      background: #151515;
+      color: #fff;
+    }
+    .cal-foot button.primary {
+      background: #c9a227;
+      color: #111;
+      border: none;
+    }
+
+    @media (max-width: 640px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 
 <body>
-<div class="container">
-  <h2>Agendar Horário</h2>
+  <div class="container">
+    <h1>💈 Agendar Horário</h1>
+    <p>Selecione a data no calendário e depois o horário disponível.</p>
 
-  <form action="/agendar" method="POST">
-    <label>Nome</label>
-    <input type="text" name="nome" placeholder="Seu nome" required>
+    <form id="formAgendar" method="POST" action="/agendar">
+      <div class="grid">
+        <div class="full">
+          <label>Nome</label>
+          <input id="nome" name="nome" required minlength="2" placeholder="Seu nome" />
+        </div>
 
-    <label>Telefone</label>
-    <input type="text" name="telefone" placeholder="WhatsApp" required>
+        <!-- CAMPO VISUAL (não é o enviado) -->
+        <div class="full">
+          <label>📅 Data do agendamento</label>
+          <input id="dataVisual" type="text" placeholder="Clique para escolher a data" readonly />
+          <div id="dataHuman" class="hint"></div>
+        </div>
 
-    <label>Data</label>
+        <!-- DATA REAL ENVIADA PARA O BACKEND -->
+        <input id="dataReal" type="hidden" name="data" />
 
-    <!-- Botão bonito -->
-    <div class="data-btn" onclick="abrirCalendario()">
-      📅 Escolher dia
-      <span id="dataTexto">Nenhuma data selecionada</span>
+        <!-- HORÁRIO REAL -->
+        <input id="horarioReal" type="hidden" name="horario" />
+      </div>
+
+      <div class="card">
+        <strong>Horários disponíveis</strong>
+        <div id="subinfo" class="subinfo">Escolha uma data para carregar os horários.</div>
+        <div id="horarios" class="horarios"></div>
+
+        <button id="btnConfirmar" class="confirmar" type="submit" disabled>
+          Confirmar Agendamento
+        </button>
+
+        <div id="msg" class="msg"></div>
+      </div>
+    </form>
+  </div>
+
+  <!-- MODAL CALENDÁRIO -->
+  <div id="overlay" class="overlay" aria-hidden="true">
+    <div class="cal" role="dialog" aria-modal="true" aria-label="Selecionar data">
+      <div class="cal-head">
+        <div class="cal-title" id="calTitle">Mês</div>
+        <div class="cal-nav">
+          <button type="button" id="prevMonth">◀</button>
+          <button type="button" id="nextMonth">▶</button>
+        </div>
+      </div>
+
+      <div class="cal-body">
+        <div class="dow">
+          <div>DOM</div><div>SEG</div><div>TER</div><div>QUA</div><div>QUI</div><div>SEX</div><div>SÁB</div>
+        </div>
+        <div id="days" class="days"></div>
+      </div>
+
+      <div class="cal-foot">
+        <button type="button" id="cancelCal">Cancelar</button>
+        <button type="button" class="primary" id="okCal">Confirmar</button>
+      </div>
     </div>
+  </div>
 
-    <!-- Input real escondido -->
-    <input type="date" id="data" name="data" required hidden>
+  <script>
+    const elDataVisual = document.getElementById("dataVisual");
+    const elDataReal = document.getElementById("dataReal");
+    const elDataHuman = document.getElementById("dataHuman");
 
-    <div class="horarios" id="horarios"></div>
+    const elOverlay = document.getElementById("overlay");
+    const elDays = document.getElementById("days");
+    const elTitle = document.getElementById("calTitle");
+    const btnPrev = document.getElementById("prevMonth");
+    const btnNext = document.getElementById("nextMonth");
+    const btnCancel = document.getElementById("cancelCal");
+    const btnOk = document.getElementById("okCal");
 
-    <input type="hidden" name="horario" id="horarioSelecionado" required>
+    const elHorarios = document.getElementById("horarios");
+    const elSubinfo = document.getElementById("subinfo");
+    const elHorarioReal = document.getElementById("horarioReal");
+    const elBtnConfirmar = document.getElementById("btnConfirmar");
+    const elMsg = document.getElementById("msg");
 
-    <button type="submit">Confirmar Agendamento</button>
-  </form>
-</div>
+    const today = new Date();
+    const minDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-<script>
-const dataInput = document.getElementById('data');
-const dataTexto = document.getElementById('dataTexto');
-const horariosDiv = document.getElementById('horarios');
-const horarioHidden = document.getElementById('horarioSelecionado');
+    let viewYear = minDate.getFullYear();
+    let viewMonth = minDate.getMonth(); // 0-11
+    let tempSelected = null; // Date escolhido no modal, antes de confirmar
 
-// bloquear datas passadas
-const hoje = new Date().toISOString().split('T')[0];
-dataInput.min = hoje;
+    function pad2(n){ return String(n).padStart(2, "0"); }
+    function toYMD(d){
+      return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+    }
+    function sameDay(a,b){
+      return a && b && a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+    }
+    function showMsg(text, isError=false){
+      elMsg.textContent = text;
+      elMsg.className = "msg show" + (isError ? " error" : "");
+    }
+    function clearMsg(){
+      elMsg.textContent = "";
+      elMsg.className = "msg";
+    }
 
-function abrirCalendario() {
-  dataInput.showPicker ? dataInput.showPicker() : dataInput.click();
-}
+    function openCal(){
+      clearMsg();
+      elOverlay.classList.add("show");
+      elOverlay.setAttribute("aria-hidden", "false");
 
-dataInput.addEventListener('change', async () => {
-  horariosDiv.innerHTML = '';
-  horarioHidden.value = '';
+      // se já tem data escolhida, mostra o mês dela
+      if (elDataReal.value) {
+        const [y,m,d] = elDataReal.value.split("-").map(Number);
+        viewYear = y;
+        viewMonth = m-1;
+        tempSelected = new Date(y, m-1, d);
+      } else {
+        viewYear = minDate.getFullYear();
+        viewMonth = minDate.getMonth();
+        tempSelected = null;
+      }
 
-  const data = dataInput.value;
+      renderCal();
+    }
 
-  const formatada = new Date(data + 'T00:00:00')
-    .toLocaleDateString('pt-BR', {
-      weekday: 'short',
-      day: '2-digit',
-      month: 'short'
+    function closeCal(){
+      elOverlay.classList.remove("show");
+      elOverlay.setAttribute("aria-hidden", "true");
+    }
+
+    function renderCal(){
+      const monthName = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" })
+        .format(new Date(viewYear, viewMonth, 1));
+      elTitle.textContent = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+
+      elDays.innerHTML = "";
+
+      const first = new Date(viewYear, viewMonth, 1);
+      const startDow = first.getDay(); // 0 domingo
+      const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+
+      // dias “vazios” antes do 1º dia (muted)
+      for (let i=0; i<startDow; i++){
+        const div = document.createElement("div");
+        div.className = "day muted";
+        div.textContent = "";
+        elDays.appendChild(div);
+      }
+
+      for (let day=1; day<=daysInMonth; day++){
+        const dateObj = new Date(viewYear, viewMonth, day);
+
+        const div = document.createElement("div");
+        div.className = "day";
+        div.textContent = day;
+
+        // desabilitar datas antes de hoje
+        if (dateObj < minDate){
+          div.classList.add("disabled");
+        } else {
+          div.addEventListener("click", () => {
+            tempSelected = dateObj;
+            // re-render só para marcar selecionado
+            renderCal();
+          });
+        }
+
+        // marcar selecionado
+        if (sameDay(tempSelected, dateObj)) {
+          div.classList.add("selected");
+        }
+
+        elDays.appendChild(div);
+      }
+    }
+
+    btnPrev.addEventListener("click", () => {
+      viewMonth--;
+      if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+      renderCal();
     });
 
-  dataTexto.innerText = formatada;
+    btnNext.addEventListener("click", () => {
+      viewMonth++;
+      if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+      renderCal();
+    });
 
-  const res = await fetch(`/horarios?data=${data}`);
-  const horarios = await res.json();
+    btnCancel.addEventListener("click", () => closeCal());
 
-  if (horarios.length === 0) {
-    horariosDiv.innerHTML = '<p>❌ Nenhum horário disponível</p>';
-    return;
-  }
+    // confirmar data escolhida
+    btnOk.addEventListener("click", async () => {
+      if (!tempSelected) {
+        showMsg("Selecione um dia no calendário.", true);
+        return;
+      }
 
-  horarios.forEach(h => {
-    const btn = document.createElement('div');
-    btn.className = 'horario-btn';
-    btn.innerText = h;
+      const ymd = toYMD(tempSelected);
+      elDataReal.value = ymd;
+      elDataVisual.value = ymd; // visual simples (pode mudar)
+      elDataHuman.textContent = "Selecionado: " + tempSelected.toLocaleDateString("pt-BR", {
+        weekday: "long", day: "2-digit", month: "long", year: "numeric"
+      });
 
-    btn.onclick = () => {
-      document.querySelectorAll('.horario-btn')
-        .forEach(b => b.classList.remove('selected'));
+      closeCal();
 
-      btn.classList.add('selected');
-      horarioHidden.value = h;
-    };
+      // carregar horários dessa data
+      await carregarHorarios(ymd);
+    });
 
-    horariosDiv.appendChild(btn);
-  });
-});
-</script>
+    // abrir calendário ao clicar
+    elDataVisual.addEventListener("click", openCal);
 
+    // fechar clicando fora
+    elOverlay.addEventListener("click", (e) => {
+      if (e.target === elOverlay) closeCal();
+    });
+
+    async function carregarHorarios(dataYMD){
+      clearMsg();
+      elHorarios.innerHTML = "";
+      elHorarioReal.value = "";
+      elBtnConfirmar.disabled = true;
+      elSubinfo.textContent = "Carregando horários...";
+
+      try {
+        const res = await fetch("/horarios?data=" + encodeURIComponent(dataYMD));
+        if (!res.ok) throw new Error("Falha ao buscar horários.");
+        const horarios = await res.json();
+
+        if (!horarios || horarios.length === 0){
+          elSubinfo.textContent = "Nenhum horário disponível nessa data.";
+          return;
+        }
+
+        elSubinfo.textContent = "Clique em um horário para selecionar.";
+        horarios.forEach(h => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "hora";
+          b.textContent = h;
+
+          b.addEventListener("click", () => {
+            document.querySelectorAll(".hora").forEach(x => x.classList.remove("selected"));
+            b.classList.add("selected");
+            elHorarioReal.value = h;
+            elBtnConfirmar.disabled = false;
+          });
+
+          elHorarios.appendChild(b);
+        });
+      } catch (e) {
+        elSubinfo.textContent = "Não foi possível carregar os horários.";
+        showMsg("Erro: " + (e?.message || "Erro desconhecido"), true);
+      }
+    }
+
+    // bloquear submit sem data/horário
+    document.getElementById("formAgendar").addEventListener("submit", (e) => {
+      clearMsg();
+      if (!elDataReal.value) {
+        e.preventDefault();
+        showMsg("Escolha uma data no calendário.", true);
+        return;
+      }
+      if (!elHorarioReal.value) {
+        e.preventDefault();
+        showMsg("Selecione um horário antes de confirmar.", true);
+        return;
+      }
+    });
+  </script>
 </body>
 </html>
