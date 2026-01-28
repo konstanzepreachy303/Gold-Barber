@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Agendar Horário | Gold Barber</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: linear-gradient(180deg, #000, #1a1a1a);
+  color: #fff;
+}
+
+.container {
+  max-width: 420px;
+  margin: auto;
+  padding: 20px;
+}
+
+h2 {
+  text-align: center;
+  color: #d4af37;
+  margin-bottom: 20px;
+}
+
+label {
+  font-size: 14px;
+  color: #ccc;
+}
+
+input {
+  width: 100%;
+  padding: 14px;
+  margin-bottom: 14px;
+  border-radius: 8px;
+  border: none;
+  background: #222;
+  color: #fff;
+  font-size: 16px;
+}
+
+.data-btn {
+  background: #111;
+  border: 1px solid #d4af37;
+  color: #d4af37;
+  padding: 14px;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 16px;
+  margin-bottom: 14px;
+  cursor: pointer;
+}
+
+.data-btn span {
+  display: block;
+  font-size: 13px;
+  color: #aaa;
+}
+
+.horarios {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.horario-btn {
+  padding: 14px 0;
+  background: #222;
+  border: 1px solid #d4af37;
+  color: #d4af37;
+  border-radius: 8px;
+  text-align: center;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.horario-btn.selected {
+  background: #d4af37;
+  color: #000;
+  font-weight: bold;
+}
+
+button {
+  width: 100%;
+  padding: 16px;
+  margin-top: 20px;
+  background: #d4af37;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+  <h2>Agendar Horário</h2>
+
+  <form action="/agendar" method="POST">
+    <label>Nome</label>
+    <input type="text" name="nome" placeholder="Seu nome" required>
+
+    <label>Telefone</label>
+    <input type="text" name="telefone" placeholder="WhatsApp" required>
+
+    <label>Data</label>
+
+    <!-- Botão bonito -->
+    <div class="data-btn" onclick="abrirCalendario()">
+      📅 Escolher dia
+      <span id="dataTexto">Nenhuma data selecionada</span>
+    </div>
+
+    <!-- Input real escondido -->
+    <input type="date" id="data" name="data" required hidden>
+
+    <div class="horarios" id="horarios"></div>
+
+    <input type="hidden" name="horario" id="horarioSelecionado" required>
+
+    <button type="submit">Confirmar Agendamento</button>
+  </form>
+</div>
+
+<script>
+const dataInput = document.getElementById('data');
+const dataTexto = document.getElementById('dataTexto');
+const horariosDiv = document.getElementById('horarios');
+const horarioHidden = document.getElementById('horarioSelecionado');
+
+// bloquear datas passadas
+const hoje = new Date().toISOString().split('T')[0];
+dataInput.min = hoje;
+
+function abrirCalendario() {
+  dataInput.showPicker ? dataInput.showPicker() : dataInput.click();
+}
+
+dataInput.addEventListener('change', async () => {
+  horariosDiv.innerHTML = '';
+  horarioHidden.value = '';
+
+  const data = dataInput.value;
+
+  const formatada = new Date(data + 'T00:00:00')
+    .toLocaleDateString('pt-BR', {
+      weekday: 'short',
+      day: '2-digit',
+      month: 'short'
+    });
+
+  dataTexto.innerText = formatada;
+
+  const res = await fetch(`/horarios?data=${data}`);
+  const horarios = await res.json();
+
+  if (horarios.length === 0) {
+    horariosDiv.innerHTML = '<p>❌ Nenhum horário disponível</p>';
+    return;
+  }
+
+  horarios.forEach(h => {
+    const btn = document.createElement('div');
+    btn.className = 'horario-btn';
+    btn.innerText = h;
+
+    btn.onclick = () => {
+      document.querySelectorAll('.horario-btn')
+        .forEach(b => b.classList.remove('selected'));
+
+      btn.classList.add('selected');
+      horarioHidden.value = h;
+    };
+
+    horariosDiv.appendChild(btn);
+  });
+});
+</script>
+
+</body>
+</html>

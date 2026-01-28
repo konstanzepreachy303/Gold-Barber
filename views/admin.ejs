@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Login Admin</title>
+  <link rel="stylesheet" href="/css/admin.css" />
+</head>
+<body>
+  <h1>🔒 Login do Admin</h1>
+
+  <% if (error) { %>
+    <p style="color:red;"><%= error %></p>
+  <% } %>
+
+  <form method="POST" action="/admin/login">
+    <div>
+      <input name="user" placeholder="Usuário" required />
+    </div>
+    <div>
+      <input name="pass" type="password" placeholder="Senha" required />
+    </div>
+    <button type="submit">Entrar</button>
+  </form>
+</body>
+</html>

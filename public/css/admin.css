@@ -1,0 +1,20 @@
+body {
+  background: #000;
+  color: #fff;
+  font-family: Arial;
+  padding: 20px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+td, th {
+  padding: 10px;
+  border-bottom: 1px solid #333;
+}
+
+.agendado { color: #d4af37; }
+.aprovado { color: #4caf50; }
+.cancelado { color: #f44336; }
