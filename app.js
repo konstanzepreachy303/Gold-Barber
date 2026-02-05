@@ -72,18 +72,13 @@ function generateSlotsForDate(ymd) {
 
   const slot = Number(businessConfig.slotMinutes) || 60;
 
-  // Proteções básicas
   if (endMin <= startMin) return [];
   if (slot <= 0 || slot > 240) return [];
 
   const result = [];
   for (let t = startMin; t + slot <= endMin; t += slot) {
-    // pula se cair dentro do almoço
-    const withinLunch =
-      t < lunchEndMin && (t + slot) > lunchStartMin;
-
+    const withinLunch = t < lunchEndMin && (t + slot) > lunchStartMin;
     if (withinLunch) continue;
-
     result.push(fromMinutes(t));
   }
   return result;
@@ -169,20 +164,13 @@ app.post("/wpp/webhook", (req, res) => {
       const body = req.body;
       const value = body?.entry?.[0]?.changes?.[0]?.value;
 
-      const waId =
-        value?.contacts?.[0]?.wa_id ||
-        value?.messages?.[0]?.from;
-
+      const waId = value?.contacts?.[0]?.wa_id || value?.messages?.[0]?.from;
       const msgText = value?.messages?.[0]?.text?.body || "";
       if (!waId) return;
 
       const t = (msgText || "").trim().toLowerCase();
       const shouldRespond =
-        !t ||
-        t.includes("agendar") ||
-        t.includes("agenda") ||
-        t.includes("horario") ||
-        t.includes("horário");
+        !t || t.includes("agendar") || t.includes("agenda") || t.includes("horario") || t.includes("horário");
 
       if (!shouldRespond) return;
 
@@ -217,13 +205,8 @@ app.get("/horarios", (req, res) => {
 
   const baseSlots = generateSlotsForDate(data);
 
-  // ocupa horários já marcados/aprovados
   const ocupados = agendamentos
-    .filter(
-      (a) =>
-        a.data === data &&
-        (a.status === "agendado" || a.status === "aprovado")
-    )
+    .filter((a) => a.data === data && (a.status === "agendado" || a.status === "aprovado"))
     .map((a) => a.horario);
 
   const livres = baseSlots.filter((h) => !ocupados.includes(h));
@@ -237,7 +220,6 @@ app.post("/agendar", (req, res) => {
     return res.status(400).send("❌ Preencha nome, data e horário.");
   }
 
-  // valida se esse horário existe pela config (evita agendar horário fora)
   const slots = generateSlotsForDate(data);
   if (!slots.includes(horario)) {
     return res.status(400).send("❌ Horário inválido para essa data.");
@@ -253,19 +235,13 @@ app.post("/agendar", (req, res) => {
       return res.status(400).send("❌ Link expirado. Peça um novo link no WhatsApp.");
     }
 
-    telefoneFinal = info.wa_id; // ex: 5511999999999
+    telefoneFinal = info.wa_id;
   } else {
-    // ✅ SEM TOKEN: por enquanto deixa fixo e NÃO valida input
     telefoneFinal = "12992314361";
   }
 
-  const conflito = agendamentos.find(
-    (a) => a.data === data && a.horario === horario && a.status !== "cancelado"
-  );
-
-  if (conflito) {
-    return res.send("❌ Horário indisponível");
-  }
+  const conflito = agendamentos.find((a) => a.data === data && a.horario === horario && a.status !== "cancelado");
+  if (conflito) return res.send("❌ Horário indisponível");
 
   agendamentos.push({
     id: Date.now(),
@@ -284,22 +260,23 @@ app.post("/agendar", (req, res) => {
 // ===========================================================
 
 app.get("/admin", (req, res) => {
-  res.render("admin", { agendamentos, config: businessConfig });
+  const status = (req.query.status || "todos").toString();
+
+  let ags = agendamentos.slice();
+  if (status !== "todos") {
+    ags = ags.filter((a) => a.status === status);
+  }
+
+  ags.sort((a, b) => (a.data + a.horario).localeCompare(b.data + b.horario));
+
+  // ✅ mantém config + filtro
+  res.render("admin", { agendamentos: ags, config: businessConfig, statusFiltro: status });
 });
 
 // atualizar config (salva em memória por enquanto)
 app.post("/admin/config", (req, res) => {
-  const {
-    start,
-    end,
-    lunchStart,
-    lunchEnd,
-    slotMinutes,
-    daysOffDates,
-    wd0, wd1, wd2, wd3, wd4, wd5, wd6,
-  } = req.body;
+  const { start, end, lunchStart, lunchEnd, slotMinutes, daysOffDates, wd0, wd1, wd2, wd3, wd4, wd5, wd6 } = req.body;
 
-  // dias da semana (checkbox -> "on" quando marcado)
   const workDays = {
     0: wd0 === "on",
     1: wd1 === "on",
@@ -310,7 +287,6 @@ app.post("/admin/config", (req, res) => {
     6: wd6 === "on",
   };
 
-  // folgas por data (textarea com linhas ou vírgulas)
   const parsedDates = String(daysOffDates || "")
     .split(/[\s,;]+/g)
     .map((s) => s.trim())

@@ -98,6 +98,33 @@ textarea { resize: vertical; }
   border-color: #666;
 }
 
+.mini.danger {
+  border-color: #7a2b2b;
+}
+
+/* ===== filtros ===== */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.chip {
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid #333;
+  background: #151515;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 900;
+}
+
+.chip.active {
+  border-color: #d4af37;
+  box-shadow: 0 0 0 2px rgba(212,175,55,.15);
+}
+
 @media (max-width: 720px) {
   .grid { grid-template-columns: 1fr; }
 }

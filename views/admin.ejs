@@ -64,8 +64,15 @@
   <div class="box">
     <h2>📅 Agendamentos</h2>
 
+    <div class="filters">
+      <a class="chip <%= statusFiltro === 'todos' ? 'active' : '' %>" href="/admin?status=todos">Todos</a>
+      <a class="chip <%= statusFiltro === 'agendado' ? 'active' : '' %>" href="/admin?status=agendado">Pendentes</a>
+      <a class="chip <%= statusFiltro === 'aprovado' ? 'active' : '' %>" href="/admin?status=aprovado">Aprovados</a>
+      <a class="chip <%= statusFiltro === 'cancelado' ? 'active' : '' %>" href="/admin?status=cancelado">Cancelados</a>
+    </div>
+
     <% if (!agendamentos || agendamentos.length === 0) { %>
-      <p>Nenhum agendamento ainda.</p>
+      <p>Nenhum agendamento nesse filtro.</p>
     <% } else { %>
       <table>
         <thead>
@@ -80,10 +87,7 @@
         </thead>
 
         <tbody>
-          <% agendamentos
-              .slice()
-              .sort((a,b) => (a.data+a.horario).localeCompare(b.data+b.horario))
-              .forEach(a => { %>
+          <% agendamentos.forEach(a => { %>
             <tr>
               <td><%= a.data %></td>
               <td><%= a.horario %></td>
@@ -91,9 +95,9 @@
               <td><%= a.telefone %></td>
               <td class="<%= a.status %>"><strong><%= a.status %></strong></td>
               <td>
-                <button class="mini" onclick="setStatus(<%= a.id %>, 'aprovado')">Aprovar</button>
-                <button class="mini" onclick="setStatus(<%= a.id %>, 'cancelado')">Cancelar</button>
-                <button class="mini" onclick="setStatus(<%= a.id %>, 'agendado')">Voltar</button>
+                <button class="mini" onclick="setStatus(<%= a.id %>, 'aprovado')">✅ Aprovar</button>
+                <button class="mini danger" onclick="setStatus(<%= a.id %>, 'cancelado')">❌ Cancelar</button>
+                <button class="mini" onclick="setStatus(<%= a.id %>, 'agendado')">↩ Voltar</button>
               </td>
             </tr>
           <% }) %>
@@ -110,8 +114,13 @@
         body: JSON.stringify({ id, status })
       });
       const data = await res.json().catch(() => ({}));
-      if (data && data.ok) location.reload();
-      else alert("Falha ao atualizar status");
+      if (data && data.ok) {
+        const params = new URLSearchParams(window.location.search);
+        const current = params.get("status") || "todos";
+        window.location.href = "/admin?status=" + encodeURIComponent(current);
+      } else {
+        alert("Falha ao atualizar status");
+      }
     }
   </script>
 </body>
