@@ -19,7 +19,75 @@ app.use(express.static(path.join(__dirname, "public")));
 // ====== DADOS EM MEMÓRIA (depois ligamos no SQLite) ======
 let agendamentos = [];
 
-const HORARIOS = ["09:00", "10:00", "11:00", "13:00", "14:00", "15:00", "16:00", "17:00"];
+// ===========================================================
+// =================== CONFIG DE FUNCIONAMENTO ===============
+// ===========================================================
+
+/**
+ * workDays: 0=Dom ... 6=Sáb
+ * daysOffDates: ["2026-02-10", "2026-02-11"] (folga por data específica)
+ */
+let businessConfig = {
+  start: "09:00",
+  end: "18:00",
+  lunchStart: "12:00",
+  lunchEnd: "13:00",
+  slotMinutes: 60,
+  workDays: { 0: false, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true },
+  daysOffDates: [],
+};
+
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+function toMinutes(hhmm) {
+  const [h, m] = (hhmm || "00:00").split(":").map(Number);
+  return h * 60 + m;
+}
+function fromMinutes(min) {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${pad2(h)}:${pad2(m)}`;
+}
+function isValidYMD(s) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(s);
+}
+function getDowFromYMD(ymd) {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(y, m - 1, d).getDay(); // 0..6
+}
+function generateSlotsForDate(ymd) {
+  if (!isValidYMD(ymd)) return [];
+
+  const dow = getDowFromYMD(ymd);
+  if (!businessConfig.workDays?.[dow]) return [];
+
+  if (businessConfig.daysOffDates?.includes(ymd)) return [];
+
+  const startMin = toMinutes(businessConfig.start);
+  const endMin = toMinutes(businessConfig.end);
+
+  const lunchStartMin = toMinutes(businessConfig.lunchStart);
+  const lunchEndMin = toMinutes(businessConfig.lunchEnd);
+
+  const slot = Number(businessConfig.slotMinutes) || 60;
+
+  // Proteções básicas
+  if (endMin <= startMin) return [];
+  if (slot <= 0 || slot > 240) return [];
+
+  const result = [];
+  for (let t = startMin; t + slot <= endMin; t += slot) {
+    // pula se cair dentro do almoço
+    const withinLunch =
+      t < lunchEndMin && (t + slot) > lunchStartMin;
+
+    if (withinLunch) continue;
+
+    result.push(fromMinutes(t));
+  }
+  return result;
+}
 
 // ===========================================================
 // ============ WHATSAPP CLOUD API (PROFISSIONAL) =============
@@ -94,27 +162,20 @@ app.get("/wpp/webhook", (req, res) => {
 
 // Webhook mensagens recebidas
 app.post("/wpp/webhook", (req, res) => {
-  // responde rápido (Meta gosta disso)
   res.sendStatus(200);
 
-  // processa depois
   (async () => {
     try {
       const body = req.body;
-
-      // Estrutura típica: entry[0].changes[0].value
       const value = body?.entry?.[0]?.changes?.[0]?.value;
 
-      // pega WA ID (telefone do WhatsApp) - geralmente vem aqui
       const waId =
-        value?.contacts?.[0]?.wa_id || // preferível
-        value?.messages?.[0]?.from; // fallback
+        value?.contacts?.[0]?.wa_id ||
+        value?.messages?.[0]?.from;
 
       const msgText = value?.messages?.[0]?.text?.body || "";
-
       if (!waId) return;
 
-      // opcional: só responde se a pessoa pedir algo relacionado a agenda
       const t = (msgText || "").trim().toLowerCase();
       const shouldRespond =
         !t ||
@@ -154,15 +215,18 @@ app.get("/", (req, res) => {
 app.get("/horarios", (req, res) => {
   const { data } = req.query;
 
+  const baseSlots = generateSlotsForDate(data);
+
+  // ocupa horários já marcados/aprovados
   const ocupados = agendamentos
     .filter(
       (a) =>
         a.data === data &&
-        (a.status === "agendado" || a.status === "aprovado") // bloqueia horários já marcados/aprovados
+        (a.status === "agendado" || a.status === "aprovado")
     )
     .map((a) => a.horario);
 
-  const livres = HORARIOS.filter((h) => !ocupados.includes(h));
+  const livres = baseSlots.filter((h) => !ocupados.includes(h));
   res.json(livres);
 });
 
@@ -173,8 +237,12 @@ app.post("/agendar", (req, res) => {
     return res.status(400).send("❌ Preencha nome, data e horário.");
   }
 
-  // Se veio token do WhatsApp, NÃO deixa o cliente escolher telefone.
-  // O telefone vem do wa_id associado ao token.
+  // valida se esse horário existe pela config (evita agendar horário fora)
+  const slots = generateSlotsForDate(data);
+  if (!slots.includes(horario)) {
+    return res.status(400).send("❌ Horário inválido para essa data.");
+  }
+
   let telefoneFinal = (telefone || "").toString().trim();
 
   if (token) {
@@ -187,12 +255,8 @@ app.post("/agendar", (req, res) => {
 
     telefoneFinal = info.wa_id; // ex: 5511999999999
   } else {
-    // sem token => exige telefone no formato mínimo (DD + número)
-    const digits = telefoneFinal.replace(/\D/g, "");
-    if (digits.length < 10) {
-      return res.status(400).send("❌ Digite um telefone válido (com DDD).");
-    }
-    telefoneFinal = telefoneFinal; // mantém formatado como foi digitado
+    // ✅ SEM TOKEN: por enquanto deixa fixo e NÃO valida input
+    telefoneFinal = "12992314361";
   }
 
   const conflito = agendamentos.find(
@@ -216,12 +280,55 @@ app.post("/agendar", (req, res) => {
 });
 
 // ===========================================================
-// ====================== ADMIN (DEPOIS) ======================
+// ========================== ADMIN ==========================
 // ===========================================================
 
 app.get("/admin", (req, res) => {
-  // (sem foco agora) - mas deixa funcionando
-  res.render("admin", { agendamentos });
+  res.render("admin", { agendamentos, config: businessConfig });
+});
+
+// atualizar config (salva em memória por enquanto)
+app.post("/admin/config", (req, res) => {
+  const {
+    start,
+    end,
+    lunchStart,
+    lunchEnd,
+    slotMinutes,
+    daysOffDates,
+    wd0, wd1, wd2, wd3, wd4, wd5, wd6,
+  } = req.body;
+
+  // dias da semana (checkbox -> "on" quando marcado)
+  const workDays = {
+    0: wd0 === "on",
+    1: wd1 === "on",
+    2: wd2 === "on",
+    3: wd3 === "on",
+    4: wd4 === "on",
+    5: wd5 === "on",
+    6: wd6 === "on",
+  };
+
+  // folgas por data (textarea com linhas ou vírgulas)
+  const parsedDates = String(daysOffDates || "")
+    .split(/[\s,;]+/g)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .filter(isValidYMD);
+
+  businessConfig = {
+    ...businessConfig,
+    start: start || businessConfig.start,
+    end: end || businessConfig.end,
+    lunchStart: lunchStart || businessConfig.lunchStart,
+    lunchEnd: lunchEnd || businessConfig.lunchEnd,
+    slotMinutes: Number(slotMinutes) || businessConfig.slotMinutes,
+    workDays,
+    daysOffDates: parsedDates,
+  };
+
+  return res.redirect("/admin");
 });
 
 app.post("/admin/status", (req, res) => {

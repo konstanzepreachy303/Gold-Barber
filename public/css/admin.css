@@ -5,16 +5,99 @@ body {
   padding: 20px;
 }
 
+h1 { margin: 0 0 16px; }
+h2 { margin: 0 0 12px; }
+
+.box {
+  background: #0d0d0d;
+  border: 1px solid #222;
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 18px;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
+  margin-top: 8px;
 }
 
 td, th {
   padding: 10px;
   border-bottom: 1px solid #333;
+  text-align: left;
 }
 
 .agendado { color: #d4af37; }
 .aprovado { color: #4caf50; }
 .cancelado { color: #f44336; }
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.grid .full { grid-column: 1 / -1; }
+
+label {
+  display: block;
+  font-weight: 800;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+input, textarea {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #333;
+  background: #121212;
+  color: #fff;
+  outline: none;
+}
+
+textarea { resize: vertical; }
+
+.checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 6px;
+}
+
+.checks label {
+  font-weight: 700;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: none;
+  background: #d4af37;
+  color: #111;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.mini {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #333;
+  background: #151515;
+  color: #fff;
+  cursor: pointer;
+  margin-right: 6px;
+}
+
+.mini:hover {
+  border-color: #666;
+}
+
+@media (max-width: 720px) {
+  .grid { grid-template-columns: 1fr; }
+}

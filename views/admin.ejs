@@ -2,28 +2,117 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Login - Painel</title>
+  <title>Admin - Gold Barber</title>
   <link rel="stylesheet" href="/css/admin.css">
 </head>
 <body>
-  <h1>🔒 Login do Admin</h1>
+  <h1>🧾 Painel Admin</h1>
 
-  <% if (error) { %>
-    <p style="color:red;"><%= error %></p>
-  <% } %>
+  <div class="box">
+    <h2>⚙️ Configuração de horários</h2>
 
-  <form method="POST" action="/admin/login">
-    <div>
-      <input name="user" placeholder="Usuário" required>
-    </div>
+    <form method="POST" action="/admin/config" class="grid">
+      <div>
+        <label>Início do expediente</label>
+        <input type="time" name="start" value="<%= config.start %>" required>
+      </div>
 
-    <div style="margin-top:10px;">
-      <input name="pass" type="password" placeholder="Senha" required>
-    </div>
+      <div>
+        <label>Fim do expediente</label>
+        <input type="time" name="end" value="<%= config.end %>" required>
+      </div>
 
-    <div style="margin-top:10px;">
-      <button type="submit">Entrar</button>
-    </div>
-  </form>
+      <div>
+        <label>Início do almoço</label>
+        <input type="time" name="lunchStart" value="<%= config.lunchStart %>" required>
+      </div>
+
+      <div>
+        <label>Fim do almoço</label>
+        <input type="time" name="lunchEnd" value="<%= config.lunchEnd %>" required>
+      </div>
+
+      <div>
+        <label>Intervalo (min)</label>
+        <input type="number" name="slotMinutes" min="10" max="240" value="<%= config.slotMinutes %>" required>
+      </div>
+
+      <div class="full">
+        <label>Dias de trabalho (marque os dias que abre)</label>
+        <div class="checks">
+          <label><input type="checkbox" name="wd0" <%= config.workDays[0] ? "checked" : "" %> > Dom</label>
+          <label><input type="checkbox" name="wd1" <%= config.workDays[1] ? "checked" : "" %> > Seg</label>
+          <label><input type="checkbox" name="wd2" <%= config.workDays[2] ? "checked" : "" %> > Ter</label>
+          <label><input type="checkbox" name="wd3" <%= config.workDays[3] ? "checked" : "" %> > Qua</label>
+          <label><input type="checkbox" name="wd4" <%= config.workDays[4] ? "checked" : "" %> > Qui</label>
+          <label><input type="checkbox" name="wd5" <%= config.workDays[5] ? "checked" : "" %> > Sex</label>
+          <label><input type="checkbox" name="wd6" <%= config.workDays[6] ? "checked" : "" %> > Sáb</label>
+        </div>
+      </div>
+
+      <div class="full">
+        <label>Folgas por data (YYYY-MM-DD) — pode separar por espaço, vírgula ou linha</label>
+        <textarea name="daysOffDates" rows="4" placeholder="2026-02-10 2026-02-11"><%= (config.daysOffDates || []).join("\n") %></textarea>
+      </div>
+
+      <div class="full">
+        <button class="btn" type="submit">Salvar configuração</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="box">
+    <h2>📅 Agendamentos</h2>
+
+    <% if (!agendamentos || agendamentos.length === 0) { %>
+      <p>Nenhum agendamento ainda.</p>
+    <% } else { %>
+      <table>
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Hora</th>
+            <th>Nome</th>
+            <th>Telefone</th>
+            <th>Status</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <% agendamentos
+              .slice()
+              .sort((a,b) => (a.data+a.horario).localeCompare(b.data+b.horario))
+              .forEach(a => { %>
+            <tr>
+              <td><%= a.data %></td>
+              <td><%= a.horario %></td>
+              <td><%= a.nome %></td>
+              <td><%= a.telefone %></td>
+              <td class="<%= a.status %>"><strong><%= a.status %></strong></td>
+              <td>
+                <button class="mini" onclick="setStatus(<%= a.id %>, 'aprovado')">Aprovar</button>
+                <button class="mini" onclick="setStatus(<%= a.id %>, 'cancelado')">Cancelar</button>
+                <button class="mini" onclick="setStatus(<%= a.id %>, 'agendado')">Voltar</button>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+
+  <script>
+    async function setStatus(id, status) {
+      const res = await fetch("/admin/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data && data.ok) location.reload();
+      else alert("Falha ao atualizar status");
+    }
+  </script>
 </body>
 </html>
