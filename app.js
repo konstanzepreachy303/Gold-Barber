@@ -75,20 +75,41 @@ function fromMinutes(min) {
   return `${pad2(h)}:${pad2(m)}`;
 }
 
+// Converte dd-mm-yyyy -> yyyy-mm-dd (aceita também yyyy-mm-dd)
+function toYMD(input) {
+  const s = String(input || "").trim();
+  if (!s) return null;
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s; // já é YMD
+
+  const m = s.match(/^(\d{2})-(\d{2})-(\d{4})$/); // DMY
+  if (m) {
+    const dd = m[1],
+      mm = m[2],
+      yyyy = m[3];
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  return null;
+}
+
 async function loadBarberConfig(barberId) {
   const cfg = await dbGet(`SELECT * FROM barber_config WHERE barber_id = ?`, [
     barberId,
   ]);
+
   if (!cfg) {
-    // garante config mínima caso algo falhe no seed
     await dbRun(`INSERT OR IGNORE INTO barber_config (barber_id) VALUES (?)`, [
       barberId,
     ]);
   }
-  const cfg2 = cfg || (await dbGet(`SELECT * FROM barber_config WHERE barber_id = ?`, [barberId]));
+
+  const cfg2 =
+    cfg ||
+    (await dbGet(`SELECT * FROM barber_config WHERE barber_id = ?`, [barberId]));
 
   const offs = await dbAll(
-    `SELECT ymd FROM barber_days_off WHERE barber_id = ?`,
+    `SELECT ymd FROM barber_days_off WHERE barber_id = ? ORDER BY ymd`,
     [barberId]
   );
 
@@ -109,7 +130,7 @@ async function loadBarberConfig(barberId) {
     lunchEnd: cfg2.lunchEnd,
     slotMinutes: Number(cfg2.slotMinutes) || 60,
     workDays,
-    daysOffDates: offs.map((o) => o.ymd),
+    daysOffDates: offs.map((o) => o.ymd), // sempre yyyy-mm-dd no banco
   };
 }
 
@@ -149,20 +170,19 @@ function cleanupTokens() {
   }
 }
 
-// Se você já tinha uma rota que gera token via WhatsApp, mantenha a sua.
-// Aqui deixo uma rota opcional simples pra teste:
+// rota opcional p/ teste
 app.get("/wpp/token/mock", (req, res) => {
-  // cria um token fake com validade 10 min
   const token = Math.random().toString(36).slice(2);
-  wppTokens.set(token, { wa_id: "5599999999999", expiresAt: Date.now() + 10 * 60 * 1000 });
+  wppTokens.set(token, {
+    wa_id: "5599999999999",
+    expiresAt: Date.now() + 10 * 60 * 1000,
+  });
   res.json({ token });
 });
 
 // -------------------- PUBLIC ROUTES --------------------
 app.get("/", (req, res) => {
-  // se seu front principal for HTML estático, ajuste aqui
-  // exemplo: res.sendFile(path.join(__dirname, "views", "index.html"));
-  res.send("OK - Backend no ar. Use /barbeiros, /horarios, /agendar e /admin/login");
+  res.sendFile(path.join(__dirname, "views", "agendar.html"));
 });
 
 // lista barbeiros ativos (pra montar select no agendamento)
@@ -180,7 +200,6 @@ app.get("/horarios", async (req, res) => {
 
   if (!data || !bId) return res.status(400).json([]);
 
-  // valida barbeiro
   const barber = await dbGet(
     `SELECT id FROM barbers WHERE id = ? AND is_active = 1`,
     [bId]
@@ -211,14 +230,12 @@ app.post("/agendar", async (req, res) => {
     return res.status(400).send("❌ Preencha nome, barbeiro, data e horário.");
   }
 
-  // valida barbeiro ativo
   const barber = await dbGet(
     `SELECT * FROM barbers WHERE id = ? AND is_active = 1`,
     [bId]
   );
   if (!barber) return res.status(400).send("❌ Barbeiro inválido.");
 
-  // valida se horário pertence ao barbeiro e data
   const slots = await generateSlotsForDateAndBarber(data, bId);
   if (!slots.includes(horario)) {
     return res
@@ -228,7 +245,6 @@ app.post("/agendar", async (req, res) => {
 
   let telefoneFinal = String(telefone || "").trim();
 
-  // token WhatsApp (mantém a ideia)
   if (token) {
     cleanupTokens();
     const info = wppTokens.get(token);
@@ -242,7 +258,6 @@ app.post("/agendar", async (req, res) => {
     telefoneFinal = telefoneFinal || "00000000000";
   }
 
-  // conflito só dentro do barbeiro
   const conflito = await dbGet(
     `SELECT id FROM agendamentos
      WHERE barber_id = ?
@@ -261,7 +276,6 @@ app.post("/agendar", async (req, res) => {
     [bId, nome, telefoneFinal, data, horario]
   );
 
-  // se você tem sucesso.html, mantém:
   return res.sendFile(path.join(__dirname, "views", "sucesso.html"));
 });
 
@@ -276,10 +290,12 @@ app.post("/admin/login", async (req, res) => {
   const user = await dbGet(`SELECT * FROM admin_users WHERE username = ?`, [
     username,
   ]);
-  if (!user) return res.render("admin_login", { error: "Usuário/senha inválidos" });
+  if (!user)
+    return res.render("admin_login", { error: "Usuário/senha inválidos" });
 
   const ok = await bcrypt.compare(String(password || ""), user.password_hash);
-  if (!ok) return res.render("admin_login", { error: "Usuário/senha inválidos" });
+  if (!ok)
+    return res.render("admin_login", { error: "Usuário/senha inválidos" });
 
   req.session.adminUser = { id: user.id, username: user.username };
   return res.redirect("/admin");
@@ -296,23 +312,13 @@ app.get("/admin", requireAdmin, async (req, res) => {
   const agendamentos = await dbAll(
     `SELECT a.*, b.name AS barber_name
      FROM agendamentos a
-     JOIN barbers b ON b.id = a.barbeiro_id OR b.id = a.barber_id
+     JOIN barbers b ON b.id = a.barber_id
      ORDER BY a.data, a.horario`
-  ).catch(async () => {
-    // fallback caso seu sqlite tenha coluna barber_id certa
-    return dbAll(
-      `SELECT a.*, b.name AS barber_name
-       FROM agendamentos a
-       JOIN barbers b ON b.id = a.barber_id
-       ORDER BY a.data, a.horario`
-    );
-  });
+  );
 
-  // configs por barbeiro (pra preencher no admin)
   const barberConfigs = {};
   for (const b of barbers) {
-    const cfg = await loadBarberConfig(b.id);
-    barberConfigs[b.id] = cfg;
+    barberConfigs[b.id] = await loadBarberConfig(b.id);
   }
 
   res.render("admin", {
@@ -346,11 +352,24 @@ app.get("/admin/agendamentos", requireAdmin, async (req, res) => {
 // ativar/desativar barbeiro
 app.post("/admin/barbeiros/:id/toggle", requireAdmin, async (req, res) => {
   const barberId = Number(req.params.id);
-  const current = await dbGet(`SELECT is_active FROM barbers WHERE id = ?`, [barberId]);
+  const current = await dbGet(`SELECT is_active FROM barbers WHERE id = ?`, [
+    barberId,
+  ]);
   if (!current) return res.redirect("/admin");
 
   const next = current.is_active ? 0 : 1;
   await dbRun(`UPDATE barbers SET is_active = ? WHERE id = ?`, [next, barberId]);
+  res.redirect("/admin");
+});
+
+// ✅ atualizar nome do barbeiro
+app.post("/admin/barbeiros/:id/nome", requireAdmin, async (req, res) => {
+  const barberId = Number(req.params.id);
+  const name = String(req.body.name || "").trim();
+
+  if (!name) return res.status(400).send("Nome inválido.");
+
+  await dbRun(`UPDATE barbers SET name = ? WHERE id = ?`, [name, barberId]);
   res.redirect("/admin");
 });
 
@@ -395,11 +414,14 @@ app.post("/admin/barbeiro/:id/config", requireAdmin, async (req, res) => {
     ]
   );
 
+  // regrava folgas
   await dbRun(`DELETE FROM barber_days_off WHERE barber_id = ?`, [barberId]);
 
   const parsedDates = String(daysOffDates || "")
     .split(/[\s,;]+/g)
     .map((s) => s.trim())
+    .filter(Boolean)
+    .map(toYMD) // ✅ aceita dd-mm-yyyy e yyyy-mm-dd
     .filter(Boolean)
     .filter(isValidYMD);
 

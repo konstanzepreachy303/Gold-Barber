@@ -12,7 +12,7 @@
     .card{background:#fff; border:1px solid #e6e6e6; border-radius:12px; padding:14px;}
     h2{margin:0 0 10px 0;}
     table{width:100%; border-collapse:collapse; font-size:14px;}
-    th, td{border-bottom:1px solid #eee; padding:10px; text-align:left;}
+    th, td{border-bottom:1px solid #eee; padding:10px; text-align:left; vertical-align: middle;}
     .row{display:flex; gap:10px; flex-wrap:wrap;}
     .pill{padding:4px 10px; border-radius:999px; background:#eee; font-size:12px;}
     .btn{padding:10px 12px; border-radius:10px; border:1px solid #ddd; cursor:pointer; background:#fff;}
@@ -21,10 +21,20 @@
     label{font-weight:700; display:block; margin-top:10px; margin-bottom:6px;}
     .cols{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
     .full{grid-column:1/-1;}
+    .muted{color:#666; font-size:12px;}
     @media (max-width:800px){ .cols{grid-template-columns:1fr;} }
   </style>
 </head>
 <body>
+  <%
+    function ymdToDmy(ymd) {
+      if (!ymd || typeof ymd !== "string") return "";
+      const m = ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!m) return ymd;
+      return `${m[3]}-${m[2]}-${m[1]}`; // dd-mm-yyyy
+    }
+  %>
+
   <header>
     <div>
       <strong>Painel Admin</strong>
@@ -41,17 +51,25 @@
       <table>
         <thead>
           <tr>
-            <th>ID</th>
+            <th style="width:60px;">ID</th>
             <th>Nome</th>
-            <th>Status</th>
-            <th>Ação</th>
+            <th style="width:110px;">Status</th>
+            <th style="width:140px;">Ação</th>
           </tr>
         </thead>
         <tbody>
           <% barbers.forEach(b => { %>
             <tr>
               <td><%= b.id %></td>
-              <td><%= b.name %></td>
+
+              <!-- ✅ editar nome do barbeiro -->
+              <td>
+                <form method="POST" action="/admin/barbeiros/<%= b.id %>/nome" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                  <input name="name" value="<%= b.name %>" style="width:240px;" />
+                  <button class="btn" type="submit">Salvar</button>
+                </form>
+              </td>
+
               <td><%= b.is_active ? "Ativo" : "Inativo" %></td>
               <td>
                 <form method="POST" action="/admin/barbeiros/<%= b.id %>/toggle" style="display:inline;">
@@ -105,6 +123,7 @@
 
       <% barbers.forEach(b => { 
           const cfg = barberConfigs[b.id];
+          const dmyList = (cfg.daysOffDates || []).map(ymdToDmy).join(", ");
       %>
         <hr style="border:0; border-top:1px solid #eee; margin:18px 0;">
         <h3 style="margin:0 0 10px 0;"><%= b.name %> (ID <%= b.id %>)</h3>
@@ -147,12 +166,11 @@
               </div>
             </div>
 
+            <!-- ✅ folgas em dd-mm-yyyy (preenchido com as atuais) -->
             <div class="full">
-              <label>Folgas (YYYY-MM-DD, separadas por vírgula/espaco)</label>
-              <input name="daysOffDates" placeholder="2026-02-10, 2026-02-11" />
-              <small style="color:#666;">
-                (As folgas atuais ficam no banco; se quiser ver no admin depois, eu adiciono a listagem.)
-              </small>
+              <label>Folgas (dd-mm-yyyy, separadas por vírgula/espaco)</label>
+              <input name="daysOffDates" value="<%= dmyList %>" placeholder="10-02-2026, 11-02-2026" />
+              <div class="muted">Você pode colar também no formato yyyy-mm-dd que ele aceita e converte.</div>
             </div>
 
             <div class="full">
