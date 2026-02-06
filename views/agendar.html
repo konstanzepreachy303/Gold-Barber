@@ -14,7 +14,6 @@
       color: #f5f5f5;
       padding: 20px;
     }
-
     .container {
       max-width: 760px;
       margin: 0 auto;
@@ -23,15 +22,10 @@
       border-radius: 16px;
       padding: 18px;
     }
-
     h1 { margin: 0 0 8px; font-size: 22px; }
     p { margin: 0 0 14px; color: #bdbdbd; }
 
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .full { grid-column: 1 / -1; }
 
     label {
@@ -42,7 +36,7 @@
       display: block;
     }
 
-    input {
+    input, select {
       width: 100%;
       padding: 14px;
       border-radius: 14px;
@@ -54,17 +48,14 @@
       outline: none;
     }
 
-    input:focus {
+    input:focus, select:focus {
       border-color: #c9a227;
       box-shadow: 0 0 0 3px rgba(201,162,39,.25);
     }
 
-    .hint {
-      font-size: 13px;
-      color: #d7d7d7;
-      margin-top: 8px;
-      font-weight: 700;
-    }
+    select:disabled, input:disabled { opacity: .55; cursor: not-allowed; }
+
+    .hint { font-size: 13px; color: #d7d7d7; margin-top: 8px; font-weight: 700; }
 
     .card {
       margin-top: 16px;
@@ -73,19 +64,9 @@
       border-radius: 16px;
       padding: 14px;
     }
+    .subinfo { font-size: 12px; color: #bdbdbd; margin-top: 6px; }
 
-    .subinfo {
-      font-size: 12px;
-      color: #bdbdbd;
-      margin-top: 6px;
-    }
-
-    .horarios {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 12px;
-    }
+    .horarios { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
 
     .hora {
       border: 2px solid #2a2a2a;
@@ -115,10 +96,7 @@
       font-size: 16px;
       cursor: pointer;
     }
-    button.confirmar:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
+    button.confirmar:disabled { opacity: 0.5; cursor: not-allowed; }
 
     .msg {
       margin-top: 10px;
@@ -134,7 +112,7 @@
     .msg.show { display: block; }
     .msg.error { border-color: #7a2b2b; color: #ffbaba; }
 
-    /* ===== Modal Calendário ===== */
+    /* Modal calendário */
     .overlay {
       position: fixed;
       inset: 0;
@@ -156,7 +134,6 @@
       overflow: hidden;
       box-shadow: 0 14px 40px rgba(0,0,0,.55);
     }
-
     .cal-head {
       display: flex;
       align-items: center;
@@ -165,17 +142,8 @@
       background: #0d0d0d;
       border-bottom: 1px solid #222;
     }
-    .cal-title {
-      font-weight: 900;
-      color: #fff;
-      font-size: 14px;
-      letter-spacing: .2px;
-    }
-
-    .cal-nav {
-      display: flex;
-      gap: 8px;
-    }
+    .cal-title { font-weight: 900; color: #fff; font-size: 14px; }
+    .cal-nav { display: flex; gap: 8px; }
     .cal-nav button {
       border: 1px solid #2a2a2a;
       background: #151515;
@@ -185,12 +153,8 @@
       cursor: pointer;
       font-weight: 900;
     }
-    .cal-nav button:hover { border-color: #555; }
 
-    .cal-body {
-      padding: 12px;
-    }
-
+    .cal-body { padding: 12px; }
     .dow {
       display: grid;
       grid-template-columns: repeat(7, 1fr);
@@ -201,13 +165,7 @@
       text-align: center;
       font-weight: 800;
     }
-
-    .days {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 6px;
-    }
-
+    .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
     .day {
       border: 1px solid #2a2a2a;
       background: #141414;
@@ -220,14 +178,8 @@
       user-select: none;
     }
     .day:hover { border-color: #555; }
-    .day.muted {
-      opacity: .35;
-      cursor: default;
-    }
-    .day.disabled {
-      opacity: .25;
-      cursor: not-allowed;
-    }
+    .day.disabled { opacity: .25; cursor: not-allowed; }
+    .day.muted { opacity: .35; cursor: default; }
     .day.selected {
       border-color: #c9a227;
       box-shadow: 0 0 0 2px rgba(201, 162, 39, 0.25);
@@ -250,22 +202,16 @@
       background: #151515;
       color: #fff;
     }
-    .cal-foot button.primary {
-      background: #c9a227;
-      color: #111;
-      border: none;
-    }
+    .cal-foot button.primary { background: #c9a227; color: #111; border: none; }
 
-    @media (max-width: 640px) {
-      .grid { grid-template-columns: 1fr; }
-    }
+    @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 
 <body>
   <div class="container">
     <h1>💈 Agendar Horário</h1>
-    <p>Selecione a data no calendário e depois o horário disponível.</p>
+    <p>NOME → BARBEIRO → DATA → horários do barbeiro escolhido.</p>
 
     <form id="formAgendar" method="POST" action="/agendar">
       <div class="grid">
@@ -274,23 +220,30 @@
           <input id="nome" name="nome" required minlength="2" placeholder="Seu nome" />
         </div>
 
-        <!-- CAMPO VISUAL (não é o enviado) -->
+        <div class="full">
+          <label>💇‍♂️ Barbeiro</label>
+          <select id="barberSelect" required>
+            <option value="">Carregando barbeiros...</option>
+          </select>
+          <div class="hint">Escolha o barbeiro para liberar a seleção de data.</div>
+        </div>
+
+        <input id="barberId" type="hidden" name="barberId" />
+        <input id="token" type="hidden" name="token" />
+
         <div class="full">
           <label>📅 Data do agendamento</label>
-          <input id="dataVisual" type="text" placeholder="Clique para escolher a data" readonly />
+          <input id="dataVisual" type="text" placeholder="Escolha o barbeiro primeiro" readonly disabled />
           <div id="dataHuman" class="hint"></div>
         </div>
 
-        <!-- DATA REAL ENVIADA PARA O BACKEND -->
         <input id="dataReal" type="hidden" name="data" />
-
-        <!-- HORÁRIO REAL -->
         <input id="horarioReal" type="hidden" name="horario" />
       </div>
 
       <div class="card">
         <strong>Horários disponíveis</strong>
-        <div id="subinfo" class="subinfo">Escolha uma data para carregar os horários.</div>
+        <div id="subinfo" class="subinfo">Escolha um barbeiro para liberar a data.</div>
         <div id="horarios" class="horarios"></div>
 
         <button id="btnConfirmar" class="confirmar" type="submit" disabled>
@@ -302,7 +255,6 @@
     </form>
   </div>
 
-  <!-- MODAL CALENDÁRIO -->
   <div id="overlay" class="overlay" aria-hidden="true">
     <div class="cal" role="dialog" aria-modal="true" aria-label="Selecionar data">
       <div class="cal-head">
@@ -328,9 +280,16 @@
   </div>
 
   <script>
+    const elBarberSelect = document.getElementById("barberSelect");
+    const elBarberId = document.getElementById("barberId");
     const elDataVisual = document.getElementById("dataVisual");
     const elDataReal = document.getElementById("dataReal");
-    const elDataHuman = document.getElementById("dataHuman");
+    const elHorarios = document.getElementById("horarios");
+    const elSubinfo = document.getElementById("subinfo");
+    const elHorarioReal = document.getElementById("horarioReal");
+    const elBtnConfirmar = document.getElementById("btnConfirmar");
+    const elMsg = document.getElementById("msg");
+    const elToken = document.getElementById("token");
 
     const elOverlay = document.getElementById("overlay");
     const elDays = document.getElementById("days");
@@ -340,25 +299,24 @@
     const btnCancel = document.getElementById("cancelCal");
     const btnOk = document.getElementById("okCal");
 
-    const elHorarios = document.getElementById("horarios");
-    const elSubinfo = document.getElementById("subinfo");
-    const elHorarioReal = document.getElementById("horarioReal");
-    const elBtnConfirmar = document.getElementById("btnConfirmar");
-    const elMsg = document.getElementById("msg");
+    // token whatsapp ?t=...
+    const params = new URLSearchParams(window.location.search);
+    const t = params.get("t");
+    if (t) elToken.value = t;
 
     const today = new Date();
     const minDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-
     let viewYear = minDate.getFullYear();
-    let viewMonth = minDate.getMonth(); // 0-11
-    let tempSelected = null; // Date escolhido no modal, antes de confirmar
+    let viewMonth = minDate.getMonth();
+    let tempSelected = null;
 
     function pad2(n){ return String(n).padStart(2, "0"); }
-    function toYMD(d){
-      return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
-    }
-    function sameDay(a,b){
-      return a && b && a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+    function toYMD(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+    function ymdToHuman(ymd){
+      const [y,m,d] = ymd.split("-").map(Number);
+      const dt = new Date(y, m-1, d);
+      const dias = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+      return `${dias[dt.getDay()]} - ${pad2(d)}/${pad2(m)}/${y}`;
     }
     function showMsg(text, isError=false){
       elMsg.textContent = text;
@@ -368,73 +326,115 @@
       elMsg.textContent = "";
       elMsg.className = "msg";
     }
+    function resetDataEHorarios(msg){
+      elDataReal.value = "";
+      elDataVisual.value = "";
+      elHorarios.innerHTML = "";
+      elHorarioReal.value = "";
+      elBtnConfirmar.disabled = true;
+      elSubinfo.textContent = msg || "Escolha uma data para carregar os horários.";
+    }
+
+    async function carregarBarbeiros(){
+      try{
+        const res = await fetch("/barbeiros");
+        if(!res.ok) throw new Error("Falha ao buscar barbeiros.");
+        const barbers = await res.json();
+
+        elBarberSelect.innerHTML = "";
+        const opt0 = document.createElement("option");
+        opt0.value = "";
+        opt0.textContent = "Selecione um barbeiro";
+        elBarberSelect.appendChild(opt0);
+
+        (barbers || []).forEach(b => {
+          const opt = document.createElement("option");
+          opt.value = String(b.id);
+          opt.textContent = b.name;
+          elBarberSelect.appendChild(opt);
+        });
+
+        if(!barbers || barbers.length === 0){
+          elBarberSelect.innerHTML = `<option value="">Nenhum barbeiro disponível</option>`;
+          elBarberSelect.disabled = true;
+          resetDataEHorarios("Nenhum barbeiro ativo no momento.");
+          return;
+        }
+
+        elBarberSelect.disabled = false;
+        resetDataEHorarios("Escolha um barbeiro para liberar a data.");
+      }catch(e){
+        elBarberSelect.innerHTML = `<option value="">Erro ao carregar barbeiros</option>`;
+        showMsg("Erro: " + (e?.message || "Erro desconhecido"), true);
+      }
+    }
+
+    elBarberSelect.addEventListener("change", () => {
+      clearMsg();
+
+      const bId = elBarberSelect.value;
+      elBarberId.value = bId || "";
+
+      if (!bId) {
+        elDataVisual.disabled = true;
+        elDataVisual.value = "";
+        elDataVisual.placeholder = "Escolha o barbeiro primeiro";
+        resetDataEHorarios("Escolha um barbeiro para liberar a data.");
+        return;
+      }
+
+      elDataVisual.disabled = false;
+      elDataVisual.placeholder = "Clique para escolher a data";
+      resetDataEHorarios("Agora escolha uma data para carregar os horários.");
+    });
 
     function openCal(){
       clearMsg();
+      if (!elBarberId.value) return showMsg("Selecione um barbeiro primeiro.", true);
+      tempSelected = null;
+      renderCalendar();
       elOverlay.classList.add("show");
       elOverlay.setAttribute("aria-hidden", "false");
-
-      // se já tem data escolhida, mostra o mês dela
-      if (elDataReal.value) {
-        const [y,m,d] = elDataReal.value.split("-").map(Number);
-        viewYear = y;
-        viewMonth = m-1;
-        tempSelected = new Date(y, m-1, d);
-      } else {
-        viewYear = minDate.getFullYear();
-        viewMonth = minDate.getMonth();
-        tempSelected = null;
-      }
-
-      renderCal();
     }
-
     function closeCal(){
       elOverlay.classList.remove("show");
       elOverlay.setAttribute("aria-hidden", "true");
     }
 
-    function renderCal(){
-      const monthName = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" })
-        .format(new Date(viewYear, viewMonth, 1));
-      elTitle.textContent = monthName.charAt(0).toUpperCase() + monthName.slice(1);
-
+    function renderCalendar(){
+      const monthNames = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+      elTitle.textContent = `${monthNames[viewMonth]} ${viewYear}`;
       elDays.innerHTML = "";
 
       const first = new Date(viewYear, viewMonth, 1);
-      const startDow = first.getDay(); // 0 domingo
-      const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+      const firstDow = first.getDay();
+      const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
 
-      // dias “vazios” antes do 1º dia (muted)
-      for (let i=0; i<startDow; i++){
+      for(let i=0;i<firstDow;i++){
         const div = document.createElement("div");
         div.className = "day muted";
         div.textContent = "";
         elDays.appendChild(div);
       }
 
-      for (let day=1; day<=daysInMonth; day++){
-        const dateObj = new Date(viewYear, viewMonth, day);
-
+      for(let d=1; d<=daysInMonth; d++){
+        const dt = new Date(viewYear, viewMonth, d);
         const div = document.createElement("div");
         div.className = "day";
-        div.textContent = day;
+        div.textContent = String(d);
 
-        // desabilitar datas antes de hoje
-        if (dateObj < minDate){
-          div.classList.add("disabled");
-        } else {
-          div.addEventListener("click", () => {
-            tempSelected = dateObj;
-            // re-render só para marcar selecionado
-            renderCal();
-          });
-        }
+        const beforeMin = dt < minDate;
+        if (beforeMin) div.classList.add("disabled");
 
-        // marcar selecionado
-        if (sameDay(tempSelected, dateObj)) {
+        if (tempSelected && dt.getFullYear()===tempSelected.getFullYear() && dt.getMonth()===tempSelected.getMonth() && dt.getDate()===tempSelected.getDate()){
           div.classList.add("selected");
         }
+
+        div.addEventListener("click", () => {
+          if (div.classList.contains("disabled") || div.classList.contains("muted")) return;
+          tempSelected = dt;
+          renderCalendar();
+        });
 
         elDays.appendChild(div);
       }
@@ -442,98 +442,121 @@
 
     btnPrev.addEventListener("click", () => {
       viewMonth--;
-      if (viewMonth < 0) { viewMonth = 11; viewYear--; }
-      renderCal();
+      if(viewMonth < 0){ viewMonth = 11; viewYear--; }
+      renderCalendar();
     });
-
     btnNext.addEventListener("click", () => {
       viewMonth++;
-      if (viewMonth > 11) { viewMonth = 0; viewYear++; }
-      renderCal();
+      if(viewMonth > 11){ viewMonth = 0; viewYear++; }
+      renderCalendar();
     });
 
-    btnCancel.addEventListener("click", () => closeCal());
+    btnCancel.addEventListener("click", closeCal);
+    elOverlay.addEventListener("click", (e) => { if (e.target === elOverlay) closeCal(); });
 
-    // confirmar data escolhida
     btnOk.addEventListener("click", async () => {
-      if (!tempSelected) {
-        showMsg("Selecione um dia no calendário.", true);
-        return;
-      }
-
+      if (!tempSelected) return showMsg("Selecione uma data.", true);
       const ymd = toYMD(tempSelected);
       elDataReal.value = ymd;
-      elDataVisual.value = ymd; // visual simples (pode mudar)
-      elDataHuman.textContent = "Selecionado: " + tempSelected.toLocaleDateString("pt-BR", {
-        weekday: "long", day: "2-digit", month: "long", year: "numeric"
-      });
-
+      elDataVisual.value = ymdToHuman(ymd);
       closeCal();
-
-      // carregar horários dessa data
-      await carregarHorarios(ymd);
+      await carregarHorarios();
     });
 
-    // abrir calendário ao clicar
-    elDataVisual.addEventListener("click", openCal);
-
-    // fechar clicando fora
-    elOverlay.addEventListener("click", (e) => {
-      if (e.target === elOverlay) closeCal();
+    elDataVisual.addEventListener("click", () => {
+      if (elDataVisual.disabled) return;
+      openCal();
     });
 
-    async function carregarHorarios(dataYMD){
+    async function carregarHorarios(){
       clearMsg();
       elHorarios.innerHTML = "";
       elHorarioReal.value = "";
       elBtnConfirmar.disabled = true;
-      elSubinfo.textContent = "Carregando horários...";
 
-      try {
-        const res = await fetch("/horarios?data=" + encodeURIComponent(dataYMD));
-        if (!res.ok) throw new Error("Falha ao buscar horários.");
+      const barberId = elBarberId.value;
+      const data = elDataReal.value;
+
+      if (!barberId) return resetDataEHorarios("Escolha um barbeiro para liberar a data.");
+      if (!data) return resetDataEHorarios("Escolha uma data para carregar os horários.");
+
+      elSubinfo.textContent = `Buscando horários para ${ymdToHuman(data)}...`;
+
+      try{
+        const res = await fetch(`/horarios?data=${encodeURIComponent(data)}&barberId=${encodeURIComponent(barberId)}`);
+        if(!res.ok) throw new Error("Falha ao buscar horários.");
         const horarios = await res.json();
 
-        if (!horarios || horarios.length === 0){
-          elSubinfo.textContent = "Nenhum horário disponível nessa data.";
+        if(!Array.isArray(horarios) || horarios.length === 0){
+          elSubinfo.textContent = "Nenhum horário disponível nessa data para esse barbeiro.";
           return;
         }
 
-        elSubinfo.textContent = "Clique em um horário para selecionar.";
+        elSubinfo.textContent = "Selecione um horário:";
         horarios.forEach(h => {
-          const b = document.createElement("button");
-          b.type = "button";
-          b.className = "hora";
-          b.textContent = h;
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "hora";
+          btn.textContent = h;
 
-          b.addEventListener("click", () => {
+          btn.addEventListener("click", () => {
             document.querySelectorAll(".hora").forEach(x => x.classList.remove("selected"));
-            b.classList.add("selected");
+            btn.classList.add("selected");
             elHorarioReal.value = h;
             elBtnConfirmar.disabled = false;
           });
 
-          elHorarios.appendChild(b);
+          elHorarios.appendChild(btn);
         });
-      } catch (e) {
-        elSubinfo.textContent = "Não foi possível carregar os horários.";
+
+      }catch(e){
+        elSubinfo.textContent = "Erro ao buscar horários.";
         showMsg("Erro: " + (e?.message || "Erro desconhecido"), true);
       }
     }
 
-    // bloquear submit sem data/horário
-    document.getElementById("formAgendar").addEventListener("submit", (e) => {
+    // ✅ SUBMIT CORRIGIDO: envia x-www-form-urlencoded (não multipart)
+    document.getElementById("formAgendar").addEventListener("submit", async (e) => {
+      e.preventDefault();
       clearMsg();
-      if (!elDataReal.value) {
-        e.preventDefault();
-        showMsg("Escolha uma data no calendário.", true);
-        return;
+
+      if (!elBarberId.value) return showMsg("Selecione um barbeiro.", true);
+      if (!elDataReal.value) return showMsg("Selecione uma data.", true);
+      if (!elHorarioReal.value) return showMsg("Selecione um horário.", true);
+
+      const form = e.target;
+      const fd = new FormData(form);
+
+      // transforma em URL encoded -> bodyParser lê certinho
+      const body = new URLSearchParams();
+      for (const [k, v] of fd.entries()) body.append(k, v);
+
+      try{
+        const res = await fetch("/agendar", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+          body: body.toString()
+        });
+
+        const text = await res.text();
+
+        // se vier HTML, renderiza a página de sucesso
+        if (res.ok && (text.includes("<!DOCTYPE") || text.includes("<html"))) {
+          document.open(); document.write(text); document.close();
+          return;
+        }
+
+        if (!res.ok) throw new Error(text || "Erro ao agendar.");
+        showMsg(text || "Agendamento realizado!");
+      }catch(err){
+        showMsg("Erro: " + (err?.message || "Erro ao agendar."), true);
       }
-      if (!elHorarioReal.value) {
-        e.preventDefault();
-        showMsg("Selecione um horário antes de confirmar.", true);
-        return;
-      }
+    });
+
+    window.addEventListener("DOMContentLoaded", () => {
+      elDataVisual.disabled = true;
+      elDataVisual.placeholder = "Escolha o barbeiro primeiro";
+      carregarBarbeiros();
     });
   </script>
 </body>

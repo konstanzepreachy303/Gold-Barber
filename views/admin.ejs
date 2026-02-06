@@ -13,7 +13,7 @@
     h2{margin:0 0 10px 0;}
     table{width:100%; border-collapse:collapse; font-size:14px;}
     th, td{border-bottom:1px solid #eee; padding:10px; text-align:left; vertical-align: middle;}
-    .row{display:flex; gap:10px; flex-wrap:wrap;}
+    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
     .pill{padding:4px 10px; border-radius:999px; background:#eee; font-size:12px;}
     .btn{padding:10px 12px; border-radius:10px; border:1px solid #ddd; cursor:pointer; background:#fff;}
     .btnPrimary{background:#111; color:#fff; border-color:#111;}
@@ -22,7 +22,111 @@
     .cols{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
     .full{grid-column:1/-1;}
     .muted{color:#666; font-size:12px;}
+    .ok{color:#0a7a2f; font-weight:700;}
+    .bad{color:#b00020; font-weight:700;}
     @media (max-width:800px){ .cols{grid-template-columns:1fr;} }
+
+    /* ===== Modal Calendário (igual do agendar) ===== */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.65);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      z-index: 999;
+    }
+    .overlay.show { display: flex; }
+
+    .cal {
+      width: 360px;
+      max-width: 100%;
+      background: #111;
+      border: 1px solid #2a2a2a;
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 14px 40px rgba(0,0,0,.55);
+      color: #fff;
+      font-family: Arial, sans-serif;
+    }
+
+    .cal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 12px;
+      background: #0d0d0d;
+      border-bottom: 1px solid #222;
+    }
+    .cal-title { font-weight: 900; color: #fff; font-size: 14px; }
+
+    .cal-nav { display: flex; gap: 8px; }
+    .cal-nav button {
+      border: 1px solid #2a2a2a;
+      background: #151515;
+      color: #fff;
+      border-radius: 10px;
+      padding: 8px 10px;
+      cursor: pointer;
+      font-weight: 900;
+    }
+    .cal-nav button:hover { border-color: #555; }
+
+    .cal-body { padding: 12px; }
+    .dow {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      margin-bottom: 8px;
+      font-size: 11px;
+      color: #bdbdbd;
+      text-align: center;
+      font-weight: 800;
+    }
+    .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+
+    .day {
+      border: 1px solid #2a2a2a;
+      background: #141414;
+      color: #fff;
+      border-radius: 12px;
+      padding: 10px 0;
+      text-align: center;
+      cursor: pointer;
+      font-weight: 900;
+      user-select: none;
+    }
+    .day:hover { border-color: #555; }
+    .day.muted { opacity: .35; cursor: default; }
+    .day.disabled { opacity: .25; cursor: not-allowed; }
+    .day.selected {
+      border-color: #c9a227;
+      box-shadow: 0 0 0 2px rgba(201, 162, 39, 0.25);
+    }
+
+    .cal-foot {
+      display: flex;
+      gap: 10px;
+      padding: 12px;
+      border-top: 1px solid #222;
+      background: #0d0d0d;
+    }
+    .cal-foot button {
+      flex: 1;
+      border-radius: 12px;
+      padding: 12px;
+      cursor: pointer;
+      font-weight: 900;
+      border: 1px solid #2a2a2a;
+      background: #151515;
+      color: #fff;
+    }
+    .cal-foot button.primary {
+      background: #c9a227;
+      color: #111;
+      border: none;
+    }
   </style>
 </head>
 <body>
@@ -61,15 +165,12 @@
           <% barbers.forEach(b => { %>
             <tr>
               <td><%= b.id %></td>
-
-              <!-- ✅ editar nome do barbeiro -->
               <td>
                 <form method="POST" action="/admin/barbeiros/<%= b.id %>/nome" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                   <input name="name" value="<%= b.name %>" style="width:240px;" />
                   <button class="btn" type="submit">Salvar</button>
                 </form>
               </td>
-
               <td><%= b.is_active ? "Ativo" : "Inativo" %></td>
               <td>
                 <form method="POST" action="/admin/barbeiros/<%= b.id %>/toggle" style="display:inline;">
@@ -82,8 +183,81 @@
       </table>
     </div>
 
+    <!-- ✅ AGENDAR MANUALMENTE (com calendário modal) -->
     <div class="card">
-      <h2>Agendamentos</h2>
+      <h2>Agendar manualmente</h2>
+      <div class="muted">Clique no campo de data para abrir o calendário e escolher o dia.</div>
+
+      <form method="POST" action="/admin/agendar" id="adminAgendarForm">
+        <div class="cols">
+          <div>
+            <label>Barbeiro</label>
+            <select name="barberId" id="admBarberId" required>
+              <option value="">Selecione</option>
+              <% barbers.forEach(b => { %>
+                <option value="<%= b.id %>"><%= b.name %></option>
+              <% }) %>
+            </select>
+          </div>
+
+          <div>
+            <label>Data (dd-mm-yyyy)</label>
+            <!-- readonly pra forçar usar o calendário -->
+            <input name="data" id="admData" placeholder="Clique para escolher" required readonly style="cursor:pointer; background:#f9f9f9;" />
+            <div class="muted">Abrirá o calendário ao clicar.</div>
+          </div>
+
+          <div>
+            <label>Horário</label>
+            <select name="horario" id="admHorario" required disabled>
+              <option value="">Selecione barbeiro e data</option>
+            </select>
+            <div id="admHorarioMsg" class="muted"></div>
+          </div>
+
+          <div>
+            <label>Status</label>
+            <select name="status">
+              <option value="aprovado" selected>aprovado</option>
+              <option value="agendado">agendado</option>
+              <option value="cancelado">cancelado</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Nome do cliente</label>
+            <input name="nome" placeholder="Nome do cliente" required />
+          </div>
+
+          <div>
+            <label>Telefone</label>
+            <input name="telefone" placeholder="Ex: 5599999999999" />
+          </div>
+
+          <div class="full">
+            <button class="btn btnPrimary" type="submit">Salvar agendamento</button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between;">
+        <h2 style="margin:0;">Agendamentos</h2>
+
+        <div class="row">
+          <span class="muted" style="font-weight:700;">Filtrar:</span>
+          <select id="barberFilter">
+            <option value="all">Todos os barbeiros</option>
+            <% barbers.forEach(b => { %>
+              <option value="<%= b.id %>"><%= b.name %></option>
+            <% }) %>
+          </select>
+        </div>
+      </div>
+
+      <div class="muted" id="countInfo" style="margin:8px 0 12px;">—</div>
+
       <table>
         <thead>
           <tr>
@@ -96,10 +270,10 @@
             <th>Mudar</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody id="agendBody">
           <% agendamentos.forEach(a => { %>
-            <tr>
-              <td><%= a.data %></td>
+            <tr class="agRow" data-barber-id="<%= a.barber_id %>">
+              <td><%= ymdToDmy(a.data) %></td>
               <td><%= a.horario %></td>
               <td><%= a.nome %></td>
               <td><%= a.telefone || "" %></td>
@@ -166,11 +340,10 @@
               </div>
             </div>
 
-            <!-- ✅ folgas em dd-mm-yyyy (preenchido com as atuais) -->
             <div class="full">
               <label>Folgas (dd-mm-yyyy, separadas por vírgula/espaco)</label>
               <input name="daysOffDates" value="<%= dmyList %>" placeholder="10-02-2026, 11-02-2026" />
-              <div class="muted">Você pode colar também no formato yyyy-mm-dd que ele aceita e converte.</div>
+              <div class="muted">Você pode colar também no formato yyyy-mm-dd que o sistema aceita e converte.</div>
             </div>
 
             <div class="full">
@@ -182,6 +355,31 @@
     </div>
   </main>
 
+  <!-- ✅ MODAL CALENDÁRIO -->
+  <div id="admOverlay" class="overlay" aria-hidden="true">
+    <div class="cal" role="dialog" aria-modal="true" aria-label="Selecionar data">
+      <div class="cal-head">
+        <div class="cal-title" id="admCalTitle">Mês</div>
+        <div class="cal-nav">
+          <button type="button" id="admPrevMonth">◀</button>
+          <button type="button" id="admNextMonth">▶</button>
+        </div>
+      </div>
+
+      <div class="cal-body">
+        <div class="dow">
+          <div>DOM</div><div>SEG</div><div>TER</div><div>QUA</div><div>QUI</div><div>SEX</div><div>SÁB</div>
+        </div>
+        <div id="admDays" class="days"></div>
+      </div>
+
+      <div class="cal-foot">
+        <button type="button" id="admCancelCal">Cancelar</button>
+        <button type="button" class="primary" id="admOkCal">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     async function updateStatus(id, status) {
       await fetch("/admin/status", {
@@ -190,6 +388,187 @@
         body: JSON.stringify({ id, status })
       });
     }
+
+    // filtro por barbeiro
+    const filter = document.getElementById("barberFilter");
+    const rows = Array.from(document.querySelectorAll(".agRow"));
+    const countInfo = document.getElementById("countInfo");
+
+    function applyFilter() {
+      const v = filter.value;
+      let visible = 0;
+
+      rows.forEach(r => {
+        const bid = r.getAttribute("data-barber-id");
+        const show = (v === "all") || (bid === v);
+        r.style.display = show ? "" : "none";
+        if (show) visible++;
+      });
+
+      countInfo.textContent = `Mostrando ${visible} de ${rows.length} agendamentos`;
+    }
+
+    filter.addEventListener("change", applyFilter);
+    applyFilter();
+
+    // =========================
+    // ADMIN: carregar horários automaticamente
+    // =========================
+    const admBarberId = document.getElementById("admBarberId");
+    const admData = document.getElementById("admData");
+    const admHorario = document.getElementById("admHorario");
+    const admHorarioMsg = document.getElementById("admHorarioMsg");
+
+    function toYMD(input) {
+      const s = String(input || "").trim();
+      if (!s) return null;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+      const m = s.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+      if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+      return null;
+    }
+
+    async function refreshAdminHorarios(){
+      const bId = admBarberId.value;
+      const dataYMD = toYMD(admData.value);
+
+      admHorario.innerHTML = `<option value="">Selecione barbeiro e data</option>`;
+      admHorario.disabled = true;
+      admHorarioMsg.textContent = "";
+
+      if (!bId) return;
+      if (!dataYMD) {
+        admHorarioMsg.innerHTML = `<span class="bad">Escolha a data no calendário.</span>`;
+        return;
+      }
+
+      admHorarioMsg.textContent = "Carregando horários...";
+      try{
+        const res = await fetch(`/horarios?data=${encodeURIComponent(dataYMD)}&barberId=${encodeURIComponent(bId)}`);
+        if(!res.ok) throw new Error("Falha ao buscar horários.");
+        const horarios = await res.json();
+
+        if(!Array.isArray(horarios) || horarios.length === 0){
+          admHorarioMsg.innerHTML = `<span class="bad">Nenhum horário disponível nessa data.</span>`;
+          return;
+        }
+
+        admHorario.innerHTML = `<option value="">Selecione um horário</option>`;
+        horarios.forEach(h => {
+          const opt = document.createElement("option");
+          opt.value = h;
+          opt.textContent = h;
+          admHorario.appendChild(opt);
+        });
+
+        admHorario.disabled = false;
+        admHorarioMsg.innerHTML = `<span class="ok">Horários carregados ✅</span>`;
+      }catch(e){
+        admHorarioMsg.innerHTML = `<span class="bad">Erro ao buscar horários.</span>`;
+      }
+    }
+
+    admBarberId.addEventListener("change", () => {
+      // se já tiver data escolhida, recarrega
+      refreshAdminHorarios();
+    });
+
+    // =========================
+    // ✅ CALENDÁRIO MODAL (ADMIN)
+    // =========================
+    const overlay = document.getElementById("admOverlay");
+    const daysEl = document.getElementById("admDays");
+    const titleEl = document.getElementById("admCalTitle");
+    const prevBtn = document.getElementById("admPrevMonth");
+    const nextBtn = document.getElementById("admNextMonth");
+    const cancelBtn = document.getElementById("admCancelCal");
+    const okBtn = document.getElementById("admOkCal");
+
+    const today = new Date();
+    const minDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+    let viewYear = minDate.getFullYear();
+    let viewMonth = minDate.getMonth();
+    let tempSelected = null;
+
+    function pad2(n){ return String(n).padStart(2, "0"); }
+    function toDMY(d){ return `${pad2(d.getDate())}-${pad2(d.getMonth()+1)}-${d.getFullYear()}`; }
+
+    function openCal(){
+      tempSelected = null;
+      renderCalendar();
+      overlay.classList.add("show");
+      overlay.setAttribute("aria-hidden", "false");
+    }
+    function closeCal(){
+      overlay.classList.remove("show");
+      overlay.setAttribute("aria-hidden", "true");
+    }
+
+    function renderCalendar(){
+      const monthNames = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+      titleEl.textContent = `${monthNames[viewMonth]} ${viewYear}`;
+
+      daysEl.innerHTML = "";
+      const first = new Date(viewYear, viewMonth, 1);
+      const firstDow = first.getDay();
+      const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+      for(let i=0;i<firstDow;i++){
+        const div = document.createElement("div");
+        div.className = "day muted";
+        div.textContent = "";
+        daysEl.appendChild(div);
+      }
+
+      for(let d=1; d<=daysInMonth; d++){
+        const dt = new Date(viewYear, viewMonth, d);
+        const div = document.createElement("div");
+        div.className = "day";
+        div.textContent = String(d);
+
+        if (dt < minDate) div.classList.add("disabled");
+
+        if (tempSelected &&
+            dt.getFullYear()===tempSelected.getFullYear() &&
+            dt.getMonth()===tempSelected.getMonth() &&
+            dt.getDate()===tempSelected.getDate()) {
+          div.classList.add("selected");
+        }
+
+        div.addEventListener("click", () => {
+          if (div.classList.contains("disabled") || div.classList.contains("muted")) return;
+          tempSelected = dt;
+          renderCalendar();
+        });
+
+        daysEl.appendChild(div);
+      }
+    }
+
+    prevBtn.addEventListener("click", () => {
+      viewMonth--;
+      if(viewMonth < 0){ viewMonth = 11; viewYear--; }
+      renderCalendar();
+    });
+    nextBtn.addEventListener("click", () => {
+      viewMonth++;
+      if(viewMonth > 11){ viewMonth = 0; viewYear++; }
+      renderCalendar();
+    });
+
+    cancelBtn.addEventListener("click", closeCal);
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) closeCal(); });
+
+    okBtn.addEventListener("click", async () => {
+      if (!tempSelected) return;
+      admData.value = toDMY(tempSelected);
+      closeCal();
+      await refreshAdminHorarios();
+    });
+
+    // abre no clique
+    admData.addEventListener("click", openCal);
   </script>
 </body>
 </html>
