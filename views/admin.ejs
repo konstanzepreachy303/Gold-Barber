@@ -245,11 +245,21 @@
 
         <div class="row">
           <span class="muted" style="font-weight:700;">Filtrar:</span>
+
+          <!-- filtro barbeiro (já existia) -->
           <select id="barberFilter">
             <option value="all">Todos os barbeiros</option>
             <% barbers.forEach(b => { %>
               <option value="<%= b.id %>"><%= b.name %></option>
             <% }) %>
+          </select>
+
+          <!-- ✅ NOVO: filtro status -->
+          <select id="statusFilter">
+            <option value="all">Todos os status</option>
+            <option value="agendado">agendado</option>
+            <option value="aprovado">aprovado</option>
+            <option value="cancelado">cancelado</option>
           </select>
         </div>
       </div>
@@ -270,7 +280,8 @@
         </thead>
         <tbody id="agendBody">
           <% agendamentos.forEach(a => { %>
-            <tr class="agRow" data-barber-id="<%= a.barber_id %>">
+            <!-- ✅ NOVO: data-status pro filtro -->
+            <tr class="agRow" data-barber-id="<%= a.barber_id %>" data-status="<%= a.status %>">
               <td><%= ymdToDmy(a.data) %></td>
               <td><%= a.horario %></td>
               <td><%= a.nome %></td>
@@ -386,18 +397,26 @@
       });
     }
 
-    // filtro por barbeiro
-    const filter = document.getElementById("barberFilter");
+    // ✅ filtros (barbeiro + status)
+    const barberFilter = document.getElementById("barberFilter");
+    const statusFilter = document.getElementById("statusFilter");
     const rows = Array.from(document.querySelectorAll(".agRow"));
     const countInfo = document.getElementById("countInfo");
 
-    function applyFilter() {
-      const v = filter.value;
+    function applyFilters() {
+      const barberVal = barberFilter.value; // "all" ou id
+      const statusVal = statusFilter.value; // "all" ou status
+
       let visible = 0;
 
       rows.forEach(r => {
         const bid = r.getAttribute("data-barber-id");
-        const show = (v === "all") || (bid === v);
+        const st = r.getAttribute("data-status");
+
+        const barberOk = (barberVal === "all") || (bid === barberVal);
+        const statusOk = (statusVal === "all") || (st === statusVal);
+
+        const show = barberOk && statusOk;
         r.style.display = show ? "" : "none";
         if (show) visible++;
       });
@@ -405,8 +424,9 @@
       countInfo.textContent = `Mostrando ${visible} de ${rows.length} agendamentos`;
     }
 
-    filter.addEventListener("change", applyFilter);
-    applyFilter();
+    barberFilter.addEventListener("change", applyFilters);
+    statusFilter.addEventListener("change", applyFilters);
+    applyFilters();
 
     // horários no admin
     const admBarberId = document.getElementById("admBarberId");
