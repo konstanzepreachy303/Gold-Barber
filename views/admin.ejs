@@ -1,126 +1,176 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Admin - Gold Barber</title>
-  <link rel="stylesheet" href="/css/admin.css">
+  <meta charset="utf-8" />
+  <title>Painel Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body{font-family:Arial, sans-serif; margin:0; padding:0; background:#fafafa;}
+    header{background:#111; color:#fff; padding:14px 16px; display:flex; align-items:center; justify-content:space-between;}
+    main{max-width:1100px; margin:18px auto; padding:0 16px;}
+    .grid{display:grid; grid-template-columns:1fr; gap:16px;}
+    .card{background:#fff; border:1px solid #e6e6e6; border-radius:12px; padding:14px;}
+    h2{margin:0 0 10px 0;}
+    table{width:100%; border-collapse:collapse; font-size:14px;}
+    th, td{border-bottom:1px solid #eee; padding:10px; text-align:left;}
+    .row{display:flex; gap:10px; flex-wrap:wrap;}
+    .pill{padding:4px 10px; border-radius:999px; background:#eee; font-size:12px;}
+    .btn{padding:10px 12px; border-radius:10px; border:1px solid #ddd; cursor:pointer; background:#fff;}
+    .btnPrimary{background:#111; color:#fff; border-color:#111;}
+    input, select{padding:9px; border-radius:10px; border:1px solid #ccc;}
+    label{font-weight:700; display:block; margin-top:10px; margin-bottom:6px;}
+    .cols{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+    .full{grid-column:1/-1;}
+    @media (max-width:800px){ .cols{grid-template-columns:1fr;} }
+  </style>
 </head>
 <body>
-  <h1>🧾 Painel Admin</h1>
-
-  <div class="box">
-    <h2>⚙️ Configuração de horários</h2>
-
-    <form method="POST" action="/admin/config" class="grid">
-      <div>
-        <label>Início do expediente</label>
-        <input type="time" name="start" value="<%= config.start %>" required>
-      </div>
-
-      <div>
-        <label>Fim do expediente</label>
-        <input type="time" name="end" value="<%= config.end %>" required>
-      </div>
-
-      <div>
-        <label>Início do almoço</label>
-        <input type="time" name="lunchStart" value="<%= config.lunchStart %>" required>
-      </div>
-
-      <div>
-        <label>Fim do almoço</label>
-        <input type="time" name="lunchEnd" value="<%= config.lunchEnd %>" required>
-      </div>
-
-      <div>
-        <label>Intervalo (min)</label>
-        <input type="number" name="slotMinutes" min="10" max="240" value="<%= config.slotMinutes %>" required>
-      </div>
-
-      <div class="full">
-        <label>Dias de trabalho (marque os dias que abre)</label>
-        <div class="checks">
-          <label><input type="checkbox" name="wd0" <%= config.workDays[0] ? "checked" : "" %> > Dom</label>
-          <label><input type="checkbox" name="wd1" <%= config.workDays[1] ? "checked" : "" %> > Seg</label>
-          <label><input type="checkbox" name="wd2" <%= config.workDays[2] ? "checked" : "" %> > Ter</label>
-          <label><input type="checkbox" name="wd3" <%= config.workDays[3] ? "checked" : "" %> > Qua</label>
-          <label><input type="checkbox" name="wd4" <%= config.workDays[4] ? "checked" : "" %> > Qui</label>
-          <label><input type="checkbox" name="wd5" <%= config.workDays[5] ? "checked" : "" %> > Sex</label>
-          <label><input type="checkbox" name="wd6" <%= config.workDays[6] ? "checked" : "" %> > Sáb</label>
-        </div>
-      </div>
-
-      <div class="full">
-        <label>Folgas por data (YYYY-MM-DD) — pode separar por espaço, vírgula ou linha</label>
-        <textarea name="daysOffDates" rows="4" placeholder="2026-02-10 2026-02-11"><%= (config.daysOffDates || []).join("\n") %></textarea>
-      </div>
-
-      <div class="full">
-        <button class="btn" type="submit">Salvar configuração</button>
-      </div>
+  <header>
+    <div>
+      <strong>Painel Admin</strong>
+      <span class="pill" style="margin-left:10px;">logado: <%= adminUser?.username %></span>
+    </div>
+    <form method="POST" action="/admin/logout">
+      <button class="btn btnPrimary" type="submit">Sair</button>
     </form>
-  </div>
+  </header>
 
-  <div class="box">
-    <h2>📅 Agendamentos</h2>
-
-    <div class="filters">
-      <a class="chip <%= statusFiltro === 'todos' ? 'active' : '' %>" href="/admin?status=todos">Todos</a>
-      <a class="chip <%= statusFiltro === 'agendado' ? 'active' : '' %>" href="/admin?status=agendado">Pendentes</a>
-      <a class="chip <%= statusFiltro === 'aprovado' ? 'active' : '' %>" href="/admin?status=aprovado">Aprovados</a>
-      <a class="chip <%= statusFiltro === 'cancelado' ? 'active' : '' %>" href="/admin?status=cancelado">Cancelados</a>
+  <main class="grid">
+    <div class="card">
+      <h2>Barbeiros</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nome</th>
+            <th>Status</th>
+            <th>Ação</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% barbers.forEach(b => { %>
+            <tr>
+              <td><%= b.id %></td>
+              <td><%= b.name %></td>
+              <td><%= b.is_active ? "Ativo" : "Inativo" %></td>
+              <td>
+                <form method="POST" action="/admin/barbeiros/<%= b.id %>/toggle" style="display:inline;">
+                  <button class="btn" type="submit"><%= b.is_active ? "Desativar" : "Ativar" %></button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
     </div>
 
-    <% if (!agendamentos || agendamentos.length === 0) { %>
-      <p>Nenhum agendamento nesse filtro.</p>
-    <% } else { %>
+    <div class="card">
+      <h2>Agendamentos</h2>
       <table>
         <thead>
           <tr>
             <th>Data</th>
             <th>Hora</th>
-            <th>Nome</th>
+            <th>Cliente</th>
             <th>Telefone</th>
+            <th>Barbeiro</th>
             <th>Status</th>
-            <th>Ações</th>
+            <th>Mudar</th>
           </tr>
         </thead>
-
         <tbody>
           <% agendamentos.forEach(a => { %>
             <tr>
               <td><%= a.data %></td>
               <td><%= a.horario %></td>
               <td><%= a.nome %></td>
-              <td><%= a.telefone %></td>
-              <td class="<%= a.status %>"><strong><%= a.status %></strong></td>
+              <td><%= a.telefone || "" %></td>
+              <td><%= a.barber_name || "" %></td>
+              <td><span class="pill"><%= a.status %></span></td>
               <td>
-                <button class="mini" onclick="setStatus(<%= a.id %>, 'aprovado')">✅ Aprovar</button>
-                <button class="mini danger" onclick="setStatus(<%= a.id %>, 'cancelado')">❌ Cancelar</button>
-                <button class="mini" onclick="setStatus(<%= a.id %>, 'agendado')">↩ Voltar</button>
+                <select onchange="updateStatus(<%= a.id %>, this.value)">
+                  <option value="agendado" <%= a.status==="agendado" ? "selected" : "" %>>agendado</option>
+                  <option value="aprovado" <%= a.status==="aprovado" ? "selected" : "" %>>aprovado</option>
+                  <option value="cancelado" <%= a.status==="cancelado" ? "selected" : "" %>>cancelado</option>
+                </select>
               </td>
             </tr>
           <% }) %>
         </tbody>
       </table>
-    <% } %>
-  </div>
+    </div>
+
+    <div class="card">
+      <h2>Configuração por barbeiro</h2>
+
+      <% barbers.forEach(b => { 
+          const cfg = barberConfigs[b.id];
+      %>
+        <hr style="border:0; border-top:1px solid #eee; margin:18px 0;">
+        <h3 style="margin:0 0 10px 0;"><%= b.name %> (ID <%= b.id %>)</h3>
+
+        <form method="POST" action="/admin/barbeiro/<%= b.id %>/config">
+          <div class="cols">
+            <div>
+              <label>Início</label>
+              <input name="start" value="<%= cfg.start %>" placeholder="09:00" required />
+            </div>
+            <div>
+              <label>Fim</label>
+              <input name="end" value="<%= cfg.end %>" placeholder="18:00" required />
+            </div>
+
+            <div>
+              <label>Almoço (início)</label>
+              <input name="lunchStart" value="<%= cfg.lunchStart %>" placeholder="12:00" required />
+            </div>
+            <div>
+              <label>Almoço (fim)</label>
+              <input name="lunchEnd" value="<%= cfg.lunchEnd %>" placeholder="13:00" required />
+            </div>
+
+            <div class="full">
+              <label>Duração do slot (minutos)</label>
+              <input name="slotMinutes" type="number" value="<%= cfg.slotMinutes %>" min="10" max="240" required />
+            </div>
+
+            <div class="full">
+              <label>Dias de trabalho</label>
+              <div class="row">
+                <label><input type="checkbox" name="wd0" <%= cfg.workDays[0] ? "checked" : "" %> /> Dom</label>
+                <label><input type="checkbox" name="wd1" <%= cfg.workDays[1] ? "checked" : "" %> /> Seg</label>
+                <label><input type="checkbox" name="wd2" <%= cfg.workDays[2] ? "checked" : "" %> /> Ter</label>
+                <label><input type="checkbox" name="wd3" <%= cfg.workDays[3] ? "checked" : "" %> /> Qua</label>
+                <label><input type="checkbox" name="wd4" <%= cfg.workDays[4] ? "checked" : "" %> /> Qui</label>
+                <label><input type="checkbox" name="wd5" <%= cfg.workDays[5] ? "checked" : "" %> /> Sex</label>
+                <label><input type="checkbox" name="wd6" <%= cfg.workDays[6] ? "checked" : "" %> /> Sáb</label>
+              </div>
+            </div>
+
+            <div class="full">
+              <label>Folgas (YYYY-MM-DD, separadas por vírgula/espaco)</label>
+              <input name="daysOffDates" placeholder="2026-02-10, 2026-02-11" />
+              <small style="color:#666;">
+                (As folgas atuais ficam no banco; se quiser ver no admin depois, eu adiciono a listagem.)
+              </small>
+            </div>
+
+            <div class="full">
+              <button class="btn btnPrimary" type="submit">Salvar config do <%= b.name %></button>
+            </div>
+          </div>
+        </form>
+      <% }) %>
+    </div>
+  </main>
 
   <script>
-    async function setStatus(id, status) {
-      const res = await fetch("/admin/status", {
+    async function updateStatus(id, status) {
+      await fetch("/admin/status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, status })
       });
-      const data = await res.json().catch(() => ({}));
-      if (data && data.ok) {
-        const params = new URLSearchParams(window.location.search);
-        const current = params.get("status") || "todos";
-        window.location.href = "/admin?status=" + encodeURIComponent(current);
-      } else {
-        alert("Falha ao atualizar status");
-      }
     }
   </script>
 </body>
