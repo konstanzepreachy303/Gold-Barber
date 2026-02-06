@@ -182,7 +182,6 @@ app.get("/wpp/token/mock", (req, res) => {
 
 // -------------------- PUBLIC ROUTES --------------------
 app.get("/", (req, res) => {
-  // ajuste se você usa outro arquivo; no seu repo era views/agendar.html
   res.sendFile(path.join(__dirname, "views", "agendar.html"));
 });
 
@@ -272,6 +271,7 @@ app.post("/agendar", async (req, res) => {
 
   if (conflito) return res.send("❌ Horário indisponível");
 
+  // público normalmente entra como "agendado" (aguardando)
   await dbRun(
     `INSERT INTO agendamentos (barber_id, nome, telefone, data, horario, status)
      VALUES (?, ?, ?, ?, ?, 'agendado')`,
@@ -426,7 +426,7 @@ app.post("/admin/barbeiro/:id/config", requireAdmin, async (req, res) => {
     .split(/[\s,;]+/g)
     .map((s) => s.trim())
     .filter(Boolean)
-    .map(toYMD) // aceita dd-mm-yyyy ou yyyy-mm-dd
+    .map(toYMD)
     .filter(Boolean)
     .filter(isValidYMD);
 
@@ -440,7 +440,7 @@ app.post("/admin/barbeiro/:id/config", requireAdmin, async (req, res) => {
   res.redirect("/admin");
 });
 
-// ✅ NOVO: AGENDAR MANUALMENTE PELO ADMIN
+// ✅ ADMIN: AGENDAR MANUALMENTE -> abre tela de finalizado
 app.post("/admin/agendar", requireAdmin, async (req, res) => {
   const body = req.body || {};
 
@@ -449,7 +449,9 @@ app.post("/admin/agendar", requireAdmin, async (req, res) => {
   const telefone = String(body.telefone || "").trim();
   const dataInput = String(body.data || "").trim(); // dd-mm-yyyy ou yyyy-mm-dd
   const horario = String(body.horario || "").trim();
-  const status = String(body.status || "aprovado").trim(); // padrão: aprovado
+
+  // aqui o padrão é "agendado" (aguardando confirmação)
+  const status = String(body.status || "agendado").trim();
 
   const data = toYMD(dataInput);
 
@@ -457,10 +459,9 @@ app.post("/admin/agendar", requireAdmin, async (req, res) => {
     return res.status(400).send("❌ Preencha: barbeiro, nome, data e horário.");
   }
 
-  const barber = await dbGet(`SELECT id FROM barbers WHERE id = ?`, [barberId]);
+  const barber = await dbGet(`SELECT id, name FROM barbers WHERE id = ?`, [barberId]);
   if (!barber) return res.status(400).send("❌ Barbeiro inválido.");
 
-  // valida se o horário é válido dentro da config (e não é folga)
   const slots = await generateSlotsForDateAndBarber(data, barberId);
   if (!slots.includes(horario)) {
     return res
@@ -468,7 +469,6 @@ app.post("/admin/agendar", requireAdmin, async (req, res) => {
       .send("❌ Horário inválido para esse barbeiro nessa data (ou é folga).");
   }
 
-  // conflito por barbeiro
   const conflito = await dbGet(
     `SELECT id FROM agendamentos
      WHERE barber_id = ?
@@ -486,10 +486,18 @@ app.post("/admin/agendar", requireAdmin, async (req, res) => {
   await dbRun(
     `INSERT INTO agendamentos (barber_id, nome, telefone, data, horario, status)
      VALUES (?, ?, ?, ?, ?, ?)`,
-    [barberId, nome, telefone || "00000000000", data, horario, status || "aprovado"]
+    [barberId, nome, telefone || "00000000000", data, horario, status || "agendado"]
   );
 
-  return res.redirect("/admin");
+  // ✅ abre nova tela de finalizado
+  return res.render("admin_sucesso", {
+    barberName: barber.name,
+    nome,
+    telefone: telefone || "",
+    data,
+    horario,
+    status,
+  });
 });
 
 // -------------------- start --------------------

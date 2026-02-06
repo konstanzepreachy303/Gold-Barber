@@ -26,7 +26,7 @@
     .bad{color:#b00020; font-weight:700;}
     @media (max-width:800px){ .cols{grid-template-columns:1fr;} }
 
-    /* ===== Modal Calendário (igual do agendar) ===== */
+    /* ===== Modal Calendário ===== */
     .overlay {
       position: fixed;
       inset: 0;
@@ -135,7 +135,7 @@
       if (!ymd || typeof ymd !== "string") return "";
       const m = ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
       if (!m) return ymd;
-      return `${m[3]}-${m[2]}-${m[1]}`; // dd-mm-yyyy
+      return `${m[3]}-${m[2]}-${m[1]}`;
     }
   %>
 
@@ -183,7 +183,6 @@
       </table>
     </div>
 
-    <!-- ✅ AGENDAR MANUALMENTE (com calendário modal) -->
     <div class="card">
       <h2>Agendar manualmente</h2>
       <div class="muted">Clique no campo de data para abrir o calendário e escolher o dia.</div>
@@ -202,7 +201,6 @@
 
           <div>
             <label>Data (dd-mm-yyyy)</label>
-            <!-- readonly pra forçar usar o calendário -->
             <input name="data" id="admData" placeholder="Clique para escolher" required readonly style="cursor:pointer; background:#f9f9f9;" />
             <div class="muted">Abrirá o calendário ao clicar.</div>
           </div>
@@ -218,8 +216,8 @@
           <div>
             <label>Status</label>
             <select name="status">
-              <option value="aprovado" selected>aprovado</option>
-              <option value="agendado">agendado</option>
+              <option value="agendado" selected>agendado</option>
+              <option value="aprovado">aprovado</option>
               <option value="cancelado">cancelado</option>
             </select>
           </div>
@@ -355,7 +353,6 @@
     </div>
   </main>
 
-  <!-- ✅ MODAL CALENDÁRIO -->
   <div id="admOverlay" class="overlay" aria-hidden="true">
     <div class="cal" role="dialog" aria-modal="true" aria-label="Selecionar data">
       <div class="cal-head">
@@ -411,9 +408,7 @@
     filter.addEventListener("change", applyFilter);
     applyFilter();
 
-    // =========================
-    // ADMIN: carregar horários automaticamente
-    // =========================
+    // horários no admin
     const admBarberId = document.getElementById("admBarberId");
     const admData = document.getElementById("admData");
     const admHorario = document.getElementById("admHorario");
@@ -468,14 +463,9 @@
       }
     }
 
-    admBarberId.addEventListener("change", () => {
-      // se já tiver data escolhida, recarrega
-      refreshAdminHorarios();
-    });
+    admBarberId.addEventListener("change", () => refreshAdminHorarios());
 
-    // =========================
-    // ✅ CALENDÁRIO MODAL (ADMIN)
-    // =========================
+    // calendário modal
     const overlay = document.getElementById("admOverlay");
     const daysEl = document.getElementById("admDays");
     const titleEl = document.getElementById("admCalTitle");
@@ -567,7 +557,6 @@
       await refreshAdminHorarios();
     });
 
-    // abre no clique
     admData.addEventListener("click", openCal);
   </script>
 </body>
