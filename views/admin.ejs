@@ -26,6 +26,91 @@
     .bad{color:#b00020; font-weight:700;}
     @media (max-width:800px){ .cols{grid-template-columns:1fr;} }
 
+    /* ===== Tabs ===== */
+    .tabs{
+      max-width:1100px;
+      margin:14px auto 0;
+      padding:0 16px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .tabBtn{
+      border:1px solid #ddd;
+      background:#fff;
+      color:#111;
+      border-radius:999px;
+      padding:10px 14px;
+      cursor:pointer;
+      font-weight:900;
+    }
+    .tabBtn.active{
+      background:#111;
+      color:#fff;
+      border-color:#111;
+    }
+    .tabPanel{display:none;}
+    .tabPanel.active{display:block;}
+
+    /* ===== Confirmados (agenda) ===== */
+    .agendaWrap{display:grid; grid-template-columns: 1fr; gap:12px;}
+    .dayCard{border:1px solid #e6e6e6; border-radius:14px; overflow:hidden; background:#fff;}
+    .dayHeader{
+      padding:12px 14px;
+      background:#111;
+      color:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .dayHeader strong{font-size:15px;}
+    .countBadge{
+      background:#c9a227;
+      color:#111;
+      font-weight:900;
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:12px;
+    }
+    .slotList{padding:10px 12px 6px; display:grid; grid-template-columns: 1fr; gap:10px;}
+    .slotItem{
+      border:1px solid #eee;
+      border-radius:12px;
+      padding:10px 12px;
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:10px;
+      flex-wrap:wrap;
+      background:#fafafa;
+    }
+    .slotLeft{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+    .timePill{
+      background:#111;
+      color:#fff;
+      font-weight:900;
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:12px;
+      min-width:72px;
+      text-align:center;
+    }
+    .info{display:flex; flex-direction:column; gap:4px; font-size:13px; font-weight:700; color:#111;}
+    .info small{font-weight:700; color:#666;}
+    .slotRight{display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-end;}
+    .miniPill{
+      background:#fff;
+      border:1px solid #ddd;
+      border-radius:999px;
+      padding:6px 10px;
+      font-size:12px;
+      font-weight:900;
+      color:#111;
+    }
+
     /* ===== Modal Calendário ===== */
     .overlay {
       position: fixed;
@@ -137,6 +222,19 @@
       if (!m) return ymd;
       return `${m[3]}-${m[2]}-${m[1]}`;
     }
+
+    // ===== Confirmados (status aprovado) agrupado por data =====
+    const confirmados = (agendamentos || []).filter(a => a.status === "aprovado");
+
+    const confByDate = {};
+    confirmados.forEach(a => {
+      const key = a.data || "";
+      if (!confByDate[key]) confByDate[key] = [];
+      confByDate[key].push(a);
+    });
+
+    const confDates = Object.keys(confByDate).sort((a,b) => String(a).localeCompare(String(b)));
+    confDates.forEach(d => confByDate[d].sort((x,y) => String(x.horario).localeCompare(String(y.horario))));
   %>
 
   <header>
@@ -149,218 +247,289 @@
     </form>
   </header>
 
-  <main class="grid">
-    <div class="card">
-      <h2>Barbeiros</h2>
-      <table>
-        <thead>
-          <tr>
-            <th style="width:60px;">ID</th>
-            <th>Nome</th>
-            <th style="width:110px;">Status</th>
-            <th style="width:140px;">Ação</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% barbers.forEach(b => { %>
-            <tr>
-              <td><%= b.id %></td>
-              <td>
-                <form method="POST" action="/admin/barbeiros/<%= b.id %>/nome" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                  <input name="name" value="<%= b.name %>" style="width:240px;" />
-                  <button class="btn" type="submit">Salvar</button>
-                </form>
-              </td>
-              <td><%= b.is_active ? "Ativo" : "Inativo" %></td>
-              <td>
-                <form method="POST" action="/admin/barbeiros/<%= b.id %>/toggle" style="display:inline;">
-                  <button class="btn" type="submit"><%= b.is_active ? "Desativar" : "Ativar" %></button>
-                </form>
-              </td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    </div>
+  <!-- ✅ Tabs -->
+  <div class="tabs">
+    <button class="tabBtn active" id="tabBtnPainel" type="button">Painel</button>
+    <button class="tabBtn" id="tabBtnConfirmados" type="button">Agendamentos confirmados</button>
+  </div>
 
-    <div class="card">
-      <h2>Agendar manualmente</h2>
-      <div class="muted">Clique no campo de data para abrir o calendário e escolher o dia.</div>
+  <main>
+    <!-- ================= TAB: PAINEL ================= -->
+    <div class="tabPanel active" id="tabPainel">
+      <div class="grid">
 
-      <form method="POST" action="/admin/agendar" id="adminAgendarForm">
-        <div class="cols">
-          <div>
-            <label>Barbeiro</label>
-            <select name="barberId" id="admBarberId" required>
-              <option value="">Selecione</option>
+        <div class="card">
+          <h2>Barbeiros</h2>
+          <table>
+            <thead>
+              <tr>
+                <th style="width:60px;">ID</th>
+                <th>Nome</th>
+                <th style="width:110px;">Status</th>
+                <th style="width:140px;">Ação</th>
+              </tr>
+            </thead>
+            <tbody>
               <% barbers.forEach(b => { %>
-                <option value="<%= b.id %>"><%= b.name %></option>
+                <tr>
+                  <td><%= b.id %></td>
+                  <td>
+                    <form method="POST" action="/admin/barbeiros/<%= b.id %>/nome" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                      <input name="name" value="<%= b.name %>" style="width:240px;" />
+                      <button class="btn" type="submit">Salvar</button>
+                    </form>
+                  </td>
+                  <td><%= b.is_active ? "Ativo" : "Inativo" %></td>
+                  <td>
+                    <form method="POST" action="/admin/barbeiros/<%= b.id %>/toggle" style="display:inline;">
+                      <button class="btn" type="submit"><%= b.is_active ? "Desativar" : "Ativar" %></button>
+                    </form>
+                  </td>
+                </tr>
               <% }) %>
-            </select>
-          </div>
-
-          <div>
-            <label>Data (dd-mm-yyyy)</label>
-            <input name="data" id="admData" placeholder="Clique para escolher" required readonly style="cursor:pointer; background:#f9f9f9;" />
-            <div class="muted">Abrirá o calendário ao clicar.</div>
-          </div>
-
-          <div>
-            <label>Horário</label>
-            <select name="horario" id="admHorario" required disabled>
-              <option value="">Selecione barbeiro e data</option>
-            </select>
-            <div id="admHorarioMsg" class="muted"></div>
-          </div>
-
-          <div>
-            <label>Status</label>
-            <select name="status">
-              <option value="agendado" selected>agendado</option>
-              <option value="aprovado">aprovado</option>
-              <option value="cancelado">cancelado</option>
-            </select>
-          </div>
-
-          <div>
-            <label>Nome do cliente</label>
-            <input name="nome" placeholder="Nome do cliente" required />
-          </div>
-
-          <div>
-            <label>Telefone</label>
-            <input name="telefone" placeholder="Ex: 5599999999999" />
-          </div>
-
-          <div class="full">
-            <button class="btn btnPrimary" type="submit">Salvar agendamento</button>
-          </div>
+            </tbody>
+          </table>
         </div>
-      </form>
-    </div>
 
-    <div class="card">
-      <div class="row" style="justify-content:space-between;">
-        <h2 style="margin:0;">Agendamentos</h2>
+        <div class="card">
+          <h2>Agendar manualmente</h2>
+          <div class="muted">Clique no campo de data para abrir o calendário e escolher o dia.</div>
 
-        <div class="row">
-          <span class="muted" style="font-weight:700;">Filtrar:</span>
-
-          <!-- filtro barbeiro (já existia) -->
-          <select id="barberFilter">
-            <option value="all">Todos os barbeiros</option>
-            <% barbers.forEach(b => { %>
-              <option value="<%= b.id %>"><%= b.name %></option>
-            <% }) %>
-          </select>
-
-          <!-- ✅ NOVO: filtro status -->
-          <select id="statusFilter">
-            <option value="all">Todos os status</option>
-            <option value="agendado">agendado</option>
-            <option value="aprovado">aprovado</option>
-            <option value="cancelado">cancelado</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="muted" id="countInfo" style="margin:8px 0 12px;">—</div>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Data</th>
-            <th>Hora</th>
-            <th>Cliente</th>
-            <th>Telefone</th>
-            <th>Barbeiro</th>
-            <th>Status</th>
-            <th>Mudar</th>
-          </tr>
-        </thead>
-        <tbody id="agendBody">
-          <% agendamentos.forEach(a => { %>
-            <!-- ✅ NOVO: data-status pro filtro -->
-            <tr class="agRow" data-barber-id="<%= a.barber_id %>" data-status="<%= a.status %>">
-              <td><%= ymdToDmy(a.data) %></td>
-              <td><%= a.horario %></td>
-              <td><%= a.nome %></td>
-              <td><%= a.telefone || "" %></td>
-              <td><%= a.barber_name || "" %></td>
-              <td><span class="pill"><%= a.status %></span></td>
-              <td>
-                <select onchange="updateStatus(<%= a.id %>, this.value)">
-                  <option value="agendado" <%= a.status==="agendado" ? "selected" : "" %>>agendado</option>
-                  <option value="aprovado" <%= a.status==="aprovado" ? "selected" : "" %>>aprovado</option>
-                  <option value="cancelado" <%= a.status==="cancelado" ? "selected" : "" %>>cancelado</option>
+          <form method="POST" action="/admin/agendar" id="adminAgendarForm">
+            <div class="cols">
+              <div>
+                <label>Barbeiro</label>
+                <select name="barberId" id="admBarberId" required>
+                  <option value="">Selecione</option>
+                  <% barbers.forEach(b => { %>
+                    <option value="<%= b.id %>"><%= b.name %></option>
+                  <% }) %>
                 </select>
-              </td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    </div>
+              </div>
 
-    <div class="card">
-      <h2>Configuração por barbeiro</h2>
+              <div>
+                <label>Data (dd-mm-yyyy)</label>
+                <input name="data" id="admData" placeholder="Clique para escolher" required readonly style="cursor:pointer; background:#f9f9f9;" />
+                <div class="muted">Abrirá o calendário ao clicar.</div>
+              </div>
 
-      <% barbers.forEach(b => { 
-          const cfg = barberConfigs[b.id];
-          const dmyList = (cfg.daysOffDates || []).map(ymdToDmy).join(", ");
-      %>
-        <hr style="border:0; border-top:1px solid #eee; margin:18px 0;">
-        <h3 style="margin:0 0 10px 0;"><%= b.name %> (ID <%= b.id %>)</h3>
+              <div>
+                <label>Horário</label>
+                <select name="horario" id="admHorario" required disabled>
+                  <option value="">Selecione barbeiro e data</option>
+                </select>
+                <div id="admHorarioMsg" class="muted"></div>
+              </div>
 
-        <form method="POST" action="/admin/barbeiro/<%= b.id %>/config">
-          <div class="cols">
-            <div>
-              <label>Início</label>
-              <input name="start" value="<%= cfg.start %>" placeholder="09:00" required />
-            </div>
-            <div>
-              <label>Fim</label>
-              <input name="end" value="<%= cfg.end %>" placeholder="18:00" required />
-            </div>
+              <div>
+                <label>Status</label>
+                <select name="status">
+                  <option value="agendado" selected>agendado</option>
+                  <option value="aprovado">aprovado</option>
+                  <option value="cancelado">cancelado</option>
+                </select>
+              </div>
 
-            <div>
-              <label>Almoço (início)</label>
-              <input name="lunchStart" value="<%= cfg.lunchStart %>" placeholder="12:00" required />
-            </div>
-            <div>
-              <label>Almoço (fim)</label>
-              <input name="lunchEnd" value="<%= cfg.lunchEnd %>" placeholder="13:00" required />
-            </div>
+              <div>
+                <label>Nome do cliente</label>
+                <input name="nome" placeholder="Nome do cliente" required />
+              </div>
 
-            <div class="full">
-              <label>Duração do slot (minutos)</label>
-              <input name="slotMinutes" type="number" value="<%= cfg.slotMinutes %>" min="10" max="240" required />
-            </div>
+              <div>
+                <label>Telefone</label>
+                <input name="telefone" placeholder="Ex: 5599999999999" />
+              </div>
 
-            <div class="full">
-              <label>Dias de trabalho</label>
-              <div class="row">
-                <label><input type="checkbox" name="wd0" <%= cfg.workDays[0] ? "checked" : "" %> /> Dom</label>
-                <label><input type="checkbox" name="wd1" <%= cfg.workDays[1] ? "checked" : "" %> /> Seg</label>
-                <label><input type="checkbox" name="wd2" <%= cfg.workDays[2] ? "checked" : "" %> /> Ter</label>
-                <label><input type="checkbox" name="wd3" <%= cfg.workDays[3] ? "checked" : "" %> /> Qua</label>
-                <label><input type="checkbox" name="wd4" <%= cfg.workDays[4] ? "checked" : "" %> /> Qui</label>
-                <label><input type="checkbox" name="wd5" <%= cfg.workDays[5] ? "checked" : "" %> /> Sex</label>
-                <label><input type="checkbox" name="wd6" <%= cfg.workDays[6] ? "checked" : "" %> /> Sáb</label>
+              <div class="full">
+                <button class="btn btnPrimary" type="submit">Salvar agendamento</button>
               </div>
             </div>
+          </form>
+        </div>
 
-            <div class="full">
-              <label>Folgas (dd-mm-yyyy, separadas por vírgula/espaco)</label>
-              <input name="daysOffDates" value="<%= dmyList %>" placeholder="10-02-2026, 11-02-2026" />
-              <div class="muted">Você pode colar também no formato yyyy-mm-dd que o sistema aceita e converte.</div>
-            </div>
+        <div class="card">
+          <div class="row" style="justify-content:space-between;">
+            <h2 style="margin:0;">Agendamentos</h2>
 
-            <div class="full">
-              <button class="btn btnPrimary" type="submit">Salvar config do <%= b.name %></button>
+            <div class="row">
+              <span class="muted" style="font-weight:700;">Filtrar:</span>
+
+              <select id="barberFilter">
+                <option value="all">Todos os barbeiros</option>
+                <% barbers.forEach(b => { %>
+                  <option value="<%= b.id %>"><%= b.name %></option>
+                <% }) %>
+              </select>
+
+              <select id="statusFilter">
+                <option value="all">Todos os status</option>
+                <option value="agendado">agendado</option>
+                <option value="aprovado">aprovado</option>
+                <option value="cancelado">cancelado</option>
+              </select>
             </div>
           </div>
-        </form>
-      <% }) %>
+
+          <div class="muted" id="countInfo" style="margin:8px 0 12px;">—</div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Hora</th>
+                <th>Cliente</th>
+                <th>Telefone</th>
+                <th>Barbeiro</th>
+                <th>Status</th>
+                <th>Mudar</th>
+              </tr>
+            </thead>
+            <tbody id="agendBody">
+              <% agendamentos.forEach(a => { %>
+                <tr class="agRow" data-barber-id="<%= a.barber_id %>" data-status="<%= a.status %>">
+                  <td><%= ymdToDmy(a.data) %></td>
+                  <td><%= a.horario %></td>
+                  <td><%= a.nome %></td>
+                  <td><%= a.telefone || "" %></td>
+                  <td><%= a.barber_name || "" %></td>
+                  <td><span class="pill"><%= a.status %></span></td>
+                  <td>
+                    <select onchange="updateStatus(<%= a.id %>, this.value)">
+                      <option value="agendado" <%= a.status==="agendado" ? "selected" : "" %>>agendado</option>
+                      <option value="aprovado" <%= a.status==="aprovado" ? "selected" : "" %>>aprovado</option>
+                      <option value="cancelado" <%= a.status==="cancelado" ? "selected" : "" %>>cancelado</option>
+                    </select>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <h2>Configuração por barbeiro</h2>
+
+          <% barbers.forEach(b => { 
+              const cfg = barberConfigs[b.id];
+              const dmyList = (cfg.daysOffDates || []).map(ymdToDmy).join(", ");
+          %>
+            <hr style="border:0; border-top:1px solid #eee; margin:18px 0;">
+            <h3 style="margin:0 0 10px 0;"><%= b.name %> (ID <%= b.id %>)</h3>
+
+            <form method="POST" action="/admin/barbeiro/<%= b.id %>/config">
+              <div class="cols">
+                <div>
+                  <label>Início</label>
+                  <input name="start" value="<%= cfg.start %>" placeholder="09:00" required />
+                </div>
+                <div>
+                  <label>Fim</label>
+                  <input name="end" value="<%= cfg.end %>" placeholder="18:00" required />
+                </div>
+
+                <div>
+                  <label>Almoço (início)</label>
+                  <input name="lunchStart" value="<%= cfg.lunchStart %>" placeholder="12:00" required />
+                </div>
+                <div>
+                  <label>Almoço (fim)</label>
+                  <input name="lunchEnd" value="<%= cfg.lunchEnd %>" placeholder="13:00" required />
+                </div>
+
+                <div class="full">
+                  <label>Duração do slot (minutos)</label>
+                  <input name="slotMinutes" type="number" value="<%= cfg.slotMinutes %>" min="10" max="240" required />
+                </div>
+
+                <div class="full">
+                  <label>Dias de trabalho</label>
+                  <div class="row">
+                    <label><input type="checkbox" name="wd0" <%= cfg.workDays[0] ? "checked" : "" %> /> Dom</label>
+                    <label><input type="checkbox" name="wd1" <%= cfg.workDays[1] ? "checked" : "" %> /> Seg</label>
+                    <label><input type="checkbox" name="wd2" <%= cfg.workDays[2] ? "checked" : "" %> /> Ter</label>
+                    <label><input type="checkbox" name="wd3" <%= cfg.workDays[3] ? "checked" : "" %> /> Qua</label>
+                    <label><input type="checkbox" name="wd4" <%= cfg.workDays[4] ? "checked" : "" %> /> Qui</label>
+                    <label><input type="checkbox" name="wd5" <%= cfg.workDays[5] ? "checked" : "" %> /> Sex</label>
+                    <label><input type="checkbox" name="wd6" <%= cfg.workDays[6] ? "checked" : "" %> /> Sáb</label>
+                  </div>
+                </div>
+
+                <div class="full">
+                  <label>Folgas (dd-mm-yyyy, separadas por vírgula/espaco)</label>
+                  <input name="daysOffDates" value="<%= dmyList %>" placeholder="10-02-2026, 11-02-2026" />
+                  <div class="muted">Você pode colar também no formato yyyy-mm-dd que o sistema aceita e converte.</div>
+                </div>
+
+                <div class="full">
+                  <button class="btn btnPrimary" type="submit">Salvar config do <%= b.name %></button>
+                </div>
+              </div>
+            </form>
+          <% }) %>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= TAB: CONFIRMADOS ================= -->
+    <div class="tabPanel" id="tabConfirmados">
+      <div class="grid">
+        <div class="card">
+          <div class="row" style="justify-content:space-between;">
+            <div>
+              <h2 style="margin:0;">Agendamentos confirmados</h2>
+              <div class="muted">Apenas status <strong>aprovado</strong>, agrupado por dia. Use o filtro para separar por barbeiro.</div>
+            </div>
+
+            <div class="row">
+              <span class="muted" style="font-weight:700;">Barbeiro:</span>
+              <select id="confBarberFilter">
+                <option value="all">Todos</option>
+                <% barbers.forEach(b => { %>
+                  <option value="<%= b.id %>"><%= b.name %></option>
+                <% }) %>
+              </select>
+
+              <span class="pill" style="background:#f1f1f1;">Total: <span id="confTotal"><%= confirmados.length %></span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <% if (!confirmados.length) { %>
+            <div class="muted">Nenhum agendamento confirmado (aprovado) até o momento.</div>
+          <% } else { %>
+            <div class="agendaWrap" id="confAgenda">
+              <% confDates.forEach(dateKey => { 
+                   const items = confByDate[dateKey] || [];
+              %>
+                <div class="dayCard confDayCard" data-date="<%= dateKey %>">
+                  <div class="dayHeader">
+                    <strong><%= ymdToDmy(dateKey) %></strong>
+                    <span class="countBadge"><span class="confDayCount"><%= items.length %></span> horário(s)</span>
+                  </div>
+
+                  <div class="slotList">
+                    <% items.forEach(a => { %>
+                      <div class="slotItem confSlot" data-barber-id="<%= a.barber_id %>">
+                        <div class="slotLeft">
+                          <span class="timePill"><%= a.horario %></span>
+                          <div class="info">
+                            <div><%= a.nome %></div>
+                            <small>Barbeiro: <%= a.barber_name || "" %> • Tel: <%= a.telefone || "-" %></small>
+                          </div>
+                        </div>
+                        <div class="slotRight">
+                          <span class="miniPill">confirmado</span>
+                        </div>
+                      </div>
+                    <% }) %>
+                  </div>
+                </div>
+              <% }) %>
+            </div>
+          <% } %>
+        </div>
+      </div>
     </div>
   </main>
 
@@ -397,25 +566,45 @@
       });
     }
 
-    // ✅ filtros (barbeiro + status)
+    // ===== Tabs =====
+    const tabBtnPainel = document.getElementById("tabBtnPainel");
+    const tabBtnConfirmados = document.getElementById("tabBtnConfirmados");
+    const tabPainel = document.getElementById("tabPainel");
+    const tabConfirmados = document.getElementById("tabConfirmados");
+
+    function setTab(name){
+      const isPainel = name === "painel";
+      tabBtnPainel.classList.toggle("active", isPainel);
+      tabBtnConfirmados.classList.toggle("active", !isPainel);
+      tabPainel.classList.toggle("active", isPainel);
+      tabConfirmados.classList.toggle("active", !isPainel);
+      try { localStorage.setItem("admin_tab", name); } catch(e){}
+    }
+
+    tabBtnPainel.addEventListener("click", () => setTab("painel"));
+    tabBtnConfirmados.addEventListener("click", () => setTab("confirmados"));
+
+    try {
+      const saved = localStorage.getItem("admin_tab");
+      if(saved === "confirmados") setTab("confirmados");
+    } catch(e){}
+
+    // ===== filtros (barbeiro + status) na tabela de agendamentos =====
     const barberFilter = document.getElementById("barberFilter");
     const statusFilter = document.getElementById("statusFilter");
     const rows = Array.from(document.querySelectorAll(".agRow"));
     const countInfo = document.getElementById("countInfo");
 
     function applyFilters() {
-      const barberVal = barberFilter.value; // "all" ou id
-      const statusVal = statusFilter.value; // "all" ou status
-
+      const barberVal = barberFilter.value;
+      const statusVal = statusFilter.value;
       let visible = 0;
 
       rows.forEach(r => {
         const bid = r.getAttribute("data-barber-id");
         const st = r.getAttribute("data-status");
-
         const barberOk = (barberVal === "all") || (bid === barberVal);
         const statusOk = (statusVal === "all") || (st === statusVal);
-
         const show = barberOk && statusOk;
         r.style.display = show ? "" : "none";
         if (show) visible++;
@@ -428,7 +617,45 @@
     statusFilter.addEventListener("change", applyFilters);
     applyFilters();
 
-    // horários no admin
+    // ===== Confirmados: filtro por barbeiro (front-end) =====
+    const confBarberFilter = document.getElementById("confBarberFilter");
+    const confTotalEl = document.getElementById("confTotal");
+    const confDayCards = Array.from(document.querySelectorAll(".confDayCard"));
+
+    function applyConfirmedFilter(){
+      const barberVal = confBarberFilter.value; // "all" ou id
+      let totalVisible = 0;
+
+      confDayCards.forEach(dayCard => {
+        const slots = Array.from(dayCard.querySelectorAll(".confSlot"));
+        let dayVisible = 0;
+
+        slots.forEach(slot => {
+          const bid = slot.getAttribute("data-barber-id");
+          const show = (barberVal === "all") || (bid === barberVal);
+          slot.style.display = show ? "" : "none";
+          if (show) dayVisible++;
+        });
+
+        // atualiza contador por dia
+        const dayCountEl = dayCard.querySelector(".confDayCount");
+        if (dayCountEl) dayCountEl.textContent = String(dayVisible);
+
+        // se não tem nenhum slot visível no dia, esconde o dia todo
+        dayCard.style.display = dayVisible > 0 ? "" : "none";
+
+        totalVisible += dayVisible;
+      });
+
+      if (confTotalEl) confTotalEl.textContent = String(totalVisible);
+    }
+
+    if (confBarberFilter) {
+      confBarberFilter.addEventListener("change", applyConfirmedFilter);
+      applyConfirmedFilter();
+    }
+
+    // ===== horários no admin =====
     const admBarberId = document.getElementById("admBarberId");
     const admData = document.getElementById("admData");
     const admHorario = document.getElementById("admHorario");
@@ -485,7 +712,7 @@
 
     admBarberId.addEventListener("change", () => refreshAdminHorarios());
 
-    // calendário modal
+    // ===== calendário modal =====
     const overlay = document.getElementById("admOverlay");
     const daysEl = document.getElementById("admDays");
     const titleEl = document.getElementById("admCalTitle");
