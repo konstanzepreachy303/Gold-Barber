@@ -361,12 +361,26 @@
                 <% }) %>
               </select>
 
-              <select id="statusFilter">
-                <option value="all">Todos os status</option>
-                <option value="agendado">agendado</option>
-                <option value="aprovado">aprovado</option>
-                <option value="cancelado">cancelado</option>
-              </select>
+              <!-- ✅ Novo: filtro por data (padrão hoje) -->
+              <label style="margin:0; font-weight:900; display:flex; align-items:center; gap:8px;">
+                Data:
+                <input type="date" id="dateFilter" />
+              </label>
+
+              <!-- ✅ Novo: checkbox para exibir cancelados -->
+              <label style="margin:0; font-weight:900; display:flex; align-items:center; gap:8px;">
+                <input type="checkbox" id="showCancelados" />
+                Cancelados
+              </label>
+
+              <!-- ✅ Novo: checkbox para exibir aprovados -->
+              <label style="margin:0; font-weight:900; display:flex; align-items:center; gap:8px;">
+                <input type="checkbox" id="showAprovados" />
+                Aprovados
+              </label>
+
+              <button class="btn" type="button" id="btnHoje">Hoje</button>
+              <button class="btn" type="button" id="btnTodosDias">Todos os dias</button>
             </div>
           </div>
 
@@ -386,13 +400,19 @@
             </thead>
             <tbody id="agendBody">
               <% agendamentos.forEach(a => { %>
-                <tr class="agRow" data-barber-id="<%= a.barber_id %>" data-status="<%= a.status %>">
+                <tr
+                  class="agRow"
+                  data-id="<%= a.id %>"
+                  data-barber-id="<%= a.barber_id %>"
+                  data-status="<%= a.status %>"
+                  data-date="<%= a.data %>"
+                >
                   <td><%= ymdToDmy(a.data) %></td>
                   <td><%= a.horario %></td>
                   <td><%= a.nome %></td>
                   <td><%= a.telefone || "" %></td>
                   <td><%= a.barber_name || "" %></td>
-                  <td><span class="pill"><%= a.status %></span></td>
+                  <td><span class="pill jsStatusPill"><%= a.status %></span></td>
                   <td>
                     <select onchange="updateStatus(<%= a.id %>, this.value)">
                       <option value="agendado" <%= a.status==="agendado" ? "selected" : "" %>>agendado</option>
@@ -409,7 +429,7 @@
         <div class="card">
           <h2>Configuração por barbeiro</h2>
 
-          <% barbers.forEach(b => { 
+          <% barbers.forEach(b => {
               const cfg = barberConfigs[b.id];
               const dmyList = (cfg.daysOffDates || []).map(ymdToDmy).join(", ");
           %>
@@ -499,7 +519,7 @@
             <div class="muted">Nenhum agendamento confirmado (aprovado) até o momento.</div>
           <% } else { %>
             <div class="agendaWrap" id="confAgenda">
-              <% confDates.forEach(dateKey => { 
+              <% confDates.forEach(dateKey => {
                    const items = confByDate[dateKey] || [];
               %>
                 <div class="dayCard confDayCard" data-date="<%= dateKey %>">
@@ -559,11 +579,53 @@
 
   <script>
     async function updateStatus(id, status) {
-      await fetch("/admin/status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, status })
-      });
+  const row = document.querySelector(`.agRow[data-id="${id}"]`);
+  const prevStatus = row ? row.getAttribute("data-status") : null;
+
+  await fetch("/admin/status", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, status })
+  });
+
+  // atualiza a linha na tela (para o filtro funcionar sem reload)
+  if (row) {
+    row.setAttribute("data-status", status);
+    const pill = row.querySelector(".jsStatusPill");
+    if (pill) pill.textContent = status;
+  }
+
+  // ✅ Se entrou ou saiu de "aprovado", recarrega pra sincronizar a aba "confirmados"
+  const touchedApproved = (prevStatus === "aprovado") || (status === "aprovado");
+  if (touchedApproved) {
+    try {
+      // se virou aprovado, abre a aba confirmados; se saiu de aprovado, fica no painel
+      localStorage.setItem("admin_tab", status === "aprovado" ? "confirmados" : "painel");
+    } catch (e) {}
+    window.location.reload();
+    return;
+  }
+
+  // demais casos só refiltra a tabela
+  if (typeof applyFilters === "function") applyFilters();
+});
+
+      // atualiza a linha na tela (para o filtro funcionar sem reload)
+      const row = document.querySelector(`.agRow[data-id="${id}"]`);
+      if (row) {
+        row.setAttribute("data-status", status);
+        const pill = row.querySelector(".jsStatusPill");
+        if (pill) pill.textContent = status;
+      }
+
+      // aprovado: vai para a aba confirmados (render server-side) -> recarrega
+      if (status === "aprovado") {
+        try { localStorage.setItem("admin_tab", "confirmados"); } catch(e){}
+        window.location.reload();
+        return;
+      }
+
+      if (typeof applyFilters === "function") applyFilters();
     }
 
     // ===== Tabs =====
@@ -589,32 +651,85 @@
       if(saved === "confirmados") setTab("confirmados");
     } catch(e){}
 
-    // ===== filtros (barbeiro + status) na tabela de agendamentos =====
+    // ===== filtros (barbeiro + data + status) na tabela de agendamentos =====
     const barberFilter = document.getElementById("barberFilter");
-    const statusFilter = document.getElementById("statusFilter");
+    const dateFilter = document.getElementById("dateFilter");
+    const showCancelados = document.getElementById("showCancelados");
+    const showAprovados = document.getElementById("showAprovados");
+    const btnHoje = document.getElementById("btnHoje");
+    const btnTodosDias = document.getElementById("btnTodosDias");
+
     const rows = Array.from(document.querySelectorAll(".agRow"));
     const countInfo = document.getElementById("countInfo");
 
+    function todayYMD(){
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+
+    // ✅ Padrão: filtro de data = hoje
+    if (dateFilter) dateFilter.value = todayYMD();
+
     function applyFilters() {
       const barberVal = barberFilter.value;
-      const statusVal = statusFilter.value;
+      const selectedDate = (dateFilter && dateFilter.value) ? dateFilter.value : "";
+      const canShowCancelados = !!(showCancelados && showCancelados.checked);
+      const canShowAprovados = !!(showAprovados && showAprovados.checked);
+
       let visible = 0;
 
       rows.forEach(r => {
         const bid = r.getAttribute("data-barber-id");
         const st = r.getAttribute("data-status");
+        const dt = r.getAttribute("data-date"); // yyyy-mm-dd
+
         const barberOk = (barberVal === "all") || (bid === barberVal);
-        const statusOk = (statusVal === "all") || (st === statusVal);
-        const show = barberOk && statusOk;
+
+        // ✅ data: se tiver data selecionada, filtra por ela. Se estiver vazio, mostra todas.
+        const dateOk = (!selectedDate) || (dt === selectedDate);
+
+        // ✅ regra pedida:
+        // - por padrão: só "agendado"
+        // - se marcar Cancelados: inclui "cancelado"
+        // - se marcar Aprovados: inclui "aprovado"
+        const statusOk =
+          (st === "agendado") ||
+          (canShowCancelados && st === "cancelado") ||
+          (canShowAprovados && st === "aprovado");
+
+        const show = barberOk && dateOk && statusOk;
+
         r.style.display = show ? "" : "none";
         if (show) visible++;
       });
 
-      countInfo.textContent = `Mostrando ${visible} de ${rows.length} agendamentos`;
+      let extra = [];
+      extra.push("agendado");
+      if (canShowCancelados) extra.push("cancelado");
+      if (canShowAprovados) extra.push("aprovado");
+
+      const dateText = selectedDate ? ` • Data: ${selectedDate}` : " • Data: todas";
+      countInfo.textContent = `Mostrando ${visible} de ${rows.length} (${extra.join(" + ")})${dateText}`;
     }
 
     barberFilter.addEventListener("change", applyFilters);
-    statusFilter.addEventListener("change", applyFilters);
+    if (dateFilter) dateFilter.addEventListener("change", applyFilters);
+    if (showCancelados) showCancelados.addEventListener("change", applyFilters);
+    if (showAprovados) showAprovados.addEventListener("change", applyFilters);
+
+    if (btnHoje) btnHoje.addEventListener("click", () => {
+      if (dateFilter) dateFilter.value = todayYMD();
+      applyFilters();
+    });
+
+    if (btnTodosDias) btnTodosDias.addEventListener("click", () => {
+      if (dateFilter) dateFilter.value = "";
+      applyFilters();
+    });
+
     applyFilters();
 
     // ===== Confirmados: filtro por barbeiro (front-end) =====
