@@ -361,19 +361,16 @@
                 <% }) %>
               </select>
 
-              <!-- ✅ Novo: filtro por data (padrão hoje) -->
               <label style="margin:0; font-weight:900; display:flex; align-items:center; gap:8px;">
                 Data:
                 <input type="date" id="dateFilter" />
               </label>
 
-              <!-- ✅ Novo: checkbox para exibir cancelados -->
               <label style="margin:0; font-weight:900; display:flex; align-items:center; gap:8px;">
                 <input type="checkbox" id="showCancelados" />
                 Cancelados
               </label>
 
-              <!-- ✅ Novo: checkbox para exibir aprovados -->
               <label style="margin:0; font-weight:900; display:flex; align-items:center; gap:8px;">
                 <input type="checkbox" id="showAprovados" />
                 Aprovados
@@ -578,54 +575,35 @@
   </div>
 
   <script>
+    // ===== updateStatus (corrigido: recarrega se entrou/saiu de aprovado) =====
     async function updateStatus(id, status) {
-  const row = document.querySelector(`.agRow[data-id="${id}"]`);
-  const prevStatus = row ? row.getAttribute("data-status") : null;
-
-  await fetch("/admin/status", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id, status })
-  });
-
-  // atualiza a linha na tela (para o filtro funcionar sem reload)
-  if (row) {
-    row.setAttribute("data-status", status);
-    const pill = row.querySelector(".jsStatusPill");
-    if (pill) pill.textContent = status;
-  }
-
-  // ✅ Se entrou ou saiu de "aprovado", recarrega pra sincronizar a aba "confirmados"
-  const touchedApproved = (prevStatus === "aprovado") || (status === "aprovado");
-  if (touchedApproved) {
-    try {
-      // se virou aprovado, abre a aba confirmados; se saiu de aprovado, fica no painel
-      localStorage.setItem("admin_tab", status === "aprovado" ? "confirmados" : "painel");
-    } catch (e) {}
-    window.location.reload();
-    return;
-  }
-
-  // demais casos só refiltra a tabela
-  if (typeof applyFilters === "function") applyFilters();
-});
-
-      // atualiza a linha na tela (para o filtro funcionar sem reload)
       const row = document.querySelector(`.agRow[data-id="${id}"]`);
+      const prevStatus = row ? row.getAttribute("data-status") : null;
+
+      await fetch("/admin/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status })
+      });
+
+      // atualiza visualmente a linha (para filtros funcionarem sem recarregar)
       if (row) {
         row.setAttribute("data-status", status);
         const pill = row.querySelector(".jsStatusPill");
         if (pill) pill.textContent = status;
       }
 
-      // aprovado: vai para a aba confirmados (render server-side) -> recarrega
-      if (status === "aprovado") {
-        try { localStorage.setItem("admin_tab", "confirmados"); } catch(e){}
+      // entrou OU saiu de "aprovado" => recarrega para sincronizar a aba "confirmados"
+      const touchedApproved = (prevStatus === "aprovado") || (status === "aprovado");
+      if (touchedApproved) {
+        try {
+          localStorage.setItem("admin_tab", status === "aprovado" ? "confirmados" : "painel");
+        } catch (e) {}
         window.location.reload();
         return;
       }
 
-      if (typeof applyFilters === "function") applyFilters();
+      applyFilters();
     }
 
     // ===== Tabs =====
@@ -651,7 +629,7 @@
       if(saved === "confirmados") setTab("confirmados");
     } catch(e){}
 
-    // ===== filtros (barbeiro + data + status) na tabela de agendamentos =====
+    // ===== filtros (barbeiro + data + checkboxes) =====
     const barberFilter = document.getElementById("barberFilter");
     const dateFilter = document.getElementById("dateFilter");
     const showCancelados = document.getElementById("showCancelados");
@@ -670,7 +648,6 @@
       return `${y}-${m}-${day}`;
     }
 
-    // ✅ Padrão: filtro de data = hoje
     if (dateFilter) dateFilter.value = todayYMD();
 
     function applyFilters() {
@@ -684,17 +661,12 @@
       rows.forEach(r => {
         const bid = r.getAttribute("data-barber-id");
         const st = r.getAttribute("data-status");
-        const dt = r.getAttribute("data-date"); // yyyy-mm-dd
+        const dt = r.getAttribute("data-date");
 
         const barberOk = (barberVal === "all") || (bid === barberVal);
-
-        // ✅ data: se tiver data selecionada, filtra por ela. Se estiver vazio, mostra todas.
         const dateOk = (!selectedDate) || (dt === selectedDate);
 
-        // ✅ regra pedida:
-        // - por padrão: só "agendado"
-        // - se marcar Cancelados: inclui "cancelado"
-        // - se marcar Aprovados: inclui "aprovado"
+        // padrão: só agendado; checkboxes adicionam cancelado/aprovado
         const statusOk =
           (st === "agendado") ||
           (canShowCancelados && st === "cancelado") ||
@@ -706,8 +678,7 @@
         if (show) visible++;
       });
 
-      let extra = [];
-      extra.push("agendado");
+      let extra = ["agendado"];
       if (canShowCancelados) extra.push("cancelado");
       if (canShowAprovados) extra.push("aprovado");
 
@@ -752,13 +723,10 @@
           if (show) dayVisible++;
         });
 
-        // atualiza contador por dia
         const dayCountEl = dayCard.querySelector(".confDayCount");
         if (dayCountEl) dayCountEl.textContent = String(dayVisible);
 
-        // se não tem nenhum slot visível no dia, esconde o dia todo
         dayCard.style.display = dayVisible > 0 ? "" : "none";
-
         totalVisible += dayVisible;
       });
 
