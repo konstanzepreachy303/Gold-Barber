@@ -74,6 +74,7 @@
       padding:6px 10px;
       border-radius:999px;
       font-size:12px;
+      white-space:nowrap;
     }
     .slotList{padding:10px 12px 6px; display:grid; grid-template-columns: 1fr; gap:10px;}
     .slotItem{
@@ -109,6 +110,135 @@
       font-size:12px;
       font-weight:900;
       color:#111;
+    }
+
+    /* ===== NOVO: Grade de horários (quando filtra 1 barbeiro) ===== */
+    .confViewSwitchHint{
+      margin-top:8px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      font-size:12px;
+      color:#555;
+    }
+    .legend{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .legendItem{
+      display:flex;
+      gap:6px;
+      align-items:center;
+      font-weight:900;
+      color:#111;
+      background:#f6f6f6;
+      border:1px solid #eee;
+      border-radius:999px;
+      padding:6px 10px;
+    }
+    .dot{
+      width:10px; height:10px; border-radius:999px;
+      border:1px solid rgba(0,0,0,.1);
+    }
+    .dotBusy{background:#c9a227;}
+    .dotFree{background:#eaeaea;}
+    .dotLunch{background:#111;}
+    .dotOff{background:#ddd;}
+
+    .timeline{
+      padding:12px;
+      display:grid;
+      grid-template-columns: 92px 1fr;
+      gap:8px 12px;
+    }
+    .tTime{
+      font-weight:900;
+      color:#111;
+      font-size:12px;
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;
+      padding-right:6px;
+    }
+    .tCard{
+      border-radius:12px;
+      border:1px solid #eee;
+      padding:10px 12px;
+      background:#fafafa;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .tCard.free{
+      background:#fff;
+      border-style:dashed;
+      border-color:#e3e3e3;
+    }
+    .tCard.busy{
+      background:#fff7dd;
+      border-color:#f0d37a;
+    }
+    .tCard.lunch{
+      background:#111;
+      color:#fff;
+      border-color:#111;
+      justify-content:center;
+      font-weight:900;
+    }
+    .tCard.off{
+      background:#f3f3f3;
+      color:#666;
+      border-color:#e1e1e1;
+      justify-content:center;
+      font-weight:900;
+    }
+    .tMain{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      min-width:220px;
+    }
+    .tTitle{
+      font-weight:900;
+      color:#111;
+      font-size:13px;
+    }
+    .tSub{
+      color:#666;
+      font-weight:800;
+      font-size:12px;
+    }
+    .tTag{
+      font-weight:900;
+      font-size:12px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid #ddd;
+      background:#fff;
+      color:#111;
+      white-space:nowrap;
+    }
+    .tTagBusy{
+      background:#c9a227;
+      border-color:#c9a227;
+      color:#111;
+    }
+    .tTagFree{
+      background:#fff;
+      border-style:dashed;
+      color:#111;
+    }
+    .confGridView{display:none;}
+    .confListView{display:block;}
+
+    @media (max-width:560px){
+      .timeline{grid-template-columns: 70px 1fr;}
+      .tTime{font-size:11px;}
     }
 
     /* ===== Modal Calendário ===== */
@@ -221,6 +351,11 @@
       const m = ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
       if (!m) return ymd;
       return `${m[3]}-${m[2]}-${m[1]}`;
+    }
+
+    function safeJson(obj){
+      // evita quebrar <script> com "<" dentro do JSON
+      return JSON.stringify(obj).replace(/</g, "\\u003c");
     }
 
     // ===== Confirmados (status aprovado) agrupado por data =====
@@ -494,7 +629,20 @@
           <div class="row" style="justify-content:space-between;">
             <div>
               <h2 style="margin:0;">Agendamentos confirmados</h2>
-              <div class="muted">Apenas status <strong>aprovado</strong>, agrupado por dia. Use o filtro para separar por barbeiro.</div>
+              <div class="muted">Apenas status <strong>aprovado</strong>, agrupado por dia.</div>
+
+              <div class="confViewSwitchHint">
+                <span class="pill" style="background:#f6f6f6; border:1px solid #eee; font-weight:900;">
+                  Dica: selecione <strong>1 barbeiro</strong> pra ver a <strong>grade de horários</strong> (Livre/Ocupado).
+                </span>
+
+                <div class="legend">
+                  <span class="legendItem"><span class="dot dotBusy"></span> Ocupado</span>
+                  <span class="legendItem"><span class="dot dotFree"></span> Livre</span>
+                  <span class="legendItem"><span class="dot dotLunch"></span> Almoço</span>
+                  <span class="legendItem"><span class="dot dotOff"></span> Fora do expediente</span>
+                </div>
+              </div>
             </div>
 
             <div class="row">
@@ -509,6 +657,10 @@
               <span class="pill" style="background:#f1f1f1;">Total: <span id="confTotal"><%= confirmados.length %></span></span>
             </div>
           </div>
+
+          <!-- dados p/ montar a grade via JS -->
+          <script id="barberConfigsJson" type="application/json"><%- safeJson(barberConfigs) %></script>
+          <script id="barbersJson" type="application/json"><%- safeJson(barbers) %></script>
         </div>
 
         <div class="card">
@@ -522,24 +674,38 @@
                 <div class="dayCard confDayCard" data-date="<%= dateKey %>">
                   <div class="dayHeader">
                     <strong><%= ymdToDmy(dateKey) %></strong>
-                    <span class="countBadge"><span class="confDayCount"><%= items.length %></span> horário(s)</span>
+                    <span class="countBadge">
+                      <span class="confDayCount"><%= items.length %></span>
+                      <span class="confDaySuffix"> horário(s)</span>
+                    </span>
                   </div>
 
-                  <div class="slotList">
-                    <% items.forEach(a => { %>
-                      <div class="slotItem confSlot" data-barber-id="<%= a.barber_id %>">
-                        <div class="slotLeft">
-                          <span class="timePill"><%= a.horario %></span>
-                          <div class="info">
-                            <div><%= a.nome %></div>
-                            <small>Barbeiro: <%= a.barber_name || "" %> • Tel: <%= a.telefone || "-" %></small>
+                  <!-- JSON dos confirmados do dia (pra montar a grade) -->
+                  <script class="confItemsJson" type="application/json"><%- safeJson(items) %></script>
+
+                  <!-- LISTA (modo "Todos") -->
+                  <div class="confListView">
+                    <div class="slotList">
+                      <% items.forEach(a => { %>
+                        <div class="slotItem confSlot" data-barber-id="<%= a.barber_id %>">
+                          <div class="slotLeft">
+                            <span class="timePill"><%= a.horario %></span>
+                            <div class="info">
+                              <div><%= a.nome %></div>
+                              <small>Barbeiro: <%= a.barber_name || "" %> • Tel: <%= a.telefone || "-" %></small>
+                            </div>
+                          </div>
+                          <div class="slotRight">
+                            <span class="miniPill">confirmado</span>
                           </div>
                         </div>
-                        <div class="slotRight">
-                          <span class="miniPill">confirmado</span>
-                        </div>
-                      </div>
-                    <% }) %>
+                      <% }) %>
+                    </div>
+                  </div>
+
+                  <!-- GRADE (modo 1 barbeiro) -->
+                  <div class="confGridView">
+                    <div class="timeline" data-role="timeline"></div>
                   </div>
                 </div>
               <% }) %>
@@ -703,39 +869,224 @@
 
     applyFilters();
 
-    // ===== Confirmados: filtro por barbeiro (front-end) =====
+    // ===== Confirmados: LISTA (modo "Todos") + GRADE (modo 1 barbeiro) =====
     const confBarberFilter = document.getElementById("confBarberFilter");
     const confTotalEl = document.getElementById("confTotal");
     const confDayCards = Array.from(document.querySelectorAll(".confDayCard"));
 
-    function applyConfirmedFilter(){
+    function safeParseJsonScript(selectorOrEl){
+      try{
+        const el = (typeof selectorOrEl === "string") ? document.querySelector(selectorOrEl) : selectorOrEl;
+        if(!el) return null;
+        return JSON.parse(el.textContent || "null");
+      }catch(e){
+        return null;
+      }
+    }
+
+    function toMinutes(hhmm){
+      const m = String(hhmm || "").match(/^(\d{1,2}):(\d{2})$/);
+      if(!m) return null;
+      return (parseInt(m[1],10)*60) + parseInt(m[2],10);
+    }
+    function toHHMM(min){
+      const h = Math.floor(min/60);
+      const m = min%60;
+      return String(h).padStart(2,"0")+":"+String(m).padStart(2,"0");
+    }
+
+    const barberConfigs = safeParseJsonScript("#barberConfigsJson") || {};
+    const barbersList = safeParseJsonScript("#barbersJson") || [];
+
+    function barberNameById(id){
+      const f = barbersList.find(b => String(b.id) === String(id));
+      return f ? f.name : "";
+    }
+
+    function buildTimelineHTML({ dateYMD, cfg, items, barberId }){
+      // items já filtrados pro barbeiro
+      const start = toMinutes(cfg.start);
+      const end = toMinutes(cfg.end);
+      const lunchStart = toMinutes(cfg.lunchStart);
+      const lunchEnd = toMinutes(cfg.lunchEnd);
+      const step = Math.max(10, parseInt(cfg.slotMinutes || 30, 10));
+
+      if(start == null || end == null || step == null) return `<div class="muted">Configuração inválida de horários.</div>`;
+
+      const byTime = {};
+      (items || []).forEach(a => {
+        const key = String(a.horario || "");
+        if(key) byTime[key] = a;
+      });
+
+      const lines = [];
+      // antes do expediente (opcional: mostrar só um bloco)
+      // aqui preferi não poluir com muitos "off", só montar do start até end.
+
+      for(let t = start; t < end; t += step){
+        const hhmm = toHHMM(t);
+
+        // almoço: coloca 1 bloco centralizado no início do almoço e pula até lunchEnd
+        if(lunchStart != null && lunchEnd != null && t === lunchStart){
+          lines.push(`
+            <div class="tTime">${hhmm}</div>
+            <div class="tCard lunch">ALMOÇO • ${toHHMM(lunchStart)} - ${toHHMM(lunchEnd)}</div>
+          `);
+          // pula para o fim do almoço
+          t = lunchEnd - step;
+          continue;
+        }
+
+        const ap = byTime[hhmm];
+
+        if(ap){
+          const nome = ap.nome || "Cliente";
+          const tel = ap.telefone || "-";
+          const bname = ap.barber_name || barberNameById(barberId) || "";
+          lines.push(`
+            <div class="tTime">${hhmm}</div>
+            <div class="tCard busy">
+              <div class="tMain">
+                <div class="tTitle">${escapeHtml(nome)}</div>
+                <div class="tSub">Barbeiro: ${escapeHtml(bname)} • Tel: ${escapeHtml(tel)}</div>
+              </div>
+              <span class="tTag tTagBusy">OCUPADO</span>
+            </div>
+          `);
+        } else {
+          lines.push(`
+            <div class="tTime">${hhmm}</div>
+            <div class="tCard free">
+              <div class="tMain">
+                <div class="tTitle">Livre</div>
+                <div class="tSub">Nenhum agendamento confirmado nesse horário</div>
+              </div>
+              <span class="tTag tTagFree">LIVRE</span>
+            </div>
+          `);
+        }
+      }
+
+      return lines.join("");
+    }
+
+    function escapeHtml(s){
+      return String(s ?? "")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#39;");
+    }
+
+    function applyConfirmedUI(){
+      if(!confBarberFilter) return;
+
       const barberVal = confBarberFilter.value; // "all" ou id
+      const isAll = (barberVal === "all");
+
       let totalVisible = 0;
 
       confDayCards.forEach(dayCard => {
-        const slots = Array.from(dayCard.querySelectorAll(".confSlot"));
-        let dayVisible = 0;
-
-        slots.forEach(slot => {
-          const bid = slot.getAttribute("data-barber-id");
-          const show = (barberVal === "all") || (bid === barberVal);
-          slot.style.display = show ? "" : "none";
-          if (show) dayVisible++;
-        });
-
+        const listView = dayCard.querySelector(".confListView");
+        const gridView = dayCard.querySelector(".confGridView");
+        const timelineEl = dayCard.querySelector('[data-role="timeline"]');
         const dayCountEl = dayCard.querySelector(".confDayCount");
-        if (dayCountEl) dayCountEl.textContent = String(dayVisible);
+        const suffixEl = dayCard.querySelector(".confDaySuffix");
+        const dateYMD = dayCard.getAttribute("data-date");
 
-        dayCard.style.display = dayVisible > 0 ? "" : "none";
-        totalVisible += dayVisible;
+        // itens do dia (todos barbeiros)
+        const itemsJsonEl = dayCard.querySelector(".confItemsJson");
+        const itemsAll = safeParseJsonScript(itemsJsonEl) || [];
+
+        if(isAll){
+          // modo LISTA (igual era antes)
+          if(listView) listView.style.display = "block";
+          if(gridView) gridView.style.display = "none";
+
+          // filtra a lista (antigo comportamento: mostra tudo, porque "todos")
+          const slots = Array.from(dayCard.querySelectorAll(".confSlot"));
+          let dayVisible = 0;
+          slots.forEach(slot => {
+            slot.style.display = "";
+            dayVisible++;
+          });
+
+          if(dayCountEl) dayCountEl.textContent = String(dayVisible);
+          if(suffixEl) suffixEl.textContent = " horário(s)";
+          dayCard.style.display = dayVisible > 0 ? "" : "none";
+          totalVisible += dayVisible;
+          return;
+        }
+
+        // modo GRADE (1 barbeiro)
+        const cfg = barberConfigs[barberVal];
+        if(!cfg){
+          // sem config => cai pra lista filtrada só desse barbeiro
+          if(listView) listView.style.display = "block";
+          if(gridView) gridView.style.display = "none";
+
+          const slots = Array.from(dayCard.querySelectorAll(".confSlot"));
+          let dayVisible = 0;
+          slots.forEach(slot => {
+            const bid = slot.getAttribute("data-barber-id");
+            const show = (bid === barberVal);
+            slot.style.display = show ? "" : "none";
+            if(show) dayVisible++;
+          });
+
+          if(dayCountEl) dayCountEl.textContent = String(dayVisible);
+          if(suffixEl) suffixEl.textContent = " horário(s)";
+          dayCard.style.display = dayVisible > 0 ? "" : "none";
+          totalVisible += dayVisible;
+          return;
+        }
+
+        // filtra itens do dia pro barbeiro selecionado
+        const items = (itemsAll || []).filter(a => String(a.barber_id) === String(barberVal));
+        const dayBusy = items.length;
+
+        // monta grade
+        if(listView) listView.style.display = "none";
+        if(gridView) gridView.style.display = "block";
+        if(timelineEl){
+          timelineEl.innerHTML = buildTimelineHTML({
+            dateYMD,
+            cfg,
+            items,
+            barberId: barberVal
+          });
+        }
+
+        // badge do dia: "ocupados / totalSlots"
+        const start = toMinutes(cfg.start);
+        const end = toMinutes(cfg.end);
+        const lunchStart = toMinutes(cfg.lunchStart);
+        const lunchEnd = toMinutes(cfg.lunchEnd);
+        const step = Math.max(10, parseInt(cfg.slotMinutes || 30, 10));
+        let totalSlots = 0;
+
+        if(start != null && end != null){
+          for(let t = start; t < end; t += step){
+            if(lunchStart != null && lunchEnd != null && t >= lunchStart && t < lunchEnd) continue;
+            totalSlots++;
+          }
+        }
+
+        if(dayCountEl) dayCountEl.textContent = `${dayBusy}/${totalSlots}`;
+        if(suffixEl) suffixEl.textContent = " ocupados";
+
+        // mostra o dia mesmo se tiver 0 confirmado (pra ver LIVRE)
+        dayCard.style.display = "";
+        totalVisible += dayBusy;
       });
 
       if (confTotalEl) confTotalEl.textContent = String(totalVisible);
     }
 
     if (confBarberFilter) {
-      confBarberFilter.addEventListener("change", applyConfirmedFilter);
-      applyConfirmedFilter();
+      confBarberFilter.addEventListener("change", applyConfirmedUI);
+      applyConfirmedUI();
     }
 
     // ===== horários no admin =====
