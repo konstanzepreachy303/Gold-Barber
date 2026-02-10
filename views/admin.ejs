@@ -74,7 +74,6 @@
       padding:6px 10px;
       border-radius:999px;
       font-size:12px;
-      white-space:nowrap;
     }
     .slotList{padding:10px 12px 6px; display:grid; grid-template-columns: 1fr; gap:10px;}
     .slotItem{
@@ -112,136 +111,7 @@
       color:#111;
     }
 
-    /* ===== NOVO: Grade de horários (quando filtra 1 barbeiro) ===== */
-    .confViewSwitchHint{
-      margin-top:8px;
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
-      font-size:12px;
-      color:#555;
-    }
-    .legend{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      align-items:center;
-    }
-    .legendItem{
-      display:flex;
-      gap:6px;
-      align-items:center;
-      font-weight:900;
-      color:#111;
-      background:#f6f6f6;
-      border:1px solid #eee;
-      border-radius:999px;
-      padding:6px 10px;
-    }
-    .dot{
-      width:10px; height:10px; border-radius:999px;
-      border:1px solid rgba(0,0,0,.1);
-    }
-    .dotBusy{background:#c9a227;}
-    .dotFree{background:#eaeaea;}
-    .dotLunch{background:#111;}
-    .dotOff{background:#ddd;}
-
-    .timeline{
-      padding:12px;
-      display:grid;
-      grid-template-columns: 92px 1fr;
-      gap:8px 12px;
-    }
-    .tTime{
-      font-weight:900;
-      color:#111;
-      font-size:12px;
-      display:flex;
-      align-items:center;
-      justify-content:flex-end;
-      padding-right:6px;
-    }
-    .tCard{
-      border-radius:12px;
-      border:1px solid #eee;
-      padding:10px 12px;
-      background:#fafafa;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .tCard.free{
-      background:#fff;
-      border-style:dashed;
-      border-color:#e3e3e3;
-    }
-    .tCard.busy{
-      background:#fff7dd;
-      border-color:#f0d37a;
-    }
-    .tCard.lunch{
-      background:#111;
-      color:#fff;
-      border-color:#111;
-      justify-content:center;
-      font-weight:900;
-    }
-    .tCard.off{
-      background:#f3f3f3;
-      color:#666;
-      border-color:#e1e1e1;
-      justify-content:center;
-      font-weight:900;
-    }
-    .tMain{
-      display:flex;
-      flex-direction:column;
-      gap:4px;
-      min-width:220px;
-    }
-    .tTitle{
-      font-weight:900;
-      color:#111;
-      font-size:13px;
-    }
-    .tSub{
-      color:#666;
-      font-weight:800;
-      font-size:12px;
-    }
-    .tTag{
-      font-weight:900;
-      font-size:12px;
-      padding:6px 10px;
-      border-radius:999px;
-      border:1px solid #ddd;
-      background:#fff;
-      color:#111;
-      white-space:nowrap;
-    }
-    .tTagBusy{
-      background:#c9a227;
-      border-color:#c9a227;
-      color:#111;
-    }
-    .tTagFree{
-      background:#fff;
-      border-style:dashed;
-      color:#111;
-    }
-    .confGridView{display:none;}
-    .confListView{display:block;}
-
-    @media (max-width:560px){
-      .timeline{grid-template-columns: 70px 1fr;}
-      .tTime{font-size:11px;}
-    }
-
-    /* ===== Modal Calendário ===== */
+    /* ===== Modal (genérico) ===== */
     .overlay {
       position: fixed;
       inset: 0;
@@ -254,6 +124,7 @@
     }
     .overlay.show { display: flex; }
 
+    /* ===== Modal Calendário ===== */
     .cal {
       width: 360px;
       max-width: 100%;
@@ -342,6 +213,30 @@
       color: #111;
       border: none;
     }
+
+    /* ===== Modal Confirmados (filtro obrigatório) ===== */
+    .modalBox{
+      width: 420px;
+      max-width: 100%;
+      background:#fff;
+      border:1px solid #e6e6e6;
+      border-radius:16px;
+      overflow:hidden;
+      box-shadow: 0 14px 40px rgba(0,0,0,.55);
+    }
+    .modalHead{
+      background:#111;
+      color:#fff;
+      padding:12px 14px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .modalHead strong{font-size:14px;}
+    .modalBody{padding:14px;}
+    .modalFoot{padding:14px; display:flex; gap:10px; justify-content:flex-end; border-top:1px solid #eee;}
+    .modalFoot .btnPrimary{background:#111; border-color:#111;}
   </style>
 </head>
 <body>
@@ -351,11 +246,6 @@
       const m = ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
       if (!m) return ymd;
       return `${m[3]}-${m[2]}-${m[1]}`;
-    }
-
-    function safeJson(obj){
-      // evita quebrar <script> com "<" dentro do JSON
-      return JSON.stringify(obj).replace(/</g, "\\u003c");
     }
 
     // ===== Confirmados (status aprovado) agrupado por data =====
@@ -384,15 +274,17 @@
 
   <!-- ✅ Tabs -->
   <div class="tabs">
-    <button class="tabBtn active" id="tabBtnPainel" type="button">Painel</button>
+    <button class="tabBtn" id="tabBtnBarbeiros" type="button">Barbeiros</button>
+    <button class="tabBtn" id="tabBtnConfig" type="button">Config por barbeiro</button>
+    <button class="tabBtn" id="tabBtnManual" type="button">Agendar manualmente</button>
+    <button class="tabBtn active" id="tabBtnPendentes" type="button">Agendamentos pendentes</button>
     <button class="tabBtn" id="tabBtnConfirmados" type="button">Agendamentos confirmados</button>
   </div>
 
   <main>
-    <!-- ================= TAB: PAINEL ================= -->
-    <div class="tabPanel active" id="tabPainel">
+    <!-- ================= TAB: BARBEIROS ================= -->
+    <div class="tabPanel" id="tabBarbeiros">
       <div class="grid">
-
         <div class="card">
           <h2>Barbeiros</h2>
           <table>
@@ -425,7 +317,79 @@
             </tbody>
           </table>
         </div>
+      </div>
+    </div>
 
+    <!-- ================= TAB: CONFIG ================= -->
+    <div class="tabPanel" id="tabConfig">
+      <div class="grid">
+        <div class="card">
+          <h2>Configuração por barbeiro</h2>
+
+          <% barbers.forEach(b => {
+              const cfg = barberConfigs[b.id];
+              const dmyList = (cfg.daysOffDates || []).map(ymdToDmy).join(", ");
+          %>
+            <hr style="border:0; border-top:1px solid #eee; margin:18px 0;">
+            <h3 style="margin:0 0 10px 0;"><%= b.name %> (ID <%= b.id %>)</h3>
+
+            <form method="POST" action="/admin/barbeiro/<%= b.id %>/config">
+              <div class="cols">
+                <div>
+                  <label>Início</label>
+                  <input name="start" value="<%= cfg.start %>" placeholder="09:00" required />
+                </div>
+                <div>
+                  <label>Fim</label>
+                  <input name="end" value="<%= cfg.end %>" placeholder="18:00" required />
+                </div>
+
+                <div>
+                  <label>Almoço (início)</label>
+                  <input name="lunchStart" value="<%= cfg.lunchStart %>" placeholder="12:00" required />
+                </div>
+                <div>
+                  <label>Almoço (fim)</label>
+                  <input name="lunchEnd" value="<%= cfg.lunchEnd %>" placeholder="13:00" required />
+                </div>
+
+                <div class="full">
+                  <label>Duração do slot (minutos)</label>
+                  <input name="slotMinutes" type="number" value="<%= cfg.slotMinutes %>" min="10" max="240" required />
+                </div>
+
+                <div class="full">
+                  <label>Dias de trabalho</label>
+                  <div class="row">
+                    <label><input type="checkbox" name="wd0" <%= cfg.workDays[0] ? "checked" : "" %> /> Dom</label>
+                    <label><input type="checkbox" name="wd1" <%= cfg.workDays[1] ? "checked" : "" %> /> Seg</label>
+                    <label><input type="checkbox" name="wd2" <%= cfg.workDays[2] ? "checked" : "" %> /> Ter</label>
+                    <label><input type="checkbox" name="wd3" <%= cfg.workDays[3] ? "checked" : "" %> /> Qua</label>
+                    <label><input type="checkbox" name="wd4" <%= cfg.workDays[4] ? "checked" : "" %> /> Qui</label>
+                    <label><input type="checkbox" name="wd5" <%= cfg.workDays[5] ? "checked" : "" %> /> Sex</label>
+                    <label><input type="checkbox" name="wd6" <%= cfg.workDays[6] ? "checked" : "" %> /> Sáb</label>
+                  </div>
+                </div>
+
+                <div class="full">
+                  <label>Folgas (dd-mm-yyyy, separadas por vírgula/espaco)</label>
+                  <input name="daysOffDates" value="<%= dmyList %>" placeholder="10-02-2026, 11-02-2026" />
+                  <div class="muted">Você pode colar também no formato yyyy-mm-dd que o sistema aceita e converte.</div>
+                </div>
+
+                <div class="full">
+                  <button class="btn btnPrimary" type="submit">Salvar config do <%= b.name %></button>
+                </div>
+              </div>
+            </form>
+          <% }) %>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= TAB: AGENDAR MANUALMENTE ================= -->
+    <div class="tabPanel" id="tabManual">
+      <div class="grid">
         <div class="card">
           <h2>Agendar manualmente</h2>
           <div class="muted">Clique no campo de data para abrir o calendário e escolher o dia.</div>
@@ -481,10 +445,15 @@
             </div>
           </form>
         </div>
+      </div>
+    </div>
 
+    <!-- ================= TAB: PENDENTES ================= -->
+    <div class="tabPanel active" id="tabPendentes">
+      <div class="grid">
         <div class="card">
           <div class="row" style="justify-content:space-between;">
-            <h2 style="margin:0;">Agendamentos</h2>
+            <h2 style="margin:0;">Agendamentos pendentes</h2>
 
             <div class="row">
               <span class="muted" style="font-weight:700;">Filtrar:</span>
@@ -557,68 +526,6 @@
             </tbody>
           </table>
         </div>
-
-        <div class="card">
-          <h2>Configuração por barbeiro</h2>
-
-          <% barbers.forEach(b => {
-              const cfg = barberConfigs[b.id];
-              const dmyList = (cfg.daysOffDates || []).map(ymdToDmy).join(", ");
-          %>
-            <hr style="border:0; border-top:1px solid #eee; margin:18px 0;">
-            <h3 style="margin:0 0 10px 0;"><%= b.name %> (ID <%= b.id %>)</h3>
-
-            <form method="POST" action="/admin/barbeiro/<%= b.id %>/config">
-              <div class="cols">
-                <div>
-                  <label>Início</label>
-                  <input name="start" value="<%= cfg.start %>" placeholder="09:00" required />
-                </div>
-                <div>
-                  <label>Fim</label>
-                  <input name="end" value="<%= cfg.end %>" placeholder="18:00" required />
-                </div>
-
-                <div>
-                  <label>Almoço (início)</label>
-                  <input name="lunchStart" value="<%= cfg.lunchStart %>" placeholder="12:00" required />
-                </div>
-                <div>
-                  <label>Almoço (fim)</label>
-                  <input name="lunchEnd" value="<%= cfg.lunchEnd %>" placeholder="13:00" required />
-                </div>
-
-                <div class="full">
-                  <label>Duração do slot (minutos)</label>
-                  <input name="slotMinutes" type="number" value="<%= cfg.slotMinutes %>" min="10" max="240" required />
-                </div>
-
-                <div class="full">
-                  <label>Dias de trabalho</label>
-                  <div class="row">
-                    <label><input type="checkbox" name="wd0" <%= cfg.workDays[0] ? "checked" : "" %> /> Dom</label>
-                    <label><input type="checkbox" name="wd1" <%= cfg.workDays[1] ? "checked" : "" %> /> Seg</label>
-                    <label><input type="checkbox" name="wd2" <%= cfg.workDays[2] ? "checked" : "" %> /> Ter</label>
-                    <label><input type="checkbox" name="wd3" <%= cfg.workDays[3] ? "checked" : "" %> /> Qua</label>
-                    <label><input type="checkbox" name="wd4" <%= cfg.workDays[4] ? "checked" : "" %> /> Qui</label>
-                    <label><input type="checkbox" name="wd5" <%= cfg.workDays[5] ? "checked" : "" %> /> Sex</label>
-                    <label><input type="checkbox" name="wd6" <%= cfg.workDays[6] ? "checked" : "" %> /> Sáb</label>
-                  </div>
-                </div>
-
-                <div class="full">
-                  <label>Folgas (dd-mm-yyyy, separadas por vírgula/espaco)</label>
-                  <input name="daysOffDates" value="<%= dmyList %>" placeholder="10-02-2026, 11-02-2026" />
-                  <div class="muted">Você pode colar também no formato yyyy-mm-dd que o sistema aceita e converte.</div>
-                </div>
-
-                <div class="full">
-                  <button class="btn btnPrimary" type="submit">Salvar config do <%= b.name %></button>
-                </div>
-              </div>
-            </form>
-          <% }) %>
-        </div>
       </div>
     </div>
 
@@ -629,38 +536,36 @@
           <div class="row" style="justify-content:space-between;">
             <div>
               <h2 style="margin:0;">Agendamentos confirmados</h2>
-              <div class="muted">Apenas status <strong>aprovado</strong>, agrupado por dia.</div>
-
-              <div class="confViewSwitchHint">
-                <span class="pill" style="background:#f6f6f6; border:1px solid #eee; font-weight:900;">
-                  Dica: selecione <strong>1 barbeiro</strong> pra ver a <strong>grade de horários</strong> (Livre/Ocupado).
-                </span>
-
-                <div class="legend">
-                  <span class="legendItem"><span class="dot dotBusy"></span> Ocupado</span>
-                  <span class="legendItem"><span class="dot dotFree"></span> Livre</span>
-                  <span class="legendItem"><span class="dot dotLunch"></span> Almoço</span>
-                  <span class="legendItem"><span class="dot dotOff"></span> Fora do expediente</span>
-                </div>
+              <div class="muted">
+                Apenas status <strong>aprovado</strong>, agrupado por dia.
+                Ao entrar aqui, selecione um barbeiro e o período (padrão: hoje até hoje + 6 dias).
               </div>
             </div>
 
             <div class="row">
               <span class="muted" style="font-weight:700;">Barbeiro:</span>
               <select id="confBarberFilter">
-                <option value="all">Todos</option>
+                <option value="">Selecione</option>
                 <% barbers.forEach(b => { %>
                   <option value="<%= b.id %>"><%= b.name %></option>
                 <% }) %>
               </select>
 
+              <span class="muted" style="font-weight:700;">De:</span>
+              <input type="date" id="confStart" />
+
+              <span class="muted" style="font-weight:700;">Até:</span>
+              <input type="date" id="confEnd" />
+
+              <button class="btn" type="button" id="confBtnSemana">Hoje + 6</button>
+
               <span class="pill" style="background:#f1f1f1;">Total: <span id="confTotal"><%= confirmados.length %></span></span>
             </div>
           </div>
 
-          <!-- dados p/ montar a grade via JS -->
-          <script id="barberConfigsJson" type="application/json"><%- safeJson(barberConfigs) %></script>
-          <script id="barbersJson" type="application/json"><%- safeJson(barbers) %></script>
+          <div id="confHint" class="bad" style="display:none; margin-top:10px;">
+            Selecione um barbeiro para listar os confirmados.
+          </div>
         </div>
 
         <div class="card">
@@ -674,38 +579,24 @@
                 <div class="dayCard confDayCard" data-date="<%= dateKey %>">
                   <div class="dayHeader">
                     <strong><%= ymdToDmy(dateKey) %></strong>
-                    <span class="countBadge">
-                      <span class="confDayCount"><%= items.length %></span>
-                      <span class="confDaySuffix"> horário(s)</span>
-                    </span>
+                    <span class="countBadge"><span class="confDayCount"><%= items.length %></span> horário(s)</span>
                   </div>
 
-                  <!-- JSON dos confirmados do dia (pra montar a grade) -->
-                  <script class="confItemsJson" type="application/json"><%- safeJson(items) %></script>
-
-                  <!-- LISTA (modo "Todos") -->
-                  <div class="confListView">
-                    <div class="slotList">
-                      <% items.forEach(a => { %>
-                        <div class="slotItem confSlot" data-barber-id="<%= a.barber_id %>">
-                          <div class="slotLeft">
-                            <span class="timePill"><%= a.horario %></span>
-                            <div class="info">
-                              <div><%= a.nome %></div>
-                              <small>Barbeiro: <%= a.barber_name || "" %> • Tel: <%= a.telefone || "-" %></small>
-                            </div>
-                          </div>
-                          <div class="slotRight">
-                            <span class="miniPill">confirmado</span>
+                  <div class="slotList">
+                    <% items.forEach(a => { %>
+                      <div class="slotItem confSlot" data-barber-id="<%= a.barber_id %>">
+                        <div class="slotLeft">
+                          <span class="timePill"><%= a.horario %></span>
+                          <div class="info">
+                            <div><%= a.nome %></div>
+                            <small>Barbeiro: <%= a.barber_name || "" %> • Tel: <%= a.telefone || "-" %></small>
                           </div>
                         </div>
-                      <% }) %>
-                    </div>
-                  </div>
-
-                  <!-- GRADE (modo 1 barbeiro) -->
-                  <div class="confGridView">
-                    <div class="timeline" data-role="timeline"></div>
+                        <div class="slotRight">
+                          <span class="miniPill">confirmado</span>
+                        </div>
+                      </div>
+                    <% }) %>
                   </div>
                 </div>
               <% }) %>
@@ -716,6 +607,47 @@
     </div>
   </main>
 
+  <!-- ===== Modal: Confirmados (obrigatório selecionar barbeiro) ===== -->
+  <div id="confOverlay" class="overlay" aria-hidden="true">
+    <div class="modalBox" role="dialog" aria-modal="true" aria-label="Filtro de confirmados">
+      <div class="modalHead">
+        <strong>Filtrar confirmados</strong>
+        <span class="pill" style="background:#222; color:#fff;">obrigatório</span>
+      </div>
+      <div class="modalBody">
+        <div class="muted">Selecione o barbeiro e confirme o período (padrão: hoje até hoje + 6 dias).</div>
+
+        <label>Barbeiro</label>
+        <select id="confModalBarber">
+          <option value="">Selecione</option>
+          <% barbers.forEach(b => { %>
+            <option value="<%= b.id %>"><%= b.name %></option>
+          <% }) %>
+        </select>
+
+        <div class="cols" style="margin-top:8px;">
+          <div>
+            <label>De</label>
+            <input type="date" id="confModalStart" />
+          </div>
+          <div>
+            <label>Até</label>
+            <input type="date" id="confModalEnd" />
+          </div>
+        </div>
+
+        <div class="muted" style="margin-top:10px;">
+          Dica: “Hoje + 6” mostra 7 dias (inclui hoje).
+        </div>
+      </div>
+      <div class="modalFoot">
+        <button class="btn" type="button" id="confModalHojeMais6">Hoje + 6</button>
+        <button class="btn btnPrimary" type="button" id="confModalApply">Aplicar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Modal Calendário (Agendar manualmente) ===== -->
   <div id="admOverlay" class="overlay" aria-hidden="true">
     <div class="cal" role="dialog" aria-modal="true" aria-label="Selecionar data">
       <div class="cal-head">
@@ -741,7 +673,7 @@
   </div>
 
   <script>
-    // ===== updateStatus (corrigido: recarrega se entrou/saiu de aprovado) =====
+    // ===== updateStatus (mantém aba certa ao recarregar) =====
     async function updateStatus(id, status) {
       const row = document.querySelector(`.agRow[data-id="${id}"]`);
       const prevStatus = row ? row.getAttribute("data-status") : null;
@@ -752,18 +684,16 @@
         body: JSON.stringify({ id, status })
       });
 
-      // atualiza visualmente a linha (para filtros funcionarem sem recarregar)
       if (row) {
         row.setAttribute("data-status", status);
         const pill = row.querySelector(".jsStatusPill");
         if (pill) pill.textContent = status;
       }
 
-      // entrou OU saiu de "aprovado" => recarrega para sincronizar a aba "confirmados"
       const touchedApproved = (prevStatus === "aprovado") || (status === "aprovado");
       if (touchedApproved) {
         try {
-          localStorage.setItem("admin_tab", status === "aprovado" ? "confirmados" : "painel");
+          localStorage.setItem("admin_tab", status === "aprovado" ? "confirmados" : "pendentes");
         } catch (e) {}
         window.location.reload();
         return;
@@ -772,30 +702,69 @@
       applyFilters();
     }
 
-    // ===== Tabs =====
-    const tabBtnPainel = document.getElementById("tabBtnPainel");
-    const tabBtnConfirmados = document.getElementById("tabBtnConfirmados");
-    const tabPainel = document.getElementById("tabPainel");
-    const tabConfirmados = document.getElementById("tabConfirmados");
-
-    function setTab(name){
-      const isPainel = name === "painel";
-      tabBtnPainel.classList.toggle("active", isPainel);
-      tabBtnConfirmados.classList.toggle("active", !isPainel);
-      tabPainel.classList.toggle("active", isPainel);
-      tabConfirmados.classList.toggle("active", !isPainel);
-      try { localStorage.setItem("admin_tab", name); } catch(e){}
+    // ===== Helpers datas =====
+    function pad2(n){ return String(n).padStart(2, "0"); }
+    function fmtYMD(d){
+      return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+    }
+    function todayYMD(){
+      return fmtYMD(new Date());
+    }
+    function addDaysYMD(ymd, days){
+      const [y,m,d] = String(ymd).split("-").map(Number);
+      const dt = new Date(y, (m||1)-1, d||1);
+      dt.setDate(dt.getDate() + days);
+      return fmtYMD(dt);
     }
 
-    tabBtnPainel.addEventListener("click", () => setTab("painel"));
-    tabBtnConfirmados.addEventListener("click", () => setTab("confirmados"));
+    // ===== Tabs (5 abas) =====
+    const tabMap = {
+      barbeiros: {
+        btn: document.getElementById("tabBtnBarbeiros"),
+        panel: document.getElementById("tabBarbeiros")
+      },
+      config: {
+        btn: document.getElementById("tabBtnConfig"),
+        panel: document.getElementById("tabConfig")
+      },
+      manual: {
+        btn: document.getElementById("tabBtnManual"),
+        panel: document.getElementById("tabManual")
+      },
+      pendentes: {
+        btn: document.getElementById("tabBtnPendentes"),
+        panel: document.getElementById("tabPendentes")
+      },
+      confirmados: {
+        btn: document.getElementById("tabBtnConfirmados"),
+        panel: document.getElementById("tabConfirmados")
+      }
+    };
+
+    function setTab(name){
+      Object.keys(tabMap).forEach(k => {
+        tabMap[k].btn.classList.toggle("active", k === name);
+        tabMap[k].panel.classList.toggle("active", k === name);
+      });
+      try { localStorage.setItem("admin_tab", name); } catch(e){}
+      if (name === "confirmados") {
+        initConfirmadosOnEnter();
+      }
+    }
+
+    Object.keys(tabMap).forEach(k => {
+      tabMap[k].btn.addEventListener("click", () => setTab(k));
+    });
 
     try {
       const saved = localStorage.getItem("admin_tab");
-      if(saved === "confirmados") setTab("confirmados");
-    } catch(e){}
+      if(saved && tabMap[saved]) setTab(saved);
+      else setTab("pendentes");
+    } catch(e){
+      setTab("pendentes");
+    }
 
-    // ===== filtros (barbeiro + data + checkboxes) =====
+    // ===== PENDENTES: filtros (barbeiro + data + checkboxes) =====
     const barberFilter = document.getElementById("barberFilter");
     const dateFilter = document.getElementById("dateFilter");
     const showCancelados = document.getElementById("showCancelados");
@@ -806,17 +775,11 @@
     const rows = Array.from(document.querySelectorAll(".agRow"));
     const countInfo = document.getElementById("countInfo");
 
-    function todayYMD(){
-      const d = new Date();
-      const y = d.getFullYear();
-      const m = String(d.getMonth()+1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      return `${y}-${m}-${day}`;
-    }
-
     if (dateFilter) dateFilter.value = todayYMD();
 
     function applyFilters() {
+      if (!barberFilter) return;
+
       const barberVal = barberFilter.value;
       const selectedDate = (dateFilter && dateFilter.value) ? dateFilter.value : "";
       const canShowCancelados = !!(showCancelados && showCancelados.checked);
@@ -849,10 +812,10 @@
       if (canShowAprovados) extra.push("aprovado");
 
       const dateText = selectedDate ? ` • Data: ${selectedDate}` : " • Data: todas";
-      countInfo.textContent = `Mostrando ${visible} de ${rows.length} (${extra.join(" + ")})${dateText}`;
+      if (countInfo) countInfo.textContent = `Mostrando ${visible} de ${rows.length} (${extra.join(" + ")})${dateText}`;
     }
 
-    barberFilter.addEventListener("change", applyFilters);
+    if (barberFilter) barberFilter.addEventListener("change", applyFilters);
     if (dateFilter) dateFilter.addEventListener("change", applyFilters);
     if (showCancelados) showCancelados.addEventListener("change", applyFilters);
     if (showAprovados) showAprovados.addEventListener("change", applyFilters);
@@ -869,224 +832,159 @@
 
     applyFilters();
 
-    // ===== Confirmados: LISTA (modo "Todos") + GRADE (modo 1 barbeiro) =====
+    // ===== CONFIRMADOS: filtro por barbeiro + período (De/Até) =====
     const confBarberFilter = document.getElementById("confBarberFilter");
+    const confStart = document.getElementById("confStart");
+    const confEnd = document.getElementById("confEnd");
+    const confBtnSemana = document.getElementById("confBtnSemana");
     const confTotalEl = document.getElementById("confTotal");
+    const confHint = document.getElementById("confHint");
     const confDayCards = Array.from(document.querySelectorAll(".confDayCard"));
 
-    function safeParseJsonScript(selectorOrEl){
-      try{
-        const el = (typeof selectorOrEl === "string") ? document.querySelector(selectorOrEl) : selectorOrEl;
-        if(!el) return null;
-        return JSON.parse(el.textContent || "null");
-      }catch(e){
-        return null;
-      }
+    function setDefaultConfirmedRange(){
+      const t = todayYMD();
+      if (confStart && !confStart.value) confStart.value = t;
+      if (confEnd && !confEnd.value) confEnd.value = addDaysYMD(t, 6);
     }
 
-    function toMinutes(hhmm){
-      const m = String(hhmm || "").match(/^(\d{1,2}):(\d{2})$/);
-      if(!m) return null;
-      return (parseInt(m[1],10)*60) + parseInt(m[2],10);
-    }
-    function toHHMM(min){
-      const h = Math.floor(min/60);
-      const m = min%60;
-      return String(h).padStart(2,"0")+":"+String(m).padStart(2,"0");
+    function isWithinRange(dateYMD, startYMD, endYMD){
+      if (!dateYMD) return false;
+      if (startYMD && dateYMD < startYMD) return false;
+      if (endYMD && dateYMD > endYMD) return false;
+      return true;
     }
 
-    const barberConfigs = safeParseJsonScript("#barberConfigsJson") || {};
-    const barbersList = safeParseJsonScript("#barbersJson") || [];
+    function applyConfirmedFilter(){
+      if (!confBarberFilter) return;
 
-    function barberNameById(id){
-      const f = barbersList.find(b => String(b.id) === String(id));
-      return f ? f.name : "";
-    }
+      const barberVal = confBarberFilter.value; // "" ou id
+      const startVal = confStart ? confStart.value : "";
+      const endVal = confEnd ? confEnd.value : "";
 
-    function buildTimelineHTML({ dateYMD, cfg, items, barberId }){
-      // items já filtrados pro barbeiro
-      const start = toMinutes(cfg.start);
-      const end = toMinutes(cfg.end);
-      const lunchStart = toMinutes(cfg.lunchStart);
-      const lunchEnd = toMinutes(cfg.lunchEnd);
-      const step = Math.max(10, parseInt(cfg.slotMinutes || 30, 10));
-
-      if(start == null || end == null || step == null) return `<div class="muted">Configuração inválida de horários.</div>`;
-
-      const byTime = {};
-      (items || []).forEach(a => {
-        const key = String(a.horario || "");
-        if(key) byTime[key] = a;
-      });
-
-      const lines = [];
-      // antes do expediente (opcional: mostrar só um bloco)
-      // aqui preferi não poluir com muitos "off", só montar do start até end.
-
-      for(let t = start; t < end; t += step){
-        const hhmm = toHHMM(t);
-
-        // almoço: coloca 1 bloco centralizado no início do almoço e pula até lunchEnd
-        if(lunchStart != null && lunchEnd != null && t === lunchStart){
-          lines.push(`
-            <div class="tTime">${hhmm}</div>
-            <div class="tCard lunch">ALMOÇO • ${toHHMM(lunchStart)} - ${toHHMM(lunchEnd)}</div>
-          `);
-          // pula para o fim do almoço
-          t = lunchEnd - step;
-          continue;
-        }
-
-        const ap = byTime[hhmm];
-
-        if(ap){
-          const nome = ap.nome || "Cliente";
-          const tel = ap.telefone || "-";
-          const bname = ap.barber_name || barberNameById(barberId) || "";
-          lines.push(`
-            <div class="tTime">${hhmm}</div>
-            <div class="tCard busy">
-              <div class="tMain">
-                <div class="tTitle">${escapeHtml(nome)}</div>
-                <div class="tSub">Barbeiro: ${escapeHtml(bname)} • Tel: ${escapeHtml(tel)}</div>
-              </div>
-              <span class="tTag tTagBusy">OCUPADO</span>
-            </div>
-          `);
-        } else {
-          lines.push(`
-            <div class="tTime">${hhmm}</div>
-            <div class="tCard free">
-              <div class="tMain">
-                <div class="tTitle">Livre</div>
-                <div class="tSub">Nenhum agendamento confirmado nesse horário</div>
-              </div>
-              <span class="tTag tTagFree">LIVRE</span>
-            </div>
-          `);
-        }
+      if (!barberVal) {
+        // obriga escolher barbeiro
+        if (confHint) confHint.style.display = "";
+        confDayCards.forEach(dayCard => dayCard.style.display = "none");
+        if (confTotalEl) confTotalEl.textContent = "0";
+        return;
       }
 
-      return lines.join("");
-    }
-
-    function escapeHtml(s){
-      return String(s ?? "")
-        .replaceAll("&","&amp;")
-        .replaceAll("<","&lt;")
-        .replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;")
-        .replaceAll("'","&#39;");
-    }
-
-    function applyConfirmedUI(){
-      if(!confBarberFilter) return;
-
-      const barberVal = confBarberFilter.value; // "all" ou id
-      const isAll = (barberVal === "all");
+      if (confHint) confHint.style.display = "none";
 
       let totalVisible = 0;
 
       confDayCards.forEach(dayCard => {
-        const listView = dayCard.querySelector(".confListView");
-        const gridView = dayCard.querySelector(".confGridView");
-        const timelineEl = dayCard.querySelector('[data-role="timeline"]');
+        const dayDate = dayCard.getAttribute("data-date") || "";
+        const dayInRange = isWithinRange(dayDate, startVal, endVal);
+
+        const slots = Array.from(dayCard.querySelectorAll(".confSlot"));
+        let dayVisible = 0;
+
+        if (!dayInRange) {
+          // fora do range => some com o dia inteiro
+          dayCard.style.display = "none";
+          const dayCountEl = dayCard.querySelector(".confDayCount");
+          if (dayCountEl) dayCountEl.textContent = "0";
+          slots.forEach(slot => slot.style.display = "none");
+          return;
+        }
+
+        slots.forEach(slot => {
+          const bid = slot.getAttribute("data-barber-id");
+          const show = (bid === barberVal);
+          slot.style.display = show ? "" : "none";
+          if (show) dayVisible++;
+        });
+
         const dayCountEl = dayCard.querySelector(".confDayCount");
-        const suffixEl = dayCard.querySelector(".confDaySuffix");
-        const dateYMD = dayCard.getAttribute("data-date");
+        if (dayCountEl) dayCountEl.textContent = String(dayVisible);
 
-        // itens do dia (todos barbeiros)
-        const itemsJsonEl = dayCard.querySelector(".confItemsJson");
-        const itemsAll = safeParseJsonScript(itemsJsonEl) || [];
-
-        if(isAll){
-          // modo LISTA (igual era antes)
-          if(listView) listView.style.display = "block";
-          if(gridView) gridView.style.display = "none";
-
-          // filtra a lista (antigo comportamento: mostra tudo, porque "todos")
-          const slots = Array.from(dayCard.querySelectorAll(".confSlot"));
-          let dayVisible = 0;
-          slots.forEach(slot => {
-            slot.style.display = "";
-            dayVisible++;
-          });
-
-          if(dayCountEl) dayCountEl.textContent = String(dayVisible);
-          if(suffixEl) suffixEl.textContent = " horário(s)";
-          dayCard.style.display = dayVisible > 0 ? "" : "none";
-          totalVisible += dayVisible;
-          return;
-        }
-
-        // modo GRADE (1 barbeiro)
-        const cfg = barberConfigs[barberVal];
-        if(!cfg){
-          // sem config => cai pra lista filtrada só desse barbeiro
-          if(listView) listView.style.display = "block";
-          if(gridView) gridView.style.display = "none";
-
-          const slots = Array.from(dayCard.querySelectorAll(".confSlot"));
-          let dayVisible = 0;
-          slots.forEach(slot => {
-            const bid = slot.getAttribute("data-barber-id");
-            const show = (bid === barberVal);
-            slot.style.display = show ? "" : "none";
-            if(show) dayVisible++;
-          });
-
-          if(dayCountEl) dayCountEl.textContent = String(dayVisible);
-          if(suffixEl) suffixEl.textContent = " horário(s)";
-          dayCard.style.display = dayVisible > 0 ? "" : "none";
-          totalVisible += dayVisible;
-          return;
-        }
-
-        // filtra itens do dia pro barbeiro selecionado
-        const items = (itemsAll || []).filter(a => String(a.barber_id) === String(barberVal));
-        const dayBusy = items.length;
-
-        // monta grade
-        if(listView) listView.style.display = "none";
-        if(gridView) gridView.style.display = "block";
-        if(timelineEl){
-          timelineEl.innerHTML = buildTimelineHTML({
-            dateYMD,
-            cfg,
-            items,
-            barberId: barberVal
-          });
-        }
-
-        // badge do dia: "ocupados / totalSlots"
-        const start = toMinutes(cfg.start);
-        const end = toMinutes(cfg.end);
-        const lunchStart = toMinutes(cfg.lunchStart);
-        const lunchEnd = toMinutes(cfg.lunchEnd);
-        const step = Math.max(10, parseInt(cfg.slotMinutes || 30, 10));
-        let totalSlots = 0;
-
-        if(start != null && end != null){
-          for(let t = start; t < end; t += step){
-            if(lunchStart != null && lunchEnd != null && t >= lunchStart && t < lunchEnd) continue;
-            totalSlots++;
-          }
-        }
-
-        if(dayCountEl) dayCountEl.textContent = `${dayBusy}/${totalSlots}`;
-        if(suffixEl) suffixEl.textContent = " ocupados";
-
-        // mostra o dia mesmo se tiver 0 confirmado (pra ver LIVRE)
-        dayCard.style.display = "";
-        totalVisible += dayBusy;
+        dayCard.style.display = dayVisible > 0 ? "" : "none";
+        totalVisible += dayVisible;
       });
 
       if (confTotalEl) confTotalEl.textContent = String(totalVisible);
     }
 
-    if (confBarberFilter) {
-      confBarberFilter.addEventListener("change", applyConfirmedUI);
-      applyConfirmedUI();
+    if (confBtnSemana) {
+      confBtnSemana.addEventListener("click", () => {
+        const t = todayYMD();
+        if (confStart) confStart.value = t;
+        if (confEnd) confEnd.value = addDaysYMD(t, 6);
+        applyConfirmedFilter();
+      });
+    }
+
+    if (confBarberFilter) confBarberFilter.addEventListener("change", applyConfirmedFilter);
+    if (confStart) confStart.addEventListener("change", applyConfirmedFilter);
+    if (confEnd) confEnd.addEventListener("change", applyConfirmedFilter);
+
+    // ===== Modal obrigatório confirmados =====
+    const confOverlay = document.getElementById("confOverlay");
+    const confModalBarber = document.getElementById("confModalBarber");
+    const confModalStart = document.getElementById("confModalStart");
+    const confModalEnd = document.getElementById("confModalEnd");
+    const confModalHojeMais6 = document.getElementById("confModalHojeMais6");
+    const confModalApply = document.getElementById("confModalApply");
+
+    function openConfModal(){
+      if (!confOverlay) return;
+
+      // sync modal com inputs
+      setDefaultConfirmedRange();
+      if (confModalBarber) confModalBarber.value = confBarberFilter ? (confBarberFilter.value || "") : "";
+      if (confModalStart) confModalStart.value = confStart ? (confStart.value || todayYMD()) : todayYMD();
+      if (confModalEnd) confModalEnd.value = confEnd ? (confEnd.value || addDaysYMD(todayYMD(), 6)) : addDaysYMD(todayYMD(), 6);
+
+      confOverlay.classList.add("show");
+      confOverlay.setAttribute("aria-hidden", "false");
+    }
+
+    function closeConfModal(){
+      if (!confOverlay) return;
+      confOverlay.classList.remove("show");
+      confOverlay.setAttribute("aria-hidden", "true");
+    }
+
+    if (confOverlay) {
+      confOverlay.addEventListener("click", (e) => { if (e.target === confOverlay) closeConfModal(); });
+    }
+
+    if (confModalHojeMais6) {
+      confModalHojeMais6.addEventListener("click", () => {
+        const t = todayYMD();
+        if (confModalStart) confModalStart.value = t;
+        if (confModalEnd) confModalEnd.value = addDaysYMD(t, 6);
+      });
+    }
+
+    if (confModalApply) {
+      confModalApply.addEventListener("click", () => {
+        const b = confModalBarber ? confModalBarber.value : "";
+        if (!b) {
+          alert("Selecione um barbeiro para continuar.");
+          return;
+        }
+
+        if (confBarberFilter) confBarberFilter.value = b;
+        if (confStart && confModalStart) confStart.value = confModalStart.value || todayYMD();
+        if (confEnd && confModalEnd) confEnd.value = confModalEnd.value || addDaysYMD(todayYMD(), 6);
+
+        closeConfModal();
+        applyConfirmedFilter();
+      });
+    }
+
+    function initConfirmadosOnEnter(){
+      // sempre entra com padrão hoje até hoje+6 (se ainda vazio)
+      setDefaultConfirmedRange();
+
+      // se não escolheu barbeiro => modal obrigatório
+      if (confBarberFilter && !confBarberFilter.value) {
+        openConfModal();
+      } else {
+        applyConfirmedFilter();
+      }
     }
 
     // ===== horários no admin =====
@@ -1105,27 +1003,29 @@
     }
 
     async function refreshAdminHorarios(){
+      if (!admHorario) return;
+
       const bId = admBarberId.value;
       const dataYMD = toYMD(admData.value);
 
       admHorario.innerHTML = `<option value="">Selecione barbeiro e data</option>`;
       admHorario.disabled = true;
-      admHorarioMsg.textContent = "";
+      if (admHorarioMsg) admHorarioMsg.textContent = "";
 
       if (!bId) return;
       if (!dataYMD) {
-        admHorarioMsg.innerHTML = `<span class="bad">Escolha a data no calendário.</span>`;
+        if (admHorarioMsg) admHorarioMsg.innerHTML = `<span class="bad">Escolha a data no calendário.</span>`;
         return;
       }
 
-      admHorarioMsg.textContent = "Carregando horários...";
+      if (admHorarioMsg) admHorarioMsg.textContent = "Carregando horários...";
       try{
         const res = await fetch(`/horarios?data=${encodeURIComponent(dataYMD)}&barberId=${encodeURIComponent(bId)}`);
         if(!res.ok) throw new Error("Falha ao buscar horários.");
         const horarios = await res.json();
 
         if(!Array.isArray(horarios) || horarios.length === 0){
-          admHorarioMsg.innerHTML = `<span class="bad">Nenhum horário disponível nessa data.</span>`;
+          if (admHorarioMsg) admHorarioMsg.innerHTML = `<span class="bad">Nenhum horário disponível nessa data.</span>`;
           return;
         }
 
@@ -1138,15 +1038,15 @@
         });
 
         admHorario.disabled = false;
-        admHorarioMsg.innerHTML = `<span class="ok">Horários carregados ✅</span>`;
+        if (admHorarioMsg) admHorarioMsg.innerHTML = `<span class="ok">Horários carregados ✅</span>`;
       }catch(e){
-        admHorarioMsg.innerHTML = `<span class="bad">Erro ao buscar horários.</span>`;
+        if (admHorarioMsg) admHorarioMsg.innerHTML = `<span class="bad">Erro ao buscar horários.</span>`;
       }
     }
 
-    admBarberId.addEventListener("change", () => refreshAdminHorarios());
+    if (admBarberId) admBarberId.addEventListener("change", () => refreshAdminHorarios());
 
-    // ===== calendário modal =====
+    // ===== calendário modal (Agendar manualmente) =====
     const overlay = document.getElementById("admOverlay");
     const daysEl = document.getElementById("admDays");
     const titleEl = document.getElementById("admCalTitle");
@@ -1162,7 +1062,6 @@
     let viewMonth = minDate.getMonth();
     let tempSelected = null;
 
-    function pad2(n){ return String(n).padStart(2, "0"); }
     function toDMY(d){ return `${pad2(d.getDate())}-${pad2(d.getMonth()+1)}-${d.getFullYear()}`; }
 
     function openCal(){
@@ -1217,28 +1116,28 @@
       }
     }
 
-    prevBtn.addEventListener("click", () => {
+    if (prevBtn) prevBtn.addEventListener("click", () => {
       viewMonth--;
       if(viewMonth < 0){ viewMonth = 11; viewYear--; }
       renderCalendar();
     });
-    nextBtn.addEventListener("click", () => {
+    if (nextBtn) nextBtn.addEventListener("click", () => {
       viewMonth++;
       if(viewMonth > 11){ viewMonth = 0; viewYear++; }
       renderCalendar();
     });
 
-    cancelBtn.addEventListener("click", closeCal);
-    overlay.addEventListener("click", (e) => { if (e.target === overlay) closeCal(); });
+    if (cancelBtn) cancelBtn.addEventListener("click", closeCal);
+    if (overlay) overlay.addEventListener("click", (e) => { if (e.target === overlay) closeCal(); });
 
-    okBtn.addEventListener("click", async () => {
+    if (okBtn) okBtn.addEventListener("click", async () => {
       if (!tempSelected) return;
       admData.value = toDMY(tempSelected);
       closeCal();
       await refreshAdminHorarios();
     });
 
-    admData.addEventListener("click", openCal);
+    if (admData) admData.addEventListener("click", openCal);
   </script>
 </body>
 </html>
