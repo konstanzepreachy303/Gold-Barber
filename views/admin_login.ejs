@@ -1,35 +1,248 @@
 <!doctype html>
-<html>
+<html lang="pt-br">
 <head>
   <meta charset="utf-8" />
-  <title>Login Admin</title>
+  <title>Admin • Login</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body{font-family:Arial, sans-serif; max-width:520px; margin:40px auto; padding:0 16px;}
-    .box{border:1px solid #ddd; border-radius:12px; padding:16px;}
-    label{display:block; margin-top:12px; font-weight:700;}
-    input{width:100%; padding:10px; border-radius:10px; border:1px solid #ccc;}
-    button{margin-top:16px; width:100%; padding:12px; border:0; border-radius:10px; cursor:pointer;}
-    .err{color:#b00020; margin:10px 0;}
+    :root{
+      --bg: #0b0b0b;
+      --panel: rgba(18,18,18,.92);
+      --border: rgba(255,255,255,.10);
+      --text: #f4f4f4;
+      --muted: rgba(255,255,255,.70);
+      --gold: #c9a227;
+      --gold2: #e6c55a;
+      --shadow: 0 18px 55px rgba(0,0,0,.65);
+      --radius: 18px;
+    }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:28px 16px;
+      font-family: Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1000px 500px at 20% 20%, rgba(201,162,39,.22), transparent 60%),
+        radial-gradient(900px 520px at 80% 30%, rgba(201,162,39,.14), transparent 55%),
+        linear-gradient(180deg, #070707, #0c0c0c 50%, #070707);
+    }
+
+    .wrap{
+      width: 980px;
+      max-width: 100%;
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:18px;
+    }
+
+    .hero{
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      position:relative;
+      min-height: 380px;
+      padding: 26px;
+    }
+
+    .hero:before{
+      content:"";
+      position:absolute;
+      inset:-2px;
+      background:
+        radial-gradient(900px 320px at 10% 10%, rgba(201,162,39,.22), transparent 55%),
+        radial-gradient(800px 360px at 85% 15%, rgba(201,162,39,.12), transparent 55%);
+      pointer-events:none;
+      opacity:.85;
+    }
+
+    .brand{
+      position:relative;
+      display:flex;
+      align-items:center;
+      gap:14px;
+    }
+
+    .brand img{
+      width: 64px;
+      height: 64px;
+      object-fit: contain;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.25);
+      padding: 8px;
+    }
+
+    .brand h1{
+      margin:0;
+      font-size: 20px;
+      letter-spacing:.3px;
+    }
+    .brand p{
+      margin:6px 0 0 0;
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .hero .lines{
+      position:relative;
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+      max-width: 56ch;
+      font-weight: 700;
+    }
+
+    .chips{
+      position:relative;
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-top: 18px;
+    }
+    .chip{
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.25);
+      padding:10px 12px;
+      border-radius: 999px;
+      font-weight:900;
+      font-size: 12px;
+      color: rgba(255,255,255,.86);
+    }
+    .chip strong{ color: var(--gold2); }
+
+    .card{
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      padding: 20px;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      gap: 12px;
+    }
+
+    .card h2{
+      margin:0;
+      font-size: 16px;
+      letter-spacing:.2px;
+    }
+
+    label{
+      display:block;
+      margin: 10px 0 6px;
+      font-weight: 900;
+      font-size: 12px;
+      color: rgba(255,255,255,.88);
+    }
+
+    input{
+      width:100%;
+      padding: 12px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.35);
+      color: var(--text);
+      outline: none;
+      font-weight: 800;
+    }
+    input:focus{
+      border-color: rgba(201,162,39,.65);
+      box-shadow: 0 0 0 2px rgba(201,162,39,.18);
+    }
+
+    .btn{
+      width:100%;
+      margin-top: 8px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: none;
+      cursor:pointer;
+      font-weight: 1000;
+      letter-spacing:.2px;
+      background: linear-gradient(180deg, var(--gold2), var(--gold));
+      color:#111;
+      box-shadow: 0 10px 25px rgba(201,162,39,.22);
+    }
+    .btn:hover{ filter: brightness(1.03); }
+
+    .error{
+      border: 1px solid rgba(255,0,80,.35);
+      background: rgba(255,0,80,.12);
+      color: #ffd6df;
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-weight: 900;
+      font-size: 13px;
+    }
+
+    .foot{
+      margin-top: 10px;
+      color: rgba(255,255,255,.55);
+      font-size: 12px;
+      font-weight: 700;
+      text-align:center;
+    }
+
+    @media (max-width: 880px){
+      .wrap{ grid-template-columns: 1fr; }
+      .hero{ min-height: unset; }
+    }
   </style>
 </head>
 <body>
-  <h1>🔐 Admin - Login</h1>
+  <div class="wrap">
+    <section class="hero">
+      <div class="brand">
+        <img src="/logo.png" alt="Logo da barbearia" onerror="this.style.display='none'">
+        <div>
+          <h1>Painel Administrativo</h1>
+          <p>Gerencie barbeiros, agenda e confirmações</p>
+        </div>
+      </div>
 
-  <div class="box">
-    <% if (error) { %>
-      <div class="err"><%= error %></div>
-    <% } %>
+      <div class="lines">
+        Entre com seu usuário e senha para acessar o painel.<br/>
+        Barbearia: <span style="color:#fff; font-weight:1000;">Gold</span> <span style="color:#e6c55a; font-weight:1000;">Barber</span>.
+      </div>
 
-    <form method="POST" action="/admin/login">
-      <label>Usuário</label>
-      <input name="username" required />
+      <div class="chips">
+        <div class="chip">📅 <strong>Agenda</strong></div>
+        <div class="chip">🧔 <strong>Barbeiros</strong></div>
+        <div class="chip">✅ <strong>Confirmados</strong></div>
+        <div class="chip">⏳ <strong>Pendentes</strong></div>
+      </div>
+    </section>
 
-      <label>Senha</label>
-      <input name="password" type="password" required />
+    <section class="card">
+      <h2>Login do Admin</h2>
 
-      <button type="submit">Entrar</button>
-    </form>
+      <% if (error) { %>
+        <div class="error"><%= error %></div>
+      <% } %>
+
+      <form method="POST" action="/admin/login">
+        <label>Usuário</label>
+        <input name="username" autocomplete="username" required />
+
+        <label>Senha</label>
+        <input name="password" type="password" autocomplete="current-password" required />
+
+        <button class="btn" type="submit">Entrar</button>
+      </form>
+
+      <div class="foot">© <%= new Date().getFullYear() %> • Barbearia</div>
+    </section>
   </div>
 </body>
 </html>

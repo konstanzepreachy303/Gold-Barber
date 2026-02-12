@@ -22,6 +22,45 @@
       border-radius: 16px;
       padding: 18px;
     }
+
+    /* ✅ NOVO: Header com logo + textos (não fica “só a logo”) */
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border: 1px solid #1f1f1f;
+      border-radius: 14px;
+      background: #0f0f0f;
+      margin-bottom: 14px;
+    }
+    .brand img {
+      width: 56px;
+      height: 56px;
+      object-fit: contain;
+      border-radius: 12px;
+      background: #0b0b0b;
+      border: 1px solid #232323;
+      padding: 6px;
+    }
+    .brand .brandText {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      line-height: 1.2;
+    }
+    .brand .brandText strong {
+      font-size: 14px;
+      font-weight: 900;
+      color: #fff;
+      letter-spacing: .2px;
+    }
+    .brand .brandText span {
+      font-size: 12px;
+      font-weight: 800;
+      color: #bdbdbd;
+    }
+
     h1 { margin: 0 0 8px; font-size: 22px; }
     p { margin: 0 0 14px; color: #bdbdbd; }
 
@@ -204,12 +243,25 @@
     }
     .cal-foot button.primary { background: #c9a227; color: #111; border: none; }
 
-    @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+    @media (max-width: 640px) {
+      .grid { grid-template-columns: 1fr; }
+      .brand img { width: 52px; height: 52px; }
+    }
   </style>
 </head>
 
 <body>
   <div class="container">
+
+    <!-- ✅ NOVO: Logo integrada, mantendo o título/fluxo -->
+    <div class="brand">
+      <img src="/img/logo.png" alt="Logo da barbearia" />
+      <div class="brandText">
+        <strong>Gold Barber</strong>
+        <span>Agendamento online</span>
+      </div>
+    </div>
+
     <h1>💈 Agendar Horário</h1>
     <p>NOME → BARBEIRO → DATA → horários do barbeiro escolhido.</p>
 
