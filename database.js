@@ -52,7 +52,7 @@ db.serialize(() => {
     )
   `);
 
-  // agendamentos (agora com barber_id)
+  // agendamentos (com barber_id)
   db.run(`
     CREATE TABLE IF NOT EXISTS agendamentos (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -62,6 +62,21 @@ db.serialize(() => {
       data TEXT NOT NULL,
       horario TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'agendado',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (barber_id) REFERENCES barbers(id)
+    )
+  `);
+
+  // ✅ NOVO: plano mensalista (recorrência semanal)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS mensalistas (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      barber_id INTEGER NOT NULL,
+      nome TEXT NOT NULL,
+      start_ymd TEXT NOT NULL,          -- yyyy-mm-dd (início do plano)
+      end_ymd TEXT,                     -- yyyy-mm-dd (fim) OU NULL (sem previsão)
+      weekday INTEGER NOT NULL,         -- 0..6 (Dom..Sáb)
+      horario TEXT NOT NULL,            -- HH:MM
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (barber_id) REFERENCES barbers(id)
     )

@@ -56,6 +56,9 @@ function dbRun(sql, params = []) {
 function isValidYMD(s) {
   return /^\d{4}-\d{2}-\d{2}$/.test(String(s || ""));
 }
+function isValidHHMM(s) {
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(String(s || ""));
+}
 function getDowFromYMD(ymd) {
   const [y, m, d] = ymd.split("-").map(Number);
   return new Date(y, m - 1, d).getDay(); // 0..6
@@ -161,6 +164,47 @@ async function generateSlotsForDateAndBarber(ymd, barberId) {
   return result;
 }
 
+// ✅ NOVO: horários bloqueados por plano mensalista numa data específica
+async function getMensalistaBlockedTimes(ymd, barberId) {
+  if (!isValidYMD(ymd)) return [];
+  const dow = getDowFromYMD(ymd);
+
+  const rows = await dbAll(
+    `
+    SELECT horario
+    FROM mensalistas
+    WHERE barber_id = ?
+      AND weekday = ?
+      AND start_ymd <= ?
+      AND (end_ymd IS NULL OR end_ymd = '' OR end_ymd >= ?)
+  `,
+    [barberId, dow, ymd, ymd]
+  );
+
+  return rows.map((r) => r.horario);
+}
+
+async function isMensalistaBlocking(ymd, barberId, horario) {
+  if (!isValidYMD(ymd) || !barberId || !isValidHHMM(horario)) return false;
+  const dow = getDowFromYMD(ymd);
+
+  const row = await dbGet(
+    `
+    SELECT id
+    FROM mensalistas
+    WHERE barber_id = ?
+      AND weekday = ?
+      AND horario = ?
+      AND start_ymd <= ?
+      AND (end_ymd IS NULL OR end_ymd = '' OR end_ymd >= ?)
+    LIMIT 1
+  `,
+    [barberId, dow, horario, ymd, ymd]
+  );
+
+  return !!row;
+}
+
 // -------------------- whatsapp token (optional) --------------------
 const wppTokens = new Map(); // token -> { wa_id, expiresAt }
 function cleanupTokens() {
@@ -216,7 +260,12 @@ app.get("/horarios", async (req, res) => {
     [bId, data]
   );
 
-  const ocupados = ocupadosRows.map((r) => r.horario);
+  const ocupadosAg = ocupadosRows.map((r) => r.horario);
+
+  // ✅ NOVO: bloqueio mensalista
+  const ocupadosMensal = await getMensalistaBlockedTimes(data, bId);
+
+  const ocupados = Array.from(new Set([...ocupadosAg, ...ocupadosMensal]));
   const livres = baseSlots.filter((h) => !ocupados.includes(h));
   res.json(livres);
 });
@@ -242,6 +291,11 @@ app.post("/agendar", async (req, res) => {
     return res
       .status(400)
       .send("❌ Horário inválido para esse barbeiro nessa data.");
+  }
+
+  // ✅ NOVO: se mensalista bloqueia, não agenda
+  if (await isMensalistaBlocking(data, bId, horario)) {
+    return res.status(400).send("❌ Horário indisponível (reservado para mensalista).");
   }
 
   let telefoneFinal = String(telefone || "").trim();
@@ -296,8 +350,7 @@ app.post("/admin/login", async (req, res) => {
     return res.render("admin_login", { error: "Usuário/senha inválidos" });
 
   const ok = await bcrypt.compare(String(password || ""), user.password_hash);
-  if (!ok)
-    return res.render("admin_login", { error: "Usuário/senha inválidos" });
+  if (!ok) return res.render("admin_login", { error: "Usuário/senha inválidos" });
 
   req.session.adminUser = { id: user.id, username: user.username };
   return res.redirect("/admin");
@@ -309,9 +362,7 @@ app.post("/admin/logout", (req, res) => {
 
 // -------------------- ADMIN PANEL --------------------
 app.get("/admin", requireAdmin, async (req, res) => {
-  const barbers = await dbAll(
-    `SELECT id, name, is_active FROM barbers ORDER BY id`
-  );
+  const barbers = await dbAll(`SELECT id, name, is_active FROM barbers ORDER BY id`);
 
   const agendamentos = await dbAll(
     `SELECT a.*, b.name AS barber_name
@@ -325,10 +376,18 @@ app.get("/admin", requireAdmin, async (req, res) => {
     barberConfigs[b.id] = await loadBarberConfig(b.id);
   }
 
+  const mensalistas = await dbAll(
+    `SELECT m.*, b.name AS barber_name
+     FROM mensalistas m
+     JOIN barbers b ON b.id = m.barber_id
+     ORDER BY m.barber_id, m.weekday, m.horario, m.start_ymd`
+  );
+
   res.render("admin", {
     agendamentos,
     barbers,
     barberConfigs,
+    mensalistas,
     adminUser: req.session.adminUser,
   });
 });
@@ -440,7 +499,20 @@ app.post("/admin/barbeiro/:id/config", requireAdmin, async (req, res) => {
   res.redirect("/admin");
 });
 
-// ✅ ADMIN: AGENDAR MANUALMENTE -> abre tela de finalizado
+// ✅ NOVO: baseSlots (para montar lista de horários sem considerar ocupados/mensalistas)
+app.get("/admin/baseSlots", requireAdmin, async (req, res) => {
+  const { data, barberId } = req.query;
+  const bId = Number(barberId);
+  if (!data || !bId) return res.status(400).json([]);
+
+  const barber = await dbGet(`SELECT id FROM barbers WHERE id = ?`, [bId]);
+  if (!barber) return res.status(400).json([]);
+
+  const baseSlots = await generateSlotsForDateAndBarber(String(data), bId);
+  return res.json(baseSlots);
+});
+
+// ✅ ADMIN: AGENDAR MANUALMENTE
 app.post("/admin/agendar", requireAdmin, async (req, res) => {
   const body = req.body || {};
 
@@ -469,6 +541,11 @@ app.post("/admin/agendar", requireAdmin, async (req, res) => {
       .send("❌ Horário inválido para esse barbeiro nessa data (ou é folga).");
   }
 
+  // ✅ NOVO: mensalista bloqueia
+  if (await isMensalistaBlocking(data, barberId, horario)) {
+    return res.status(400).send("❌ Horário indisponível (reservado para mensalista).");
+  }
+
   const conflito = await dbGet(
     `SELECT id FROM agendamentos
      WHERE barber_id = ?
@@ -480,7 +557,9 @@ app.post("/admin/agendar", requireAdmin, async (req, res) => {
   );
 
   if (conflito) {
-    return res.status(400).send("❌ Já existe agendamento nesse horário para esse barbeiro.");
+    return res
+      .status(400)
+      .send("❌ Já existe agendamento nesse horário para esse barbeiro.");
   }
 
   await dbRun(
@@ -489,7 +568,7 @@ app.post("/admin/agendar", requireAdmin, async (req, res) => {
     [barberId, nome, telefone || "00000000000", data, horario, status || "agendado"]
   );
 
-  // ✅ abre nova tela de finalizado
+  // se você já tem view admin_sucesso, mantém
   return res.render("admin_sucesso", {
     barberName: barber.name,
     nome,
@@ -500,10 +579,83 @@ app.post("/admin/agendar", requireAdmin, async (req, res) => {
   });
 });
 
+// ✅ NOVO: criar plano mensalista
+app.post("/admin/mensalistas", requireAdmin, async (req, res) => {
+  const body = req.body || {};
+  const barberId = Number(body.barberId);
+  const nome = String(body.nome || "").trim();
+  const start = toYMD(String(body.start || "").trim());
+  const endRaw = toYMD(String(body.end || "").trim());
+  const end = endRaw && isValidYMD(endRaw) ? endRaw : null;
+
+  const weekday = Number(body.weekday);
+  const horario = String(body.horario || "").trim();
+
+  if (!barberId || !nome || !start || !isValidYMD(start) || !isValidHHMM(horario)) {
+    return res.status(400).send("❌ Preencha: barbeiro, nome, data início e horário.");
+  }
+  if (!(weekday >= 0 && weekday <= 6)) {
+    return res.status(400).send("❌ Dia da semana inválido.");
+  }
+  if (end && end < start) {
+    return res.status(400).send("❌ Data fim não pode ser menor que a data início.");
+  }
+
+  // início precisa bater com o weekday escolhido
+  const dowStart = getDowFromYMD(start);
+  if (dowStart !== weekday) {
+    return res
+      .status(400)
+      .send("❌ A data de início não bate com o dia da semana selecionado.");
+  }
+
+  // horário precisa existir como slot naquela data (respeita config, almoço e dia trabalhado)
+  const slots = await generateSlotsForDateAndBarber(start, barberId);
+  if (!slots.includes(horario)) {
+    return res
+      .status(400)
+      .send("❌ Horário inválido para esse barbeiro nesse dia (confira config/folga/almoço).");
+  }
+
+  // não pode conflitar com outro plano mensalista no mesmo barbeiro/dia/horário com período sobreposto
+  const newEnd = end || "9999-12-31";
+  const conflict = await dbGet(
+    `
+    SELECT id
+    FROM mensalistas
+    WHERE barber_id = ?
+      AND weekday = ?
+      AND horario = ?
+      AND NOT (COALESCE(end_ymd,'9999-12-31') < ? OR start_ymd > ?)
+    LIMIT 1
+  `,
+    [barberId, weekday, horario, start, newEnd]
+  );
+
+  if (conflict) {
+    return res.status(400).send("❌ Já existe um plano mensalista nesse dia/horário (período conflitante).");
+  }
+
+  await dbRun(
+    `
+    INSERT INTO mensalistas (barber_id, nome, start_ymd, end_ymd, weekday, horario)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `,
+    [barberId, nome, start, end, weekday, horario]
+  );
+
+  return res.redirect("/admin");
+});
+
+// ✅ NOVO: remover plano mensalista
+app.post("/admin/mensalistas/:id/delete", requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id) return res.redirect("/admin");
+  await dbRun(`DELETE FROM mensalistas WHERE id = ?`, [id]);
+  return res.redirect("/admin");
+});
+
 // -------------------- start --------------------
 app.listen(PORT, () => {
   console.log(`✅ Server running on http://localhost:${PORT}`);
 });
-
-
-
