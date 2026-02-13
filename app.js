@@ -93,6 +93,17 @@ function toYMD(input) {
   return null;
 }
 
+function addDaysYMD(ymd, days) {
+  const [y, m, d] = ymd.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() + Number(days || 0));
+  return `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}`;
+}
+function todayYMD() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
 async function loadBarberConfig(barberId) {
   const cfg = await dbGet(`SELECT * FROM barber_config WHERE barber_id = ?`, [
     barberId,
@@ -161,6 +172,38 @@ async function generateSlotsForDateAndBarber(ymd, barberId) {
   return result;
 }
 
+// ✅ pega uma data “válida” para representar um dia da semana do barbeiro
+// (precisa ser um dia de trabalho e que não seja folga)
+async function sampleDateForWeekday(barberId, weekday) {
+  const cfg = await loadBarberConfig(barberId);
+  const wd = Number(weekday);
+
+  if (!(wd >= 0 && wd <= 6)) return null;
+  if (!cfg.workDays?.[wd]) return null; // não trabalha nesse dia
+
+  let cursor = todayYMD();
+
+  // avança até bater o dia da semana
+  for (let i = 0; i < 400; i++) {
+    if (getDowFromYMD(cursor) === wd) break;
+    cursor = addDaysYMD(cursor, 1);
+  }
+
+  // se caiu numa folga específica, pula 7 em 7 até achar uma data ok
+  for (let i = 0; i < 60; i++) {
+    if (!cfg.daysOffDates?.includes(cursor)) return cursor;
+    cursor = addDaysYMD(cursor, 7);
+  }
+
+  return null;
+}
+
+async function slotsForWeekday(barberId, weekday) {
+  const sample = await sampleDateForWeekday(barberId, weekday);
+  if (!sample) return [];
+  return generateSlotsForDateAndBarber(sample, barberId);
+}
+
 // ✅ conflito com plano mensalista (regra recorrente semanal)
 async function hasMensalistaConflict(barberId, ymd, horario) {
   if (!barberId || !isValidYMD(ymd) || !horario) return false;
@@ -216,7 +259,7 @@ app.get("/barbeiros", async (req, res) => {
   res.json(barbers);
 });
 
-// horários disponíveis (exige barberId)
+// horários disponíveis (exige barberId) — usado no agendamento público e agendar manualmente
 app.get("/horarios", async (req, res) => {
   const { data, barberId } = req.query;
   const bId = Number(barberId);
@@ -238,10 +281,9 @@ app.get("/horarios", async (req, res) => {
        AND status != 'cancelado'`,
     [bId, data]
   );
-
   const ocupados = ocupadosRows.map((r) => r.horario);
 
-  // ✅ remove slots “travados” pelo mensalista
+  // remove slots “travados” pelo mensalista
   const dow = getDowFromYMD(data);
   const mensalistaRows = await dbAll(
     `
@@ -261,6 +303,23 @@ app.get("/horarios", async (req, res) => {
   );
 
   res.json(livres);
+});
+
+// ✅ horários por dia da semana (usado pelo Plano Mensalista)
+app.get("/horarios_weekday", async (req, res) => {
+  const bId = Number(req.query.barberId);
+  const weekday = Number(req.query.weekday);
+
+  if (!bId || !(weekday >= 0 && weekday <= 6)) return res.json([]);
+
+  const barber = await dbGet(
+    `SELECT id FROM barbers WHERE id = ? AND is_active = 1`,
+    [bId]
+  );
+  if (!barber) return res.json([]);
+
+  const slots = await slotsForWeekday(bId, weekday);
+  res.json(slots);
 });
 
 // agendar (público)
@@ -286,9 +345,11 @@ app.post("/agendar", async (req, res) => {
       .send("❌ Horário inválido para esse barbeiro nessa data.");
   }
 
-  // ✅ bloqueia se for mensalista
+  // bloqueia se for mensalista
   if (await hasMensalistaConflict(bId, data, horario)) {
-    return res.status(400).send("❌ Horário indisponível (reservado para mensalista).");
+    return res
+      .status(400)
+      .send("❌ Horário indisponível (reservado para mensalista).");
   }
 
   let telefoneFinal = String(telefone || "").trim();
@@ -318,7 +379,6 @@ app.post("/agendar", async (req, res) => {
 
   if (conflito) return res.send("❌ Horário indisponível");
 
-  // público normalmente entra como "agendado" (aguardando)
   await dbRun(
     `INSERT INTO agendamentos (barber_id, nome, telefone, data, horario, status)
      VALUES (?, ?, ?, ?, ?, 'agendado')`,
@@ -372,7 +432,6 @@ app.get("/admin", requireAdmin, async (req, res) => {
     barberConfigs[b.id] = await loadBarberConfig(b.id);
   }
 
-  // ✅ lista planos mensalistas (já “traduzido” pro que o admin.ejs espera)
   const mensalistas = await dbAll(
     `
     SELECT
@@ -391,11 +450,49 @@ app.get("/admin", requireAdmin, async (req, res) => {
   `
   );
 
+  // gerar ocorrências de mensalista para aparecer em "confirmados"
+  const today = todayYMD();
+  const winStart = addDaysYMD(today, -365);
+  const winEnd = addDaysYMD(today, 365);
+
+  const mensalistaConfirmados = [];
+  for (const p of mensalistas) {
+    const start = p.start_ymd;
+    const end = p.end_ymd && String(p.end_ymd).trim() ? p.end_ymd : null;
+
+    const rangeStart = start > winStart ? start : winStart;
+    const rangeEnd = end ? (end < winEnd ? end : winEnd) : winEnd;
+
+    if (!isValidYMD(rangeStart) || !isValidYMD(rangeEnd) || rangeEnd < rangeStart)
+      continue;
+
+    let cursor = rangeStart;
+    while (cursor <= rangeEnd && getDowFromYMD(cursor) !== Number(p.weekday)) {
+      cursor = addDaysYMD(cursor, 1);
+    }
+
+    while (cursor <= rangeEnd) {
+      mensalistaConfirmados.push({
+        id: `m-${p.id}-${cursor}`,
+        is_mensalista: true,
+        barber_id: p.barber_id,
+        barber_name: p.barber_name,
+        nome: p.nome,
+        telefone: p.telefone || "",
+        data: cursor,
+        horario: p.horario,
+        status: "aprovado",
+      });
+      cursor = addDaysYMD(cursor, 7);
+    }
+  }
+
   res.render("admin", {
     agendamentos,
     barbers,
     barberConfigs,
-    mensalistas, // ✅ o admin.ejs usa "mensalistas"
+    mensalistas,
+    mensalistaConfirmados,
     adminUser: req.session.adminUser,
   });
 });
@@ -407,17 +504,6 @@ app.post("/admin/status", requireAdmin, async (req, res) => {
 
   await dbRun(`UPDATE agendamentos SET status = ? WHERE id = ?`, [status, id]);
   res.json({ ok: true });
-});
-
-// listar agendamentos (json)
-app.get("/admin/agendamentos", requireAdmin, async (req, res) => {
-  const rows = await dbAll(
-    `SELECT a.*, b.name AS barber_name
-     FROM agendamentos a
-     JOIN barbers b ON b.id = a.barber_id
-     ORDER BY a.data, a.horario`
-  );
-  res.json(rows);
 });
 
 // ativar/desativar barbeiro
@@ -512,20 +598,18 @@ async function handleCreateMensalista(req, res) {
   const body = req.body || {};
 
   const barberId = Number(body.barberId);
+  const nome = String(body.nome || "").trim();
+  const telefone = String(body.telefone || "").trim();
 
-  // aceita tanto o padrão do admin.ejs (nome/start/end/weekday) quanto o antigo (client_name/start_ymd/end_ymd/dow)
-  const nome = String(body.nome || body.client_name || "").trim();
-  const telefone = String(body.telefone || body.client_phone || "").trim();
-
-  const start_ymd = toYMD(String(body.start || body.start_ymd || "").trim());
-  const endRaw = String(body.end || body.end_ymd || "").trim();
+  const start_ymd = toYMD(String(body.start || "").trim());
+  const endRaw = String(body.end || "").trim();
   const end_ymd = endRaw ? toYMD(endRaw) : null;
 
-  const weekday = Number(body.weekday ?? body.dow);
+  const weekday = Number(body.weekday);
   const horario = String(body.horario || "").trim();
 
   if (!barberId || !nome || !start_ymd || !isValidYMD(start_ymd) || !horario) {
-    return res.status(400).send("❌ Preencha: barbeiro, nome, data início e horário.");
+    return res.status(400).send("❌ Preencha: barbeiro, nome, data início, dia da semana e horário.");
   }
   if (!(weekday >= 0 && weekday <= 6)) {
     return res.status(400).send("❌ Dia da semana inválido.");
@@ -537,36 +621,11 @@ async function handleCreateMensalista(req, res) {
     return res.status(400).send("❌ Data fim não pode ser menor que a data início.");
   }
 
-  // ✅ regra que você pediu: a data início TEM que bater com o dia da semana
-  const dowStart = getDowFromYMD(start_ymd);
-  if (dowStart !== weekday) {
-    return res
-      .status(400)
-      .send("❌ A data de início não bate com o dia da semana escolhido.");
-  }
-
-  // valida se horário existe na grade do barbeiro nesse dia
-  const slots = await generateSlotsForDateAndBarber(start_ymd, barberId);
+  // ✅ NÃO valida mais "start bate com weekday"
+  // valida se horário existe na grade do barbeiro PARA ESSE DIA DA SEMANA
+  const slots = await slotsForWeekday(barberId, weekday);
   if (!slots.includes(horario)) {
-    return res
-      .status(400)
-      .send("❌ Horário inválido para esse barbeiro (não existe na grade / pode ser folga).");
-  }
-
-  // não deixa cadastrar em cima de agendamento existente (nesse start_ymd)
-  const conflitoAg = await dbGet(
-    `SELECT id FROM agendamentos
-     WHERE barber_id = ?
-       AND data = ?
-       AND horario = ?
-       AND status != 'cancelado'
-     LIMIT 1`,
-    [barberId, start_ymd, horario]
-  );
-  if (conflitoAg) {
-    return res
-      .status(400)
-      .send("❌ Já existe agendamento nesse horário/data. Cancele/mude antes de criar o plano.");
+    return res.status(400).send("❌ Horário inválido para o dia da semana escolhido (ou barbeiro não trabalha nesse dia).");
   }
 
   // não pode criar plano em cima de outro plano ativo pro mesmo dow+horário com período sobreposto
@@ -586,7 +645,7 @@ async function handleCreateMensalista(req, res) {
   );
 
   if (existsPlan) {
-    return res.status(400).send("❌ Já existe um plano mensalista nesse mesmo horário/dia.");
+    return res.status(400).send("❌ Já existe um mensalista nesse mesmo dia/horário para esse barbeiro (período sobreposto).");
   }
 
   await dbRun(
@@ -601,6 +660,78 @@ async function handleCreateMensalista(req, res) {
   return res.redirect("/admin");
 }
 
+async function handleUpdateMensalista(req, res) {
+  const id = Number(req.params.id);
+  if (!id) return res.redirect("/admin");
+
+  const body = req.body || {};
+  const barberId = Number(body.barberId);
+  const nome = String(body.nome || "").trim();
+  const telefone = String(body.telefone || "").trim();
+
+  const start_ymd = toYMD(String(body.start || "").trim());
+  const endRaw = String(body.end || "").trim();
+  const end_ymd = endRaw ? toYMD(endRaw) : null;
+
+  const weekday = Number(body.weekday);
+  const horario = String(body.horario || "").trim();
+
+  if (!barberId || !nome || !start_ymd || !isValidYMD(start_ymd) || !horario) {
+    return res.status(400).send("❌ Preencha: barbeiro, nome, data início, dia da semana e horário.");
+  }
+  if (!(weekday >= 0 && weekday <= 6)) {
+    return res.status(400).send("❌ Dia da semana inválido.");
+  }
+  if (end_ymd && !isValidYMD(end_ymd)) {
+    return res.status(400).send("❌ Data fim inválida.");
+  }
+  if (end_ymd && end_ymd < start_ymd) {
+    return res.status(400).send("❌ Data fim não pode ser menor que a data início.");
+  }
+
+  const slots = await slotsForWeekday(barberId, weekday);
+  if (!slots.includes(horario)) {
+    return res.status(400).send("❌ Horário inválido para o dia da semana escolhido (ou barbeiro não trabalha nesse dia).");
+  }
+
+  // conflito com outro plano (ignorando o próprio id)
+  const endCompare = end_ymd || "9999-12-31";
+  const existsPlan = await dbGet(
+    `
+    SELECT id
+      FROM mensalista_plans
+     WHERE id != ?
+       AND barber_id = ?
+       AND dow = ?
+       AND horario = ?
+       AND start_ymd <= ?
+       AND (end_ymd IS NULL OR end_ymd = '' OR end_ymd >= ?)
+     LIMIT 1
+  `,
+    [id, barberId, weekday, horario, endCompare, start_ymd]
+  );
+  if (existsPlan) {
+    return res.status(400).send("❌ Já existe um mensalista nesse mesmo dia/horário para esse barbeiro (período sobreposto).");
+  }
+
+  await dbRun(
+    `
+    UPDATE mensalista_plans
+       SET barber_id = ?,
+           client_name = ?,
+           client_phone = ?,
+           start_ymd = ?,
+           end_ymd = ?,
+           dow = ?,
+           horario = ?
+     WHERE id = ?
+  `,
+    [barberId, nome, telefone || null, start_ymd, end_ymd, weekday, horario, id]
+  );
+
+  return res.redirect("/admin");
+}
+
 async function handleDeleteMensalista(req, res) {
   const id = Number(req.params.id);
   if (!id) return res.redirect("/admin");
@@ -608,15 +739,12 @@ async function handleDeleteMensalista(req, res) {
   return res.redirect("/admin");
 }
 
-// ✅ rotas novas (batem com o admin.ejs)
+// rotas
 app.post("/admin/mensalistas", requireAdmin, handleCreateMensalista);
+app.post("/admin/mensalistas/:id/update", requireAdmin, handleUpdateMensalista);
 app.post("/admin/mensalistas/:id/delete", requireAdmin, handleDeleteMensalista);
 
-// ✅ compatibilidade com as rotas antigas (caso algo ainda chame)
-app.post("/admin/mensalista/create", requireAdmin, handleCreateMensalista);
-app.post("/admin/mensalista/:id/delete", requireAdmin, handleDeleteMensalista);
-
-// ✅ ADMIN: AGENDAR MANUALMENTE -> abre tela de finalizado
+// ✅ ADMIN: AGENDAR MANUALMENTE
 app.post("/admin/agendar", requireAdmin, async (req, res) => {
   const body = req.body || {};
 
@@ -626,9 +754,7 @@ app.post("/admin/agendar", requireAdmin, async (req, res) => {
   const dataInput = String(body.data || "").trim(); // dd-mm-yyyy ou yyyy-mm-dd
   const horario = String(body.horario || "").trim();
 
-  // aqui o padrão é "agendado" (aguardando confirmação)
   const status = String(body.status || "agendado").trim();
-
   const data = toYMD(dataInput);
 
   if (!barberId || !nome || !data || !horario) {
@@ -640,12 +766,9 @@ app.post("/admin/agendar", requireAdmin, async (req, res) => {
 
   const slots = await generateSlotsForDateAndBarber(data, barberId);
   if (!slots.includes(horario)) {
-    return res
-      .status(400)
-      .send("❌ Horário inválido para esse barbeiro nessa data (ou é folga).");
+    return res.status(400).send("❌ Horário inválido para esse barbeiro nessa data (ou é folga).");
   }
 
-  // ✅ bloqueia se for mensalista
   if (await hasMensalistaConflict(barberId, data, horario)) {
     return res.status(400).send("❌ Esse horário está reservado para um mensalista.");
   }
@@ -670,7 +793,6 @@ app.post("/admin/agendar", requireAdmin, async (req, res) => {
     [barberId, nome, telefone || "00000000000", data, horario, status || "agendado"]
   );
 
-  // ✅ abre nova tela de finalizado
   return res.render("admin_sucesso", {
     barberName: barber.name,
     nome,
