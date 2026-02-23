@@ -587,6 +587,12 @@
               <button class="toggleBtn" type="button" id="confBtnHoje">Hoje</button>
               <button class="toggleBtn" type="button" id="confBtnSemana">Semana</button>
 
+              <!-- ✅ NOVO: filtro somente mensalistas -->
+              <label style="margin:0; font-weight:900; display:flex; align-items:center; gap:8px;">
+                <input type="checkbox" id="confOnlyMensalistas" />
+                Mensalistas
+              </label>
+
               <span class="pill" style="background:#f1f1f1;">Total: <span id="confTotal"><%= confirmados.length %></span></span>
             </div>
           </div>
@@ -612,7 +618,11 @@
 
                   <div class="slotList">
                     <% items.forEach(a => { %>
-                      <div class="slotItem confSlot" data-barber-id="<%= a.barber_id %>">
+                      <div
+                        class="slotItem confSlot"
+                        data-barber-id="<%= a.barber_id %>"
+                        data-is-mensalista="<%= a.is_mensalista ? '1' : '0' %>"
+                      >
                         <div class="slotLeft">
                           <span class="timePill"><%= a.horario %></span>
                           <div class="info">
@@ -1045,10 +1055,24 @@
     const confHint = document.getElementById("confHint");
     const confTotal = document.getElementById("confTotal");
 
+    const confBtnHoje = document.getElementById("confBtnHoje");
+    const confBtnSemana = document.getElementById("confBtnSemana");
+
+    // ✅ NOVO: checkbox
+    const confOnlyMensalistas = document.getElementById("confOnlyMensalistas");
+
+    // ✅ NOVO: marcar visualmente Hoje/Semana em Confirmados
+    function setConfToggleActive(btn){
+      [confBtnHoje, confBtnSemana].forEach(b=>b.classList.remove("active"));
+      if(btn) btn.classList.add("active");
+    }
+
     function applyConfirmados(){
       const bId = confBarberFilter.value;
       const start = confStart.value;
       const end = confEnd.value;
+
+      const onlyMen = !!confOnlyMensalistas?.checked;
 
       if(!bId){
         confHint.style.display = "";
@@ -1067,7 +1091,14 @@
 
         card.querySelectorAll(".confSlot").forEach(slot=>{
           const sb = slot.dataset.barberId;
-          const ok = !!bId && sb === bId && inRange;
+          const isMen = slot.dataset.isMensalista === "1";
+
+          const ok =
+            !!bId &&
+            sb === bId &&
+            inRange &&
+            (!onlyMen || isMen);
+
           slot.style.display = ok ? "" : "none";
           if(ok){ dayCount++; totalShown++; }
         });
@@ -1081,18 +1112,27 @@
       confTotal.textContent = String(totalShown);
     }
 
-    [confBarberFilter, confStart, confEnd].forEach(el=>{
-      el.addEventListener("change", applyConfirmados);
+    // se mexer manualmente em datas/barbeiro, limpa o highlight do toggle
+    confBarberFilter.addEventListener("change", ()=>{
+      setConfToggleActive(null);
+      applyConfirmados();
     });
-
-    const confBtnHoje = document.getElementById("confBtnHoje");
-    const confBtnSemana = document.getElementById("confBtnSemana");
+    confStart.addEventListener("change", ()=>{
+      setConfToggleActive(null);
+      applyConfirmados();
+    });
+    confEnd.addEventListener("change", ()=>{
+      setConfToggleActive(null);
+      applyConfirmados();
+    });
+    confOnlyMensalistas.addEventListener("change", applyConfirmados);
 
     confBtnHoje.addEventListener("click", ()=>{
       const t = new Date();
       const y = fmtYMD(t);
       confStart.value = y;
       confEnd.value = y;
+      setConfToggleActive(confBtnHoje);
       applyConfirmados();
     });
 
@@ -1102,6 +1142,7 @@
       const e = fmtYMD(addDays(t, 7));
       confStart.value = s;
       confEnd.value = e;
+      setConfToggleActive(confBtnSemana);
       applyConfirmados();
     });
 
@@ -1200,6 +1241,7 @@
       confEnd.value = e;
       closeConfOverlay();
 
+      setConfToggleActive(null);
       applyConfirmados();
     });
 
