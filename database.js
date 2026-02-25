@@ -67,6 +67,31 @@ db.serialize(() => {
     )
   `);
 
+  // ✅ NOVO: tokens de confirmação via WhatsApp (link único)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS agendamento_confirm_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      agendamento_id INTEGER NOT NULL,
+      token TEXT NOT NULL UNIQUE,
+      expires_at TEXT NOT NULL,           -- datetime('now', '+30 minutes')
+      used_at TEXT,                       -- datetime quando usado
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (agendamento_id) REFERENCES agendamentos(id)
+    )
+  `);
+
+  // ✅ NOVO: índice para acelerar a regra "1 por dia por telefone"
+  db.run(`
+    CREATE INDEX IF NOT EXISTS idx_agendamentos_telefone_data
+    ON agendamentos (telefone, data)
+  `);
+
+  // ✅ NOVO: índice para acelerar busca por token
+  db.run(`
+    CREATE INDEX IF NOT EXISTS idx_confirm_tokens_token
+    ON agendamento_confirm_tokens (token)
+  `);
+
   // ✅ NOVO: planos mensalistas (regra recorrente semanal)
   db.run(`
     CREATE TABLE IF NOT EXISTS mensalista_plans (

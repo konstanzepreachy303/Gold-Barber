@@ -23,7 +23,6 @@
       padding: 18px;
     }
 
-    /* ✅ NOVO: Header com logo + textos (não fica “só a logo”) */
     .brand {
       display: flex;
       align-items: center;
@@ -253,7 +252,6 @@
 <body>
   <div class="container">
 
-    <!-- ✅ NOVO: Logo integrada, mantendo o título/fluxo -->
     <div class="brand">
       <img src="/img/logo.png" alt="Logo da barbearia" />
       <div class="brandText">
@@ -273,6 +271,18 @@
         </div>
 
         <div class="full">
+          <label>📞 Telefone (com DDD)</label>
+          <input
+            id="telefone"
+            name="telefone"
+            required
+            inputmode="numeric"
+            placeholder="Ex: 11999998888"
+          />
+          <div class="hint">Apenas 1 agendamento por dia por telefone.</div>
+        </div>
+
+        <div class="full">
           <label>💇‍♂️ Barbeiro</label>
           <select id="barberSelect" required>
             <option value="">Carregando barbeiros...</option>
@@ -281,7 +291,6 @@
         </div>
 
         <input id="barberId" type="hidden" name="barberId" />
-        <input id="token" type="hidden" name="token" />
 
         <div class="full">
           <label>📅 Data do agendamento</label>
@@ -341,7 +350,6 @@
     const elHorarioReal = document.getElementById("horarioReal");
     const elBtnConfirmar = document.getElementById("btnConfirmar");
     const elMsg = document.getElementById("msg");
-    const elToken = document.getElementById("token");
 
     const elOverlay = document.getElementById("overlay");
     const elDays = document.getElementById("days");
@@ -350,11 +358,6 @@
     const btnNext = document.getElementById("nextMonth");
     const btnCancel = document.getElementById("cancelCal");
     const btnOk = document.getElementById("okCal");
-
-    // token whatsapp ?t=...
-    const params = new URLSearchParams(window.location.search);
-    const t = params.get("t");
-    if (t) elToken.value = t;
 
     const today = new Date();
     const minDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -378,72 +381,26 @@
       elMsg.textContent = "";
       elMsg.className = "msg";
     }
-    function resetDataEHorarios(msg){
-      elDataReal.value = "";
-      elDataVisual.value = "";
+
+    function resetDataEHorarios(text){
+      elSubinfo.textContent = text || "";
       elHorarios.innerHTML = "";
       elHorarioReal.value = "";
       elBtnConfirmar.disabled = true;
-      elSubinfo.textContent = msg || "Escolha uma data para carregar os horários.";
     }
 
     async function carregarBarbeiros(){
       try{
         const res = await fetch("/barbeiros");
-        if(!res.ok) throw new Error("Falha ao buscar barbeiros.");
-        const barbers = await res.json();
-
-        elBarberSelect.innerHTML = "";
-        const opt0 = document.createElement("option");
-        opt0.value = "";
-        opt0.textContent = "Selecione um barbeiro";
-        elBarberSelect.appendChild(opt0);
-
-        (barbers || []).forEach(b => {
-          const opt = document.createElement("option");
-          opt.value = String(b.id);
-          opt.textContent = b.name;
-          elBarberSelect.appendChild(opt);
-        });
-
-        if(!barbers || barbers.length === 0){
-          elBarberSelect.innerHTML = `<option value="">Nenhum barbeiro disponível</option>`;
-          elBarberSelect.disabled = true;
-          resetDataEHorarios("Nenhum barbeiro ativo no momento.");
-          return;
-        }
-
-        elBarberSelect.disabled = false;
-        resetDataEHorarios("Escolha um barbeiro para liberar a data.");
+        const list = await res.json();
+        elBarberSelect.innerHTML = `<option value="">Selecione...</option>` +
+          (Array.isArray(list) ? list.map(b => `<option value="${b.id}">${b.name}</option>`).join("") : "");
       }catch(e){
-        elBarberSelect.innerHTML = `<option value="">Erro ao carregar barbeiros</option>`;
-        showMsg("Erro: " + (e?.message || "Erro desconhecido"), true);
+        elBarberSelect.innerHTML = `<option value="">Erro ao carregar</option>`;
       }
     }
 
-    elBarberSelect.addEventListener("change", () => {
-      clearMsg();
-
-      const bId = elBarberSelect.value;
-      elBarberId.value = bId || "";
-
-      if (!bId) {
-        elDataVisual.disabled = true;
-        elDataVisual.value = "";
-        elDataVisual.placeholder = "Escolha o barbeiro primeiro";
-        resetDataEHorarios("Escolha um barbeiro para liberar a data.");
-        return;
-      }
-
-      elDataVisual.disabled = false;
-      elDataVisual.placeholder = "Clique para escolher a data";
-      resetDataEHorarios("Agora escolha uma data para carregar os horários.");
-    });
-
     function openCal(){
-      clearMsg();
-      if (!elBarberId.value) return showMsg("Selecione um barbeiro primeiro.", true);
-      tempSelected = null;
       renderCalendar();
       elOverlay.classList.add("show");
       elOverlay.setAttribute("aria-hidden", "false");
@@ -454,42 +411,63 @@
     }
 
     function renderCalendar(){
+      const first = new Date(viewYear, viewMonth, 1);
+      const last = new Date(viewYear, viewMonth + 1, 0);
+      const startDow = first.getDay();
+
       const monthNames = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
       elTitle.textContent = `${monthNames[viewMonth]} ${viewYear}`;
-      elDays.innerHTML = "";
 
-      const first = new Date(viewYear, viewMonth, 1);
-      const firstDow = first.getDay();
-      const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+      const cells = [];
 
-      for(let i=0;i<firstDow;i++){
-        const div = document.createElement("div");
-        div.className = "day muted";
-        div.textContent = "";
-        elDays.appendChild(div);
+      // dias “muted” antes
+      for(let i=0;i<startDow;i++){
+        cells.push({ type: "muted", label: "" });
       }
 
-      for(let d=1; d<=daysInMonth; d++){
+      for(let d=1; d<=last.getDate(); d++){
         const dt = new Date(viewYear, viewMonth, d);
+        const ymd = toYMD(dt);
+
+        const disabled = dt < minDate; // não deixa passado
+
+        cells.push({
+          type: "day",
+          label: String(d),
+          ymd,
+          disabled
+        });
+      }
+
+      elDays.innerHTML = "";
+      cells.forEach(c => {
         const div = document.createElement("div");
         div.className = "day";
-        div.textContent = String(d);
 
-        const beforeMin = dt < minDate;
-        if (beforeMin) div.classList.add("disabled");
+        if (c.type === "muted") {
+          div.className = "day muted";
+          div.textContent = "";
+          elDays.appendChild(div);
+          return;
+        }
 
-        if (tempSelected && dt.getFullYear()===tempSelected.getFullYear() && dt.getMonth()===tempSelected.getMonth() && dt.getDate()===tempSelected.getDate()){
+        div.textContent = c.label;
+
+        if (c.disabled) div.classList.add("disabled");
+
+        if (tempSelected && c.ymd === toYMD(tempSelected)) {
           div.classList.add("selected");
         }
 
         div.addEventListener("click", () => {
-          if (div.classList.contains("disabled") || div.classList.contains("muted")) return;
-          tempSelected = dt;
-          renderCalendar();
+          if (c.disabled) return;
+          tempSelected = new Date(c.ymd + "T00:00:00");
+          document.querySelectorAll(".day").forEach(x => x.classList.remove("selected"));
+          div.classList.add("selected");
         });
 
         elDays.appendChild(div);
-      }
+      });
     }
 
     btnPrev.addEventListener("click", () => {
@@ -567,10 +545,33 @@
       }
     }
 
-    // ✅ SUBMIT CORRIGIDO: envia x-www-form-urlencoded (não multipart)
+    elBarberSelect.addEventListener("change", () => {
+      const v = elBarberSelect.value;
+      elBarberId.value = v;
+
+      elDataReal.value = "";
+      elDataVisual.value = "";
+      tempSelected = null;
+
+      if (!v) {
+        elDataVisual.disabled = true;
+        elDataVisual.placeholder = "Escolha o barbeiro primeiro";
+        resetDataEHorarios("Escolha um barbeiro para liberar a data.");
+        return;
+      }
+
+      elDataVisual.disabled = false;
+      elDataVisual.placeholder = "Clique para escolher a data";
+      resetDataEHorarios("Agora escolha a data para carregar os horários.");
+    });
+
+    // ✅ SUBMIT: envia x-www-form-urlencoded (bodyParser lê certinho)
     document.getElementById("formAgendar").addEventListener("submit", async (e) => {
       e.preventDefault();
       clearMsg();
+
+      const tel = (document.getElementById("telefone").value || "").trim();
+      if (!tel) return showMsg("Informe seu telefone com DDD.", true);
 
       if (!elBarberId.value) return showMsg("Selecione um barbeiro.", true);
       if (!elDataReal.value) return showMsg("Selecione uma data.", true);
@@ -579,7 +580,6 @@
       const form = e.target;
       const fd = new FormData(form);
 
-      // transforma em URL encoded -> bodyParser lê certinho
       const body = new URLSearchParams();
       for (const [k, v] of fd.entries()) body.append(k, v);
 
@@ -592,7 +592,7 @@
 
         const text = await res.text();
 
-        // se vier HTML, renderiza a página de sucesso
+        // se vier HTML, renderiza a página
         if (res.ok && (text.includes("<!DOCTYPE") || text.includes("<html"))) {
           document.open(); document.write(text); document.close();
           return;

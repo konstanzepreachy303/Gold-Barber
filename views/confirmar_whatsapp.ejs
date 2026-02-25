@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Confirmar no WhatsApp</title>
+  <style>
+    body{
+      margin:0;
+      font-family: Arial, sans-serif;
+      background:#0b0b0b;
+      color:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-height:100vh;
+      padding:18px;
+    }
+    .box{
+      width:560px;
+      max-width:100%;
+      background:#111;
+      border:1px solid #222;
+      border-radius:18px;
+      padding:18px;
+      box-shadow:0 14px 40px rgba(0,0,0,.55);
+    }
+    h1{margin:0 0 8px; font-size:22px;}
+    .ok{color:#c9a227; font-weight:900;}
+    .sub{
+      color:#cfcfcf;
+      margin:0 0 14px;
+      font-weight:700;
+      line-height:1.4;
+    }
+    .card{
+      margin-top:12px;
+      background:#0f0f0f;
+      border:1px solid #222;
+      border-radius:14px;
+      padding:12px;
+      color:#eaeaea;
+      font-weight:700;
+      font-size:14px;
+    }
+    .row{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      padding:6px 0;
+      border-bottom:1px solid #1f1f1f;
+    }
+    .row:last-child{border-bottom:none;}
+    .k{color:#bdbdbd;}
+    .btns{
+      display:flex;
+      gap:10px;
+      margin-top:14px;
+      flex-wrap:wrap;
+    }
+    a{
+      display:inline-block;
+      text-decoration:none;
+      padding:12px 14px;
+      border-radius:14px;
+      border:1px solid #333;
+      color:#111;
+      font-weight:900;
+      background:#c9a227;
+      cursor:pointer;
+      flex:1;
+      text-align:center;
+      min-width:220px;
+    }
+    a.secondary{
+      background:#151515;
+      color:#fff;
+      border:1px solid #2a2a2a;
+      font-weight:900;
+    }
+    .hint{
+      margin-top:12px;
+      color:#bdbdbd;
+      font-size:12px;
+      font-weight:700;
+      line-height:1.4;
+      white-space: pre-line;
+    }
+    code{
+      display:block;
+      margin-top:8px;
+      padding:10px;
+      border-radius:12px;
+      background:#0c0c0c;
+      border:1px solid #222;
+      color:#ddd;
+      font-size:12px;
+      overflow:auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1 class="ok">✅ Só falta confirmar no WhatsApp</h1>
+
+    <p class="sub">
+      Seu horário foi criado como <b>pendente</b>.
+      Agora confirme enviando a mensagem para o WhatsApp oficial da barbearia (<b><%= barbershopWppDisplay %></b>)
+      e clicando no link de confirmação.
+      <br/>Esse link expira em <b>30 minutos</b>.
+    </p>
+
+    <div class="card">
+      <div class="row"><span class="k">Barbeiro</span><span><%= barberName %></span></div>
+      <div class="row"><span class="k">Cliente</span><span><%= nome %></span></div>
+      <div class="row"><span class="k">Telefone</span><span><%= telefone %></span></div>
+      <div class="row"><span class="k">Data</span><span><%= data %></span></div>
+      <div class="row"><span class="k">Horário</span><span><%= horario %></span></div>
+      <div class="row"><span class="k">Status</span><span>agendado (pendente)</span></div>
+    </div>
+
+    <div class="btns">
+      <a href="<%= waLink %>">Abrir WhatsApp da barbearia</a>
+    </div>
+
+    <div class="hint">
+Como confirmar:
+1) Clique em "Abrir WhatsApp da barbearia"
+2) Envie a mensagem
+3) No WhatsApp, clique no link "Confirmar" que veio na mensagem
+
+    </div>
+  </div>
+</body>
+</html>
