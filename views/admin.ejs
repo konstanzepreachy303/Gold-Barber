@@ -263,7 +263,6 @@
       return `${m[3]}-${m[2]}-${m[1]}`;
     }
 
-    // ✅ confirmados = aprovados + ocorrências de mensalista
     const confirmadosBase = (agendamentos || []).filter(a => a.status === "aprovado");
     const confirmados = confirmadosBase.concat(mensalistaConfirmados || []);
 
@@ -292,7 +291,6 @@
     </form>
   </header>
 
-  <!-- ✅ sequência das abas -->
   <div class="tabs">
     <button class="tabBtn active" id="tabBtnBarbeiros" type="button">Barbeiros</button>
     <button class="tabBtn" id="tabBtnConfig" type="button">Config por barbeiro</button>
@@ -443,21 +441,16 @@
 
               <div>
                 <label>Status</label>
-                <select name="status">
+                <select name="status" id="admStatus">
                   <option value="agendado" selected>agendado</option>
                   <option value="aprovado">aprovado</option>
                   <option value="cancelado">cancelado</option>
                 </select>
               </div>
 
-              <div>
+              <div class="full">
                 <label>Nome do cliente</label>
-                <input name="nome" placeholder="Nome do cliente" required />
-              </div>
-
-              <div>
-                <label>Telefone</label>
-                <input name="telefone" placeholder="Ex: 5599999999999" />
+                <input name="nome" id="admNome" placeholder="Nome do cliente" required />
               </div>
 
               <div class="full">
@@ -520,7 +513,6 @@
                 <th>Data</th>
                 <th>Hora</th>
                 <th>Cliente</th>
-                <th>Telefone</th>
                 <th>Barbeiro</th>
                 <th>Status</th>
                 <th>Mudar</th>
@@ -538,7 +530,6 @@
                   <td><%= ymdToDmy(a.data) %></td>
                   <td><%= a.horario %></td>
                   <td><%= a.nome %></td>
-                  <td><%= a.telefone || "" %></td>
                   <td><%= a.barber_name || "" %></td>
                   <td><span class="pill jsStatusPill"><%= a.status %></span></td>
                   <td>
@@ -587,7 +578,6 @@
               <button class="toggleBtn" type="button" id="confBtnHoje">Hoje</button>
               <button class="toggleBtn" type="button" id="confBtnSemana">Semana</button>
 
-              <!-- ✅ NOVO: filtro somente mensalistas -->
               <label style="margin:0; font-weight:900; display:flex; align-items:center; gap:8px;">
                 <input type="checkbox" id="confOnlyMensalistas" />
                 Mensalistas
@@ -629,7 +619,6 @@
                             <div><%= a.nome %></div>
                             <small>
                               Barbeiro: <%= a.barber_name || "" %>
-                              • Tel: <%= a.telefone || "-" %>
                             </small>
                           </div>
                         </div>
@@ -660,7 +649,6 @@
             Cria um bloqueio fixo semanal (ex.: toda quarta 18:30). Esse horário fica indisponível no agendamento público.
           </div>
 
-          <!-- modo edição -->
           <div id="menEditPill" class="pill" style="display:none; margin-top:10px; background:#fff5cf; border:1px solid #e6d18a;">
             Editando mensalista: <strong id="menEditName"></strong>
           </div>
@@ -681,11 +669,6 @@
               <div>
                 <label>Nome do mensalista</label>
                 <input name="nome" id="menNome" placeholder="Ex: Gabriel Honorato" required />
-              </div>
-
-              <div>
-                <label>Telefone (opcional)</label>
-                <input name="telefone" id="menTelefone" placeholder="5599999999999" />
               </div>
 
               <div>
@@ -757,8 +740,7 @@
                   <tr
                     data-men-id="<%= m.id %>"
                     data-men-barber-id="<%= m.barber_id %>"
-                    data-men-nome="<%- String(m.nome || '').replace(/"/g, '&quot;') %>"
-                    data-men-telefone="<%- String(m.telefone || '').replace(/"/g, '&quot;') %>"
+                    data-men-nome="<%- String(m.nome || '').replace(/\"/g, '&quot;') %>"
                     data-men-start="<%= m.start_ymd %>"
                     data-men-end="<%= m.end_ymd || '' %>"
                     data-men-weekday="<%= m.weekday %>"
@@ -867,7 +849,7 @@
     </div>
   </div>
 
-  <!-- Modal Calendário (usado no agendar manualmente) -->
+  <!-- Modal Calendário -->
   <div id="admOverlay" class="overlay" aria-hidden="true">
     <div class="cal" role="dialog" aria-modal="true" aria-label="Selecionar data">
       <div class="cal-head">
@@ -893,7 +875,6 @@
   </div>
 
   <script>
-    // ===== Helpers =====
     function pad2(n){ return String(n).padStart(2, "0"); }
     function fmtYMD(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
     function addDays(d, days){ const x = new Date(d.getTime()); x.setDate(x.getDate()+days); return x; }
@@ -904,7 +885,6 @@
       return new Date(Number(m[1]), Number(m[2])-1, Number(m[3]));
     }
 
-    // ===== Tabs =====
     const tabs = [
       { btn: "tabBtnBarbeiros", panel:"tabBarbeiros" },
       { btn: "tabBtnConfig", panel:"tabConfig" },
@@ -913,6 +893,29 @@
       { btn: "tabBtnConfirmados", panel:"tabConfirmados" },
       { btn: "tabBtnMensalistas", panel:"tabMensalistas" },
     ];
+
+    // ✅ reset do formulário manual
+    function resetManualForm(){
+      const form = document.getElementById("adminAgendarForm");
+      const admBarberId = document.getElementById("admBarberId");
+      const admData = document.getElementById("admData");
+      const admHorario = document.getElementById("admHorario");
+      const admHorarioMsg = document.getElementById("admHorarioMsg");
+      const admNome = document.getElementById("admNome");
+      const admStatus = document.getElementById("admStatus");
+
+      if(form) form.reset();
+      if(admBarberId) admBarberId.value = "";
+      if(admData) admData.value = "";
+      if(admNome) admNome.value = "";
+      if(admStatus) admStatus.value = "agendado";
+
+      if(admHorario){
+        admHorario.innerHTML = `<option value="">Selecione barbeiro e data</option>`;
+        admHorario.disabled = true;
+      }
+      if(admHorarioMsg) admHorarioMsg.textContent = "";
+    }
 
     function activateTab(btnId){
       tabs.forEach(t=>{
@@ -923,12 +926,16 @@
         p.classList.toggle("active", active);
       });
 
-      // ✅ sempre perguntar barbeiro + período ao entrar
       if(btnId === "tabBtnPendentes"){
         openPendOverlay(true);
       }
       if(btnId === "tabBtnConfirmados"){
         openConfOverlay(true);
+      }
+
+      // ✅ quando entrar no manual, limpa tudo
+      if(btnId === "tabBtnManual"){
+        resetManualForm();
       }
     }
 
@@ -936,7 +943,6 @@
       document.getElementById(t.btn).addEventListener("click", ()=>activateTab(t.btn));
     });
 
-    // ===== Status update =====
     async function updateStatus(id, status){
       try{
         const r = await fetch("/admin/status", {
@@ -959,7 +965,6 @@
     }
     window.updateStatus = updateStatus;
 
-    // ===== Pendentes filtro =====
     const barberFilter = document.getElementById("barberFilter");
     const dateFilterStart = document.getElementById("dateFilterStart");
     const dateFilterEnd = document.getElementById("dateFilterEnd");
@@ -986,7 +991,6 @@
         const st = tr.dataset.status;
         const dt = tr.dataset.date;
 
-        // barber obrigatório pra não ficar bagunçado
         let ok = true;
 
         if(!bId) ok = false;
@@ -995,7 +999,6 @@
         if(ok && start && dt < start) ok = false;
         if(ok && end && dt > end) ok = false;
 
-        // padrão: mostra só agendado (pendente)
         if(ok){
           if(st === "cancelado" && !allowCancel) ok = false;
           if(st === "aprovado" && !allowAprov) ok = false;
@@ -1017,7 +1020,6 @@
       el.addEventListener("change", applyPendentesFilter);
     });
 
-    // botões de período
     const btnHoje = document.getElementById("btnHoje");
     const btnSemanaPend = document.getElementById("btnSemanaPend");
     const btnTodosDias = document.getElementById("btnTodosDias");
@@ -1048,7 +1050,6 @@
       applyPendentesFilter();
     });
 
-    // ===== Confirmados filtro (agenda) =====
     const confBarberFilter = document.getElementById("confBarberFilter");
     const confStart = document.getElementById("confStart");
     const confEnd = document.getElementById("confEnd");
@@ -1057,11 +1058,8 @@
 
     const confBtnHoje = document.getElementById("confBtnHoje");
     const confBtnSemana = document.getElementById("confBtnSemana");
-
-    // ✅ NOVO: checkbox
     const confOnlyMensalistas = document.getElementById("confOnlyMensalistas");
 
-    // ✅ NOVO: marcar visualmente Hoje/Semana em Confirmados
     function setConfToggleActive(btn){
       [confBtnHoje, confBtnSemana].forEach(b=>b.classList.remove("active"));
       if(btn) btn.classList.add("active");
@@ -1112,7 +1110,6 @@
       confTotal.textContent = String(totalShown);
     }
 
-    // se mexer manualmente em datas/barbeiro, limpa o highlight do toggle
     confBarberFilter.addEventListener("change", ()=>{
       setConfToggleActive(null);
       applyConfirmados();
@@ -1146,7 +1143,6 @@
       applyConfirmados();
     });
 
-    // ===== Overlay Pendentes (obrigatório sempre que entrar) =====
     const pendOverlay = document.getElementById("pendOverlay");
     const pendModalBarber = document.getElementById("pendModalBarber");
     const pendModalStart = document.getElementById("pendModalStart");
@@ -1195,7 +1191,6 @@
       applyPendentesFilter();
     });
 
-    // ===== Overlay Confirmados (obrigatório sempre que entrar) =====
     const confOverlay = document.getElementById("confOverlay");
     const confModalBarber = document.getElementById("confModalBarber");
     const confModalStart = document.getElementById("confModalStart");
@@ -1245,119 +1240,6 @@
       applyConfirmados();
     });
 
-    // ===== Mensalista: carregar horários pelo /horarios (usando start) =====
-    const menForm = document.getElementById("mensalistaForm");
-    const menPlanId = document.getElementById("menPlanId");
-    const menBarberId = document.getElementById("menBarberId");
-    const menNome = document.getElementById("menNome");
-    const menTelefone = document.getElementById("menTelefone");
-    const menStart = document.getElementById("menStart");
-    const menEnd = document.getElementById("menEnd");
-    const menWeekday = document.getElementById("menWeekday");
-    const menHorario = document.getElementById("menHorario");
-    const menHorarioMsg = document.getElementById("menHorarioMsg");
-    const menWeekdayHint = document.getElementById("menWeekdayHint");
-    const menSubmitBtn = document.getElementById("menSubmitBtn");
-    const menCancelEdit = document.getElementById("menCancelEdit");
-    const menEditPill = document.getElementById("menEditPill");
-    const menEditName = document.getElementById("menEditName");
-
-    async function refreshMensalistaHorarios(){
-      menHorario.innerHTML = `<option value="">Selecione barbeiro e data início</option>`;
-      menHorario.disabled = true;
-      menHorarioMsg.textContent = "";
-
-      const b = menBarberId.value;
-      const s = menStart.value;
-      if(!b || !s) return;
-
-      try{
-        const r = await fetch(`/horarios?barberId=${encodeURIComponent(b)}&data=${encodeURIComponent(s)}`);
-        const slots = await r.json();
-        menHorario.innerHTML = `<option value="">Selecione</option>` + (slots || []).map(h=>`<option value="${h}">${h}</option>`).join("");
-        menHorario.disabled = false;
-      }catch(e){
-        menHorarioMsg.textContent = "Erro ao carregar horários.";
-      }
-    }
-
-    function updateWeekdayHint(){
-      const s = menStart.value;
-      const w = menWeekday.value;
-      if(!s || w === "") { menWeekdayHint.textContent = ""; return; }
-      const d = parseYMD(s);
-      if(!d) { menWeekdayHint.textContent = ""; return; }
-      const dow = d.getDay();
-      menWeekdayHint.textContent = (Number(w) === dow)
-        ? "✅ Dia da semana bate com a data de início."
-        : "⚠️ Atenção: a data de início precisa bater com o dia da semana escolhido.";
-    }
-
-    [menBarberId, menStart].forEach(el=>el.addEventListener("change", refreshMensalistaHorarios));
-    [menStart, menWeekday].forEach(el=>el.addEventListener("change", updateWeekdayHint));
-
-    // ===== (2) Editar mensalista =====
-    function setMensalistaEditMode(on, name){
-      if(on){
-        menEditPill.style.display = "";
-        menEditName.textContent = name || "";
-        menCancelEdit.style.display = "";
-        menSubmitBtn.textContent = "Salvar alterações";
-      }else{
-        menEditPill.style.display = "none";
-        menEditName.textContent = "";
-        menCancelEdit.style.display = "none";
-        menSubmitBtn.textContent = "Salvar plano mensalista";
-      }
-    }
-
-    window.startEditMensalista = async function(btn){
-      const tr = btn.closest("tr");
-      if(!tr) return;
-
-      const id = tr.dataset.menId;
-      const barberId = tr.dataset.menBarberId;
-      const nome = tr.dataset.menNome || "";
-      const telefone = tr.dataset.menTelefone || "";
-      const start = tr.dataset.menStart || "";
-      const end = tr.dataset.menEnd || "";
-      const weekday = tr.dataset.menWeekday || "";
-      const horario = tr.dataset.menHorario || "";
-
-      activateTab("tabBtnMensalistas");
-
-      menPlanId.value = id;
-      menBarberId.value = barberId;
-      menNome.value = nome;
-      menTelefone.value = telefone;
-      menStart.value = start;
-      menEnd.value = end;
-      menWeekday.value = weekday;
-
-      await refreshMensalistaHorarios();
-      menHorario.value = horario;
-
-      updateWeekdayHint();
-      setMensalistaEditMode(true, nome);
-
-      // muda action do form
-      menForm.action = `/admin/mensalistas/${encodeURIComponent(id)}/update`;
-    };
-
-    menCancelEdit.addEventListener("click", ()=>{
-      menPlanId.value = "";
-      menForm.action = "/admin/mensalistas";
-      menForm.reset();
-
-      menHorario.innerHTML = `<option value="">Selecione barbeiro e data início</option>`;
-      menHorario.disabled = true;
-      menHorarioMsg.textContent = "";
-      menWeekdayHint.textContent = "";
-
-      setMensalistaEditMode(false);
-    });
-
-    // ===== Calendário do Agendar manualmente (mantido simples) =====
     const admOverlay = document.getElementById("admOverlay");
     const admData = document.getElementById("admData");
     const admBarberId = document.getElementById("admBarberId");
@@ -1393,7 +1275,6 @@
 
       admDays.innerHTML = "";
 
-      // blanks
       for(let i=0;i<startDow;i++){
         const div = document.createElement("div");
         div.className = "day muted";
@@ -1424,7 +1305,6 @@
     admCancelCal.addEventListener("click", closeAdmCal);
     admOkCal.addEventListener("click", ()=>{
       if(!selectedYMD) { alert("Selecione uma data."); return; }
-      // preenche dd-mm-yyyy
       const d = parseYMD(selectedYMD);
       admData.value = `${pad2(d.getDate())}-${pad2(d.getMonth()+1)}-${d.getFullYear()}`;
       closeAdmCal();
@@ -1442,7 +1322,6 @@
       const dmy = admData.value;
       if(!b || !dmy) return;
 
-      // converte dd-mm-yyyy -> yyyy-mm-dd
       const m = dmy.match(/^(\d{2})-(\d{2})-(\d{4})$/);
       if(!m) return;
       const ymd = `${m[3]}-${m[2]}-${m[1]}`;
@@ -1459,256 +1338,20 @@
     admBarberId.addEventListener("change", refreshAdminHorarios);
 
     // ===== boot =====
-    // começa com filtros vazios; modal vai exigir escolher quando entrar nas abas
     applyPendentesFilter();
     applyConfirmados();
+
+    // ✅ abre aba via query param (ex.: /admin?tab=manual)
+    document.addEventListener("DOMContentLoaded", ()=>{
+      const tab = new URLSearchParams(window.location.search).get("tab");
+      if(tab === "manual") activateTab("tabBtnManual");
+      if(tab === "pendentes") activateTab("tabBtnPendentes");
+      if(tab === "confirmados") activateTab("tabBtnConfirmados");
+      if(tab === "mensalistas") activateTab("tabBtnMensalistas");
+      if(tab === "config") activateTab("tabBtnConfig");
+      if(tab === "barbeiros") activateTab("tabBtnBarbeiros");
+    });
   </script>
-
-
-
-<script>
-  // ===== helpers =====
-  function ymdToDmy(ymd) {
-    if (!ymd || typeof ymd !== "string") return "";
-    const m = ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (!m) return ymd;
-    return `${m[3]}-${m[2]}-${m[1]}`;
-  }
-
-  function escapeHtml(s) {
-    return String(s ?? "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-  }
-
-  // ===== pega filtros atuais (pendentes) =====
-  function getPendentesFilters() {
-    const barberId = document.getElementById("barberFilter")?.value || "";
-    const start = document.getElementById("dateFilterStart")?.value || "";
-    const end = document.getElementById("dateFilterEnd")?.value || "";
-    const showCancelados = !!document.getElementById("showCancelados")?.checked;
-    const showAprovados = !!document.getElementById("showAprovados")?.checked;
-
-    return { barberId, start, end, showCancelados, showAprovados };
-  }
-
-  function passDateRange(ymd, start, end) {
-    if (!ymd) return false;
-    if (start && ymd < start) return false;
-    if (end && ymd > end) return false;
-    return true;
-  }
-
-  // ===== render pendentes =====
-  function renderPendentes(agendamentos) {
-    const tbody = document.getElementById("agendBody");
-    if (!tbody) return;
-
-    const countInfo = document.getElementById("countInfo");
-    const { barberId, start, end, showCancelados, showAprovados } = getPendentesFilters();
-
-    // sua aba chama de "pendentes", mas a tabela mostra tudo e filtra por checkboxes
-    const filtered = (agendamentos || []).filter(a => {
-      if (barberId && String(a.barber_id) !== String(barberId)) return false;
-      if (!passDateRange(a.data, start, end)) return false;
-
-      if (!showCancelados && a.status === "cancelado") return false;
-      if (!showAprovados && a.status === "aprovado") return false;
-
-      // se quiser “pendentes de verdade”, descomenta:
-      // if (a.status !== "agendado") return false;
-
-      return true;
-    });
-
-    const rowsHtml = filtered.map(a => {
-      const id = Number(a.id);
-      const status = String(a.status || "");
-      return `
-        <tr class="agRow"
-          data-id="${id}"
-          data-barber-id="${escapeHtml(a.barber_id)}"
-          data-status="${escapeHtml(status)}"
-          data-date="${escapeHtml(a.data)}"
-        >
-          <td>${escapeHtml(ymdToDmy(a.data))}</td>
-          <td>${escapeHtml(a.horario)}</td>
-          <td>${escapeHtml(a.nome)}</td>
-          <td>${escapeHtml(a.telefone || "")}</td>
-          <td>${escapeHtml(a.barber_name || "")}</td>
-          <td><span class="pill jsStatusPill">${escapeHtml(status)}</span></td>
-          <td>
-            <select onchange="updateStatus(${id}, this.value)">
-              <option value="agendado" ${status === "agendado" ? "selected" : ""}>agendado</option>
-              <option value="aprovado" ${status === "aprovado" ? "selected" : ""}>aprovado</option>
-              <option value="cancelado" ${status === "cancelado" ? "selected" : ""}>cancelado</option>
-            </select>
-          </td>
-        </tr>
-      `;
-    }).join("");
-
-    tbody.innerHTML = rowsHtml;
-    if (countInfo) countInfo.textContent = `${filtered.length} agendamento(s)`;
-  }
-
-  // ===== render confirmados (aprovados + mensalistas) =====
-  function renderConfirmados(agendamentos, mensalistaConfirmados) {
-    const confAgenda = document.getElementById("confAgenda");
-    const confTotal = document.getElementById("confTotal");
-    if (!confAgenda) return;
-
-    // base = aprovados
-    const aprovados = (agendamentos || []).filter(a => String(a.status) === "aprovado");
-
-    // concat mensalistas (já vem em formato aprovado)
-    const confirmados = aprovados.concat(mensalistaConfirmados || []);
-
-    // filtros da aba (se existirem)
-    const barberFilter = document.getElementById("confBarberFilter")?.value || "";
-    const start = document.getElementById("confStart")?.value || "";
-    const end = document.getElementById("confEnd")?.value || "";
-    const onlyMensalistas = !!document.getElementById("confOnlyMensalistas")?.checked;
-
-    const filtered = confirmados.filter(a => {
-      if (barberFilter && String(a.barber_id) !== String(barberFilter)) return false;
-      if (!passDateRange(a.data, start, end)) return false;
-      if (onlyMensalistas && !a.is_mensalista) return false;
-      return true;
-    });
-
-    if (confTotal) confTotal.textContent = String(filtered.length);
-
-    // agrupar por data
-    const byDate = {};
-    for (const a of filtered) {
-      const key = a.data || "";
-      if (!byDate[key]) byDate[key] = [];
-      byDate[key].push(a);
-    }
-    const dates = Object.keys(byDate).sort((a,b) => String(a).localeCompare(String(b)));
-    dates.forEach(d => byDate[d].sort((x,y) => String(x.horario).localeCompare(String(y.horario))));
-
-    // re-render agenda
-    confAgenda.innerHTML = dates.map(dateKey => {
-      const items = byDate[dateKey] || [];
-      const slots = items.map(a => `
-        <div class="slotItem confSlot"
-          data-barber-id="${escapeHtml(a.barber_id)}"
-          data-is-mensalista="${a.is_mensalista ? "1" : "0"}"
-        >
-          <div class="slotLeft">
-            <span class="timePill">${escapeHtml(a.horario)}</span>
-            <div class="info">
-              <div>${escapeHtml(a.nome)}</div>
-              <small>
-                Barbeiro: ${escapeHtml(a.barber_name || "")}
-                • Tel: ${escapeHtml(a.telefone || "-")}
-              </small>
-            </div>
-          </div>
-          <div class="slotRight">
-            ${
-              a.is_mensalista
-                ? `<span class="miniPill mensalista">mensalista</span>`
-                : `<span class="miniPill">confirmado</span>`
-            }
-          </div>
-        </div>
-      `).join("");
-
-      return `
-        <div class="dayCard confDayCard" data-date="${escapeHtml(dateKey)}">
-          <div class="dayHeader">
-            <strong>${escapeHtml(ymdToDmy(dateKey))}</strong>
-            <span class="countBadge"><span class="confDayCount">${items.length}</span> horário(s)</span>
-          </div>
-          <div class="slotList">${slots}</div>
-        </div>
-      `;
-    }).join("");
-  }
-
-  // ===== fetch + refresh =====
-  let __adminRefreshTimer = null;
-
-  async function fetchAdminData() {
-    const r = await fetch("/admin/data", { headers: { "Accept": "application/json" } });
-    const j = await r.json();
-    if (!j?.ok) throw new Error("Falha ao buscar /admin/data");
-    return j;
-  }
-
-  async function refreshNow() {
-    try {
-      const { agendamentos, mensalistaConfirmados } = await fetchAdminData();
-      renderPendentes(agendamentos);
-      renderConfirmados(agendamentos, mensalistaConfirmados);
-    } catch (e) {
-      console.warn("refreshNow error:", e);
-    }
-  }
-
-  function startAutoRefresh() {
-    if (__adminRefreshTimer) return;
-    // 8s é um bom meio-termo (pode ajustar)
-    __adminRefreshTimer = setInterval(() => {
-      if (document.visibilityState === "visible") refreshNow();
-    }, 8000);
-  }
-
-  function stopAutoRefresh() {
-    if (__adminRefreshTimer) clearInterval(__adminRefreshTimer);
-    __adminRefreshTimer = null;
-  }
-
-  // ===== override/updateStatus: salva no backend e atualiza a UI sem F5 =====
-  async function updateStatus(id, status) {
-    try {
-      const r = await fetch("/admin/status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, status }),
-      });
-      const j = await r.json();
-      if (!j?.ok) throw new Error("Falha ao salvar status");
-
-      // atualiza a UI imediatamente (sem esperar o timer)
-      await refreshNow();
-    } catch (e) {
-      alert("Não foi possível atualizar o status. Veja o console.");
-      console.error(e);
-    }
-  }
-  window.updateStatus = updateStatus;
-
-  // ===== boot =====
-  document.addEventListener("DOMContentLoaded", () => {
-    refreshNow();
-    startAutoRefresh();
-
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") {
-        refreshNow();
-        startAutoRefresh();
-      } else {
-        stopAutoRefresh();
-      }
-    });
-
-    // se mexer nos filtros, re-renderiza usando a última busca
-    ["barberFilter","dateFilterStart","dateFilterEnd","showCancelados","showAprovados",
-     "confBarberFilter","confStart","confEnd","confOnlyMensalistas"
-    ].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.addEventListener("change", () => refreshNow());
-    });
-  });
-</script>
-
-
 
 </body>
 </html>
