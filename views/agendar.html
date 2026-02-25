@@ -270,17 +270,7 @@
           <input id="nome" name="nome" required minlength="2" placeholder="Seu nome" />
         </div>
 
-        <div class="full">
-          <label>📞 Telefone (com DDD)</label>
-          <input
-            id="telefone"
-            name="telefone"
-            required
-            inputmode="numeric"
-            placeholder="Ex: 11999998888"
-          />
-          <div class="hint">Apenas 1 agendamento por dia por telefone.</div>
-        </div>
+        <!-- ✅ TELEFONE REMOVIDO -->
 
         <div class="full">
           <label>💇‍♂️ Barbeiro</label>
@@ -569,9 +559,6 @@
     document.getElementById("formAgendar").addEventListener("submit", async (e) => {
       e.preventDefault();
       clearMsg();
-
-      const tel = (document.getElementById("telefone").value || "").trim();
-      if (!tel) return showMsg("Informe seu telefone com DDD.", true);
 
       if (!elBarberId.value) return showMsg("Selecione um barbeiro.", true);
       if (!elDataReal.value) return showMsg("Selecione uma data.", true);
