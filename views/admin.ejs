@@ -260,7 +260,8 @@
       if (!ymd || typeof ymd !== "string") return "";
       const m = ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
       if (!m) return ymd;
-      return `${m[3]}-${m[2]}-${m[1]}`;
+      // ✅ sempre DD/MM/AAAA
+      return `${m[3]}/${m[2]}/${m[1]}`;
     }
 
     const confirmadosBase = (agendamentos || []).filter(a => a.status === "aprovado");
@@ -391,8 +392,8 @@
                 </div>
 
                 <div class="full">
-                  <label>Folgas (dd-mm-yyyy, separadas por vírgula/espaco)</label>
-                  <input name="daysOffDates" value="<%= dmyList %>" placeholder="10-02-2026, 11-02-2026" />
+                  <label>Folgas (DD/MM/AAAA, separadas por vírgula/espaco)</label>
+                  <input name="daysOffDates" value="<%= dmyList %>" placeholder="10/02/2026, 11/02/2026" />
                   <div class="muted">Você pode colar também no formato yyyy-mm-dd que o sistema aceita e converte.</div>
                 </div>
 
@@ -426,9 +427,9 @@
               </div>
 
               <div>
-                <label>Data (dd-mm-yyyy)</label>
+                <label>Data (DD/MM/AAAA)</label>
                 <input name="data" id="admData" placeholder="Clique para escolher" required readonly style="cursor:pointer; background:#f9f9f9;" />
-                <div class="muted">Abrirá o calendário ao clicar.</div>
+                <div class="muted">Não permite selecionar data anterior a hoje.</div>
               </div>
 
               <div>
@@ -884,6 +885,22 @@
       if(!m) return null;
       return new Date(Number(m[1]), Number(m[2])-1, Number(m[3]));
     }
+    // ✅ aceita DD/MM/AAAA ou DD-MM-AAAA
+    function dmyToYMD(dmy){
+      if(!dmy) return null;
+      const m = String(dmy).match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})$/);
+      if(!m) return null;
+      return `${m[3]}-${m[2]}-${m[1]}`;
+    }
+    function minutesNow(){
+      const n = new Date();
+      return n.getHours() * 60 + n.getMinutes();
+    }
+    function timeToMinutes(hhmm){
+      const m = String(hhmm || "").match(/^(\d{2}):(\d{2})$/);
+      if(!m) return null;
+      return Number(m[1]) * 60 + Number(m[2]);
+    }
 
     const tabs = [
       { btn: "tabBtnBarbeiros", panel:"tabBarbeiros" },
@@ -1257,12 +1274,25 @@
     let selectedYMD = null;
 
     function openAdmCal(){
+      // se já tem data no input, abre o mês dela
+      const ymd = dmyToYMD(admData.value);
+      if(ymd){
+        selectedYMD = ymd;
+        const d = parseYMD(ymd);
+        if(d) calMonth = new Date(d.getFullYear(), d.getMonth(), 1);
+      }else{
+        const now = new Date();
+        calMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        selectedYMD = null;
+      }
+
       admOverlay.classList.add("show");
       renderCal();
     }
     function closeAdmCal(){
       admOverlay.classList.remove("show");
     }
+
     function renderCal(){
       const y = calMonth.getFullYear();
       const m = calMonth.getMonth();
@@ -1272,6 +1302,11 @@
       const first = new Date(y, m, 1);
       const startDow = first.getDay();
       const daysInMonth = new Date(y, m+1, 0).getDate();
+
+      // hoje (00:00)
+      const today = new Date();
+      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const todayYMD = fmtYMD(todayStart);
 
       admDays.innerHTML = "";
 
@@ -1289,12 +1324,23 @@
         div.className = "day";
         div.textContent = String(d);
 
+        // ✅ bloqueia datas anteriores a hoje
+        if(dt < todayStart){
+          div.classList.add("disabled");
+        }else{
+          div.addEventListener("click", ()=>{
+            selectedYMD = ymd;
+            renderCal();
+          });
+        }
+
         if(selectedYMD === ymd) div.classList.add("selected");
 
-        div.addEventListener("click", ()=>{
-          selectedYMD = ymd;
-          renderCal();
-        });
+        // se não tem selected ainda, pré-seleciona hoje ao abrir
+        if(!selectedYMD && ymd === todayYMD){
+          selectedYMD = todayYMD;
+          div.classList.add("selected");
+        }
 
         admDays.appendChild(div);
       }
@@ -1305,8 +1351,20 @@
     admCancelCal.addEventListener("click", closeAdmCal);
     admOkCal.addEventListener("click", ()=>{
       if(!selectedYMD) { alert("Selecione uma data."); return; }
+
+      // ✅ segurança: não deixa confirmar data passada
+      const today = new Date();
+      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const sel = parseYMD(selectedYMD);
+      if(sel && sel < todayStart){
+        alert("Não é permitido selecionar data anterior a hoje.");
+        return;
+      }
+
       const d = parseYMD(selectedYMD);
-      admData.value = `${pad2(d.getDate())}-${pad2(d.getMonth()+1)}-${d.getFullYear()}`;
+      // ✅ sempre DD/MM/AAAA no input
+      admData.value = `${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${d.getFullYear()}`;
+
       closeAdmCal();
       refreshAdminHorarios();
     });
@@ -1322,20 +1380,91 @@
       const dmy = admData.value;
       if(!b || !dmy) return;
 
-      const m = dmy.match(/^(\d{2})-(\d{2})-(\d{4})$/);
-      if(!m) return;
-      const ymd = `${m[3]}-${m[2]}-${m[1]}`;
+      const ymd = dmyToYMD(dmy);
+      if(!ymd) return;
+
+      // ✅ segurança: não carrega horários para data passada
+      const today = new Date();
+      const todayYMD = fmtYMD(new Date(today.getFullYear(), today.getMonth(), today.getDate()));
+      if(ymd < todayYMD){
+        admHorarioMsg.textContent = "Não é permitido agendar em data anterior a hoje.";
+        return;
+      }
 
       try{
         const r = await fetch(`/horarios?barberId=${encodeURIComponent(b)}&data=${encodeURIComponent(ymd)}`);
         const slots = await r.json();
-        admHorario.innerHTML = `<option value="">Selecione</option>` + (slots || []).map(h=>`<option value="${h}">${h}</option>`).join("");
+
+        let finalSlots = Array.isArray(slots) ? slots.slice() : [];
+
+        // ✅ regra do "horário ao vivo" SOMENTE para hoje: precisa ter pelo menos 10 min de antecedência
+        if(ymd === todayYMD){
+          const nowMin = minutesNow();
+          finalSlots = finalSlots.filter(h=>{
+            const slotMin = timeToMinutes(h);
+            if(slotMin == null) return false;
+            return (slotMin - nowMin) >= 10; // 16:50 -> 17:00 (10) OK / 16:51 -> 17:00 (9) NÃO
+          });
+        }
+
+        if(!finalSlots.length){
+          admHorario.innerHTML = `<option value="">Sem horários disponíveis</option>`;
+          admHorario.disabled = true;
+
+          if(ymd === todayYMD){
+            admHorarioMsg.textContent = "Sem horários disponíveis para hoje (mín. 10 min de antecedência).";
+          }else{
+            admHorarioMsg.textContent = "Sem horários disponíveis para esta data.";
+          }
+          return;
+        }
+
+        admHorario.innerHTML = `<option value="">Selecione</option>` + finalSlots.map(h=>`<option value="${h}">${h}</option>`).join("");
         admHorario.disabled = false;
+
+        if(ymd === todayYMD){
+          admHorarioMsg.textContent = "Regra hoje: só aparece horário com pelo menos 10 min de antecedência.";
+        }
       }catch(e){
         admHorarioMsg.textContent = "Erro ao carregar horários.";
       }
     }
     admBarberId.addEventListener("change", refreshAdminHorarios);
+
+    // ✅ validação no submit (pra não burlar)
+    document.getElementById("adminAgendarForm")?.addEventListener("submit", (e)=>{
+      const b = admBarberId.value;
+      const dmy = admData.value;
+      const h = admHorario.value;
+
+      if(!b || !dmy || !h) return;
+
+      const ymd = dmyToYMD(dmy);
+      if(!ymd){
+        e.preventDefault();
+        alert("Data inválida.");
+        return;
+      }
+
+      const today = new Date();
+      const todayYMD = fmtYMD(new Date(today.getFullYear(), today.getMonth(), today.getDate()));
+
+      if(ymd < todayYMD){
+        e.preventDefault();
+        alert("Não é permitido agendar em data anterior a hoje.");
+        return;
+      }
+
+      if(ymd === todayYMD){
+        const nowMin = minutesNow();
+        const slotMin = timeToMinutes(h);
+        if(slotMin == null || (slotMin - nowMin) < 10){
+          e.preventDefault();
+          alert("Horário inválido para hoje. Regra: mínimo 10 minutos de antecedência (tolerância 0).");
+          return;
+        }
+      }
+    });
 
     // ===== boot =====
     applyPendentesFilter();
