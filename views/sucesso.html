@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Agendamento Finalizado</title>
+  <title>Agendamento salvo</title>
   <style>
     body{
       margin:0;
@@ -72,32 +72,42 @@
       text-align:center;
       min-width:220px;
     }
-    .hint{
-      margin-top:12px;
-      color:#bdbdbd;
-      font-size:12px;
-      font-weight:700;
+    a.secondary{
+      background:#151515;
+      color:#fff;
+      border:1px solid #2a2a2a;
+      font-weight:900;
     }
   </style>
 </head>
 <body>
+  <%
+    // ✅ À prova de cache/variável faltando
+    const status =
+      (typeof statusLabel !== "undefined" && statusLabel)
+        ? statusLabel
+        : "confirmado";
+  %>
+
   <div class="box">
-    <h1 class="ok">✅ Agendamento realizado</h1>
-    <p class="sub">Aguarde a confirmação do barbeiro.</p>
+    <h1 class="ok">✅ Agendamento salvo</h1>
+
+    <p class="sub">
+      O agendamento foi registrado no sistema.
+    </p>
 
     <div class="card">
-      <div class="row"><span class="k">Status</span><span>agendado</span></div>
-      <div class="row">
-        <span class="k">Observação</span>
-        <span>Você receberá, via WhatsApp, a confirmação ou o cancelamento do seu agendamento.</span>
-      </div>
+      <div class="row"><span class="k">Barbeiro</span><span><%= barberName %></span></div>
+      <div class="row"><span class="k">Cliente</span><span><%= nome %></span></div>
+      <div class="row"><span class="k">Data</span><span><%= data %></span></div>
+      <div class="row"><span class="k">Horário</span><span><%= horario %></span></div>
+      <div class="row"><span class="k">Status</span><span><%= status %></span></div>
     </div>
 
     <div class="btns">
-      <a href="/">Fazer outro agendamento</a>
+      <a href="/admin?tab=manual">Agendar um novo horário</a>
+      <a href="/admin" class="secondary">Voltar ao painel</a>
     </div>
-
-    <div class="hint">Se você fechar esta tela, poderá agendar novamente pela página inicial.</div>
   </div>
 </body>
 </html>

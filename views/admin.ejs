@@ -14,19 +14,19 @@
     table{width:100%; border-collapse:collapse; font-size:14px;}
     th, td{border-bottom:1px solid #eee; padding:10px; text-align:left; vertical-align: middle;}
     .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
-    .pill{padding:4px 10px; border-radius:999px; background:#eee; font-size:12px;}
-    .btn{padding:10px 12px; border-radius:10px; border:1px solid #ddd; cursor:pointer; background:#fff;}
+    .pill{padding:4px 10px; border-radius:999px; background:#eee; font-size:12px; font-weight:900;}
+    .btn{padding:10px 12px; border-radius:10px; border:1px solid #ddd; cursor:pointer; background:#fff; font-weight:900;}
     .btnPrimary{background:#111; color:#fff; border-color:#111;}
+    .btnWarn{background:#c9a227; color:#111; border:none;}
+    .btnDanger{background:#b00020; color:#fff; border:none;}
     input, select{padding:9px; border-radius:10px; border:1px solid #ccc;}
     label{font-weight:700; display:block; margin-top:10px; margin-bottom:6px;}
     .cols{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
     .full{grid-column:1/-1;}
-    .muted{color:#666; font-size:12px;}
-    .ok{color:#0a7a2f; font-weight:700;}
-    .bad{color:#b00020; font-weight:700;}
+    .muted{color:#666; font-size:12px; font-weight:700;}
+    .bad{color:#b00020; font-weight:900;}
     @media (max-width:800px){ .cols{grid-template-columns:1fr;} }
 
-    /* ===== Tabs ===== */
     .tabs{
       max-width:1100px;
       margin:14px auto 0;
@@ -53,24 +53,7 @@
     .tabPanel{display:none;}
     .tabPanel.active{display:block;}
 
-    /* ===== Toggle buttons (Hoje / Semana / Todos) ===== */
-    .toggleBtn{
-      border:1px solid #ddd;
-      background:#fff;
-      color:#111;
-      border-radius:999px;
-      padding:10px 14px;
-      cursor:pointer;
-      font-weight:900;
-      user-select:none;
-    }
-    .toggleBtn.active{
-      background:#111;
-      color:#fff;
-      border-color:#111;
-    }
-
-    /* ===== Confirmados (agenda) ===== */
+    /* Agenda */
     .agendaWrap{display:grid; grid-template-columns: 1fr; gap:12px;}
     .dayCard{border:1px solid #e6e6e6; border-radius:14px; overflow:hidden; background:#fff;}
     .dayHeader{
@@ -115,24 +98,16 @@
       min-width:72px;
       text-align:center;
     }
-    .info{display:flex; flex-direction:column; gap:4px; font-size:13px; font-weight:700; color:#111;}
-    .info small{font-weight:700; color:#666;}
+    .info{display:flex; flex-direction:column; gap:4px; font-size:13px; font-weight:800; color:#111;}
+    .info small{font-weight:800; color:#666;}
     .slotRight{display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-end;}
-    .miniPill{
-      background:#fff;
-      border:1px solid #ddd;
-      border-radius:999px;
-      padding:6px 10px;
-      font-size:12px;
-      font-weight:900;
-      color:#111;
-    }
-    .miniPill.mensalista{
-      border-color:#c9a227;
-      box-shadow: 0 0 0 2px rgba(201,162,39,.20);
-    }
 
-    /* ===== Modal ===== */
+    .tag{border:1px solid #ddd; background:#fff; color:#111; border-radius:999px; padding:6px 10px; font-size:12px; font-weight:900;}
+    .tag.confirmado{border-color:#0a7a2f; box-shadow:0 0 0 2px rgba(10,122,47,.12);}
+    .tag.reservado{border-color:#c9a227; box-shadow:0 0 0 2px rgba(201,162,39,.18);}
+    .tag.mensalista{border-color:#111; box-shadow:0 0 0 2px rgba(0,0,0,.12);}
+
+    /* Calendário */
     .overlay {
       position: fixed;
       inset: 0;
@@ -145,30 +120,6 @@
     }
     .overlay.show { display: flex; }
 
-    .modalBox{
-      width: 460px;
-      max-width: 100%;
-      background:#fff;
-      border:1px solid #e6e6e6;
-      border-radius:16px;
-      overflow:hidden;
-      box-shadow: 0 14px 40px rgba(0,0,0,.55);
-    }
-    .modalHead{
-      background:#111;
-      color:#fff;
-      padding:12px 14px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-    }
-    .modalHead strong{font-size:14px;}
-    .modalBody{padding:14px;}
-    .modalFoot{padding:14px; display:flex; gap:10px; justify-content:flex-end; border-top:1px solid #eee;}
-    .modalFoot .btnPrimary{background:#111; border-color:#111;}
-
-    /* ===== Modal Calendário ===== */
     .cal {
       width: 360px;
       max-width: 100%;
@@ -199,7 +150,6 @@
       cursor: pointer;
       font-weight: 900;
     }
-    .cal-nav button:hover { border-color: #555; }
     .cal-body { padding: 12px; }
     .dow {
       display: grid;
@@ -223,7 +173,6 @@
       font-weight: 900;
       user-select: none;
     }
-    .day:hover { border-color: #555; }
     .day.muted { opacity: .35; cursor: default; }
     .day.disabled { opacity: .25; cursor: not-allowed; }
     .day.selected {
@@ -263,22 +212,27 @@
       return `${m[3]}/${m[2]}/${m[1]}`;
     }
 
-    const confirmadosBase = (agendamentos || []).filter(a => a.status === "aprovado");
-    const confirmados = confirmadosBase.concat(mensalistaConfirmados || []);
-
-    const confByDate = {};
-    confirmados.forEach(a => {
-      const key = a.data || "";
-      if (!confByDate[key]) confByDate[key] = [];
-      confByDate[key].push(a);
-    });
-    const confDates = Object.keys(confByDate).sort((a,b) => String(a).localeCompare(String(b)));
-    confDates.forEach(d => confByDate[d].sort((x,y) => String(x.horario).localeCompare(String(y.horario))));
-
     function weekdayLabel(n){
       const map = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
       return map[Number(n)] ?? String(n);
     }
+
+    const agendaBase = (agendamentos || []).filter(a => a.status === "aprovado" || a.status === "reservado");
+    const agendaAll = agendaBase.concat(mensalistaConfirmados || []);
+
+    const agendaByDate = {};
+    agendaAll.forEach(a => {
+      const key = a.data || "";
+      if (!agendaByDate[key]) agendaByDate[key] = [];
+      agendaByDate[key].push(a);
+    });
+
+    const agendaDates = Object.keys(agendaByDate).sort((a,b) => String(a).localeCompare(String(b)));
+    agendaDates.forEach(d => agendaByDate[d].sort((x,y) => String(x.horario).localeCompare(String(y.horario))));
+
+    const expMin = (typeof reservaExpiraMinutos !== "undefined" && reservaExpiraMinutos !== null)
+      ? Number(reservaExpiraMinutos)
+      : 30;
   %>
 
   <header>
@@ -292,27 +246,64 @@
   </header>
 
   <div class="tabs">
-    <button class="tabBtn active" id="tabBtnBarbeiros" type="button">Barbeiros</button>
-    <button class="tabBtn" id="tabBtnConfig" type="button">Config por barbeiro</button>
-    <button class="tabBtn" id="tabBtnManual" type="button">Agendar manualmente</button>
-    <button class="tabBtn" id="tabBtnPendentes" type="button">Agendamentos pendentes</button>
-    <button class="tabBtn" id="tabBtnConfirmados" type="button">Agendamentos confirmados</button>
+    <button class="tabBtn active" id="tabBtnBarbeiros" type="button">Configuração</button>
+    <button class="tabBtn" id="tabBtnConfig" type="button">Config por barbeiros</button>
     <button class="tabBtn" id="tabBtnMensalistas" type="button">Plano mensalista</button>
+    <button class="tabBtn" id="tabBtnManual" type="button">Agendar manualmente</button>
+    <button class="tabBtn" id="tabBtnAgendamentos" type="button">Agendamentos</button>
   </div>
 
   <main>
-    <!-- TAB: BARBEIROS -->
+    <!-- TAB: CONFIGURAÇÃO -->
     <div class="tabPanel active" id="tabBarbeiros">
       <div class="grid">
+
+        <div class="card">
+          <h2>Configuração</h2>
+          <div class="muted">
+            O tempo abaixo controla em quantos minutos um agendamento <strong>reservado</strong> expira
+            (se o cliente não confirmar no WhatsApp). Depois disso, ele é removido do banco.
+          </div>
+
+          <form method="POST" action="/admin/config/reserva" style="margin-top:12px;">
+            <div class="cols">
+              <div>
+                <label>Tempo para expirar reserva (minutos)</label>
+                <input type="number" name="reservaExpiraMinutos" min="1" max="720" value="<%= expMin %>" required />
+                <div class="muted">Padrão: 30. Máximo: 720 (12h).</div>
+              </div>
+              <div style="display:flex; align-items:flex-end;">
+                <button class="btn btnPrimary" type="submit" style="width:100%;">Salvar</button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <h2>Criar novo barbeiro</h2>
+          <form method="POST" action="/admin/barbeiros/create" style="margin-top:10px;">
+            <div class="cols">
+              <div class="full">
+                <label>Nome do barbeiro</label>
+                <input name="name" placeholder="Ex: João" required />
+              </div>
+              <div class="full">
+                <button class="btn btnPrimary" type="submit">Criar barbeiro</button>
+              </div>
+            </div>
+          </form>
+        </div>
+
         <div class="card">
           <h2>Barbeiros</h2>
+          <div class="muted">⚠️ Excluir barbeiro apaga também os agendamentos e configs dele.</div>
           <table>
             <thead>
               <tr>
                 <th style="width:60px;">ID</th>
                 <th>Nome</th>
                 <th style="width:110px;">Status</th>
-                <th style="width:140px;">Ação</th>
+                <th style="width:260px;">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -326,9 +317,14 @@
                     </form>
                   </td>
                   <td><%= b.is_active ? "Ativo" : "Inativo" %></td>
-                  <td>
+                  <td style="display:flex; gap:8px; flex-wrap:wrap;">
                     <form method="POST" action="/admin/barbeiros/<%= b.id %>/toggle" style="display:inline;">
                       <button class="btn" type="submit"><%= b.is_active ? "Desativar" : "Ativar" %></button>
+                    </form>
+
+                    <form method="POST" action="/admin/barbeiros/<%= b.id %>/delete"
+                          onsubmit="return confirm('Excluir o barbeiro <%= b.name %>?\\n\\nIsso vai apagar TODOS os agendamentos e configs dele.');">
+                      <button class="btn btnDanger" type="submit">Excluir</button>
                     </form>
                   </td>
                 </tr>
@@ -336,10 +332,11 @@
             </tbody>
           </table>
         </div>
+
       </div>
     </div>
 
-    <!-- TAB: CONFIG -->
+    <!-- TAB: CONFIG POR BARBEIROS -->
     <div class="tabPanel" id="tabConfig">
       <div class="grid">
         <div class="card">
@@ -393,7 +390,6 @@
                 <div class="full">
                   <label>Folgas (DD/MM/AAAA, separadas por vírgula/espaco)</label>
                   <input name="daysOffDates" value="<%= dmyList %>" placeholder="10/02/2026, 11/02/2026" />
-                  <div class="muted">Você pode colar também no formato yyyy-mm-dd que o sistema aceita e converte.</div>
                 </div>
 
                 <div class="full">
@@ -406,242 +402,9 @@
       </div>
     </div>
 
-    <!-- TAB: MANUAL -->
-    <div class="tabPanel" id="tabManual">
-      <div class="grid">
-        <div class="card">
-          <h2>Agendar manualmente</h2>
-          <div class="muted">Clique no campo de data para abrir o calendário e escolher o dia.</div>
-
-          <form method="POST" action="/admin/agendar" id="adminAgendarForm">
-            <div class="cols">
-              <div>
-                <label>Barbeiro</label>
-                <select name="barberId" id="admBarberId" required>
-                  <option value="">Selecione</option>
-                  <% barbers.forEach(b => { %>
-                    <option value="<%= b.id %>"><%= b.name %></option>
-                  <% }) %>
-                </select>
-              </div>
-
-              <div>
-                <label>Data (DD/MM/AAAA)</label>
-                <input name="data" id="admData" placeholder="Clique para escolher" required readonly style="cursor:pointer; background:#f9f9f9;" />
-                <div class="muted">Não permite selecionar data anterior a hoje.</div>
-              </div>
-
-              <div>
-                <label>Horário</label>
-                <select name="horario" id="admHorario" required disabled>
-                  <option value="">Selecione barbeiro e data</option>
-                </select>
-                <div id="admHorarioMsg" class="muted"></div>
-              </div>
-
-              <div>
-                <label>Status</label>
-                <select name="status" id="admStatus">
-                  <option value="agendado" selected>agendado</option>
-                  <option value="aprovado">aprovado</option>
-                  <option value="cancelado">cancelado</option>
-                </select>
-              </div>
-
-              <div class="full">
-                <label>Nome do cliente</label>
-                <input name="nome" id="admNome" placeholder="Nome do cliente" required />
-              </div>
-
-              <div class="full">
-                <button class="btn btnPrimary" type="submit">Salvar agendamento</button>
-              </div>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <!-- TAB: PENDENTES -->
-    <div class="tabPanel" id="tabPendentes">
-      <div class="grid">
-        <div class="card">
-          <div class="row" style="justify-content:space-between;">
-            <h2 style="margin:0;">Agendamentos pendentes</h2>
-
-            <div class="row">
-              <span class="muted" style="font-weight:700;">Filtrar:</span>
-
-              <select id="barberFilter">
-                <option value="">Selecione</option>
-                <% barbers.forEach(b => { %>
-                  <option value="<%= b.id %>"><%= b.name %></option>
-                <% }) %>
-              </select>
-
-              <label style="margin:0; font-weight:900; display:flex; align-items:center; gap:8px;">
-                De:
-                <input type="date" id="dateFilterStart" />
-              </label>
-
-              <label style="margin:0; font-weight:900; display:flex; align-items:center; gap:8px;">
-                Até:
-                <input type="date" id="dateFilterEnd" />
-              </label>
-
-              <label style="margin:0; font-weight:900; display:flex; align-items:center; gap:8px;">
-                <input type="checkbox" id="showCancelados" />
-                Cancelados
-              </label>
-
-              <label style="margin:0; font-weight:900; display:flex; align-items:center; gap:8px;">
-                <input type="checkbox" id="showAprovados" />
-                Aprovados
-              </label>
-
-              <button class="toggleBtn" type="button" id="btnHoje">Hoje</button>
-              <button class="toggleBtn" type="button" id="btnSemanaPend">Semana</button>
-              <button class="toggleBtn" type="button" id="btnTodosDias">Todos os dias</button>
-            </div>
-          </div>
-
-          <div class="muted" id="countInfo" style="margin:8px 0 12px;">—</div>
-
-          <table>
-            <thead>
-              <tr>
-                <th>Data</th>
-                <th>Hora</th>
-                <th>Cliente</th>
-                <th>Barbeiro</th>
-                <th>Status</th>
-                <th>Mudar</th>
-              </tr>
-            </thead>
-            <tbody id="agendBody">
-              <% agendamentos.forEach(a => { %>
-                <tr
-                  class="agRow"
-                  data-id="<%= a.id %>"
-                  data-barber-id="<%= a.barber_id %>"
-                  data-status="<%= a.status %>"
-                  data-date="<%= a.data %>"
-                >
-                  <td><%= ymdToDmy(a.data) %></td>
-                  <td><%= a.horario %></td>
-                  <td><%= a.nome %></td>
-                  <td><%= a.barber_name || "" %></td>
-                  <td><span class="pill jsStatusPill"><%= a.status %></span></td>
-                  <td>
-                    <select onchange="updateStatus(<%= a.id %>, this.value)">
-                      <option value="agendado" <%= a.status==="agendado" ? "selected" : "" %>>agendado</option>
-                      <option value="aprovado" <%= a.status==="aprovado" ? "selected" : "" %>>aprovado</option>
-                      <option value="cancelado" <%= a.status==="cancelado" ? "selected" : "" %>>cancelado</option>
-                    </select>
-                  </td>
-                </tr>
-              <% }) %>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- TAB: CONFIRMADOS -->
-    <div class="tabPanel" id="tabConfirmados">
-      <div class="grid">
-        <div class="card">
-          <div class="row" style="justify-content:space-between;">
-            <div>
-              <h2 style="margin:0;">Agendamentos confirmados</h2>
-              <div class="muted">
-                Status <strong>aprovado</strong> + <strong>mensalistas</strong>, agrupado por dia.
-                Ao entrar aqui, selecione um barbeiro e o período.
-              </div>
-            </div>
-
-            <div class="row">
-              <span class="muted" style="font-weight:700;">Barbeiro:</span>
-              <select id="confBarberFilter">
-                <option value="">Selecione</option>
-                <% barbers.forEach(b => { %>
-                  <option value="<%= b.id %>"><%= b.name %></option>
-                <% }) %>
-              </select>
-
-              <span class="muted" style="font-weight:700;">De:</span>
-              <input type="date" id="confStart" />
-
-              <span class="muted" style="font-weight:700;">Até:</span>
-              <input type="date" id="confEnd" />
-
-              <button class="toggleBtn" type="button" id="confBtnHoje">Hoje</button>
-              <button class="toggleBtn" type="button" id="confBtnSemana">Semana</button>
-
-              <label style="margin:0; font-weight:900; display:flex; align-items:center; gap:8px;">
-                <input type="checkbox" id="confOnlyMensalistas" />
-                Mensalistas
-              </label>
-
-              <span class="pill" style="background:#f1f1f1;">Total: <span id="confTotal"><%= confirmados.length %></span></span>
-            </div>
-          </div>
-
-          <div id="confHint" class="bad" style="display:none; margin-top:10px;">
-            Selecione um barbeiro para listar os confirmados.
-          </div>
-        </div>
-
-        <div class="card">
-          <% if (!confirmados.length) { %>
-            <div class="muted">Nenhum confirmado (aprovado/mensalista) até o momento.</div>
-          <% } else { %>
-            <div class="agendaWrap" id="confAgenda">
-              <% confDates.forEach(dateKey => {
-                   const items = confByDate[dateKey] || [];
-              %>
-                <div class="dayCard confDayCard" data-date="<%= dateKey %>">
-                  <div class="dayHeader">
-                    <strong><%= ymdToDmy(dateKey) %></strong>
-                    <span class="countBadge"><span class="confDayCount"><%= items.length %></span> horário(s)</span>
-                  </div>
-
-                  <div class="slotList">
-                    <% items.forEach(a => { %>
-                      <div
-                        class="slotItem confSlot"
-                        data-barber-id="<%= a.barber_id %>"
-                        data-is-mensalista="<%= a.is_mensalista ? '1' : '0' %>"
-                      >
-                        <div class="slotLeft">
-                          <span class="timePill"><%= a.horario %></span>
-                          <div class="info">
-                            <div><%= a.nome %></div>
-                            <small>
-                              Barbeiro: <%= a.barber_name || "" %>
-                            </small>
-                          </div>
-                        </div>
-                        <div class="slotRight">
-                          <% if (a.is_mensalista) { %>
-                            <span class="miniPill mensalista">mensalista</span>
-                          <% } else { %>
-                            <span class="miniPill">confirmado</span>
-                          <% } %>
-                        </div>
-                      </div>
-                    <% }) %>
-                  </div>
-                </div>
-              <% }) %>
-            </div>
-          <% } %>
-        </div>
-      </div>
-    </div>
-
     <!-- TAB: PLANO MENSALISTA -->
     <div class="tabPanel" id="tabMensalistas">
+      <!-- (mantido igual ao seu) -->
       <div class="grid">
         <div class="card">
           <h2>Plano mensalista</h2>
@@ -655,8 +418,6 @@
 
           <form method="POST" action="/admin/mensalistas" id="mensalistaForm" style="margin-top:12px;">
             <input type="hidden" id="menPlanId" value="" />
-
-            <!-- Mantemos start/end escondidos porque o backend exige start obrigatório -->
             <input type="hidden" name="start" id="menStart" />
             <input type="hidden" name="end" id="menEnd" />
 
@@ -673,7 +434,7 @@
 
               <div>
                 <label>Nome do mensalista</label>
-                <input name="nome" id="menNome" placeholder="Ex: Gabriel Honorato" required />
+                <input name="nome" id="menNome" placeholder="Ex: Gabriel" required />
               </div>
 
               <div>
@@ -688,7 +449,6 @@
                   <option value="5">Sexta</option>
                   <option value="6">Sábado</option>
                 </select>
-                <div class="muted">Ex.: toda quarta às 18:30</div>
               </div>
 
               <div>
@@ -708,29 +468,7 @@
         </div>
 
         <div class="card">
-          <div class="row" style="justify-content:space-between; align-items:flex-end;">
-            <div>
-              <h2 style="margin-bottom:6px;">Mensalistas cadastrados</h2>
-              <div class="muted" style="margin-bottom:10px;">
-                Lista de bloqueios semanais ativos/cadastrados.
-              </div>
-            </div>
-
-            <!-- ✅ filtro por barbeiro -->
-            <div class="row" style="gap:8px;">
-              <span class="muted" style="font-weight:900;">Filtrar barbeiro:</span>
-              <select id="menListBarberFilter">
-                <option value="">Todos</option>
-                <% barbers.forEach(b => { %>
-                  <option value="<%= b.id %>"><%= b.name %></option>
-                <% }) %>
-              </select>
-              <button class="btn" type="button" id="menApplyFilter">Filtrar</button>
-              <button class="btn" type="button" id="menClearFilter">Limpar</button>
-            </div>
-          </div>
-
-          <div class="muted" id="menCountInfo" style="margin:8px 0 12px;">—</div>
+          <h2 style="margin-bottom:6px;">Mensalistas cadastrados</h2>
 
           <% if (!(mensalistas || []).length) { %>
             <div class="muted">Nenhum plano mensalista cadastrado ainda.</div>
@@ -763,7 +501,6 @@
                     <td><%= m.horario %></td>
                     <td style="display:flex; gap:8px; flex-wrap:wrap;">
                       <button class="btn" type="button" onclick="startEditMensalista(this)">Editar</button>
-
                       <form method="POST" action="/admin/mensalistas/<%= m.id %>/delete" onsubmit="return confirm('Remover este plano mensalista?');">
                         <button class="btn" type="submit">Remover</button>
                       </form>
@@ -776,89 +513,166 @@
         </div>
       </div>
     </div>
+
+    <!-- TAB: MANUAL -->
+    <div class="tabPanel" id="tabManual">
+      <!-- (mantido igual ao seu) -->
+      <div class="grid">
+        <div class="card">
+          <h2>Agendar manualmente</h2>
+          <div class="muted">✅ Todo agendamento manual é salvo automaticamente como <strong>aprovado</strong>.</div>
+
+          <form method="POST" action="/admin/agendar" id="adminAgendarForm">
+            <div class="cols">
+              <div>
+                <label>Barbeiro</label>
+                <select name="barberId" id="admBarberId" required>
+                  <option value="">Selecione</option>
+                  <% barbers.forEach(b => { %>
+                    <option value="<%= b.id %>"><%= b.name %></option>
+                  <% }) %>
+                </select>
+              </div>
+
+              <div>
+                <label>Data (DD/MM/AAAA)</label>
+                <input name="data" id="admData" placeholder="Clique para escolher" required readonly style="cursor:pointer; background:#f9f9f9;" />
+              </div>
+
+              <div>
+                <label>Horário</label>
+                <select name="horario" id="admHorario" required disabled>
+                  <option value="">Selecione barbeiro e data</option>
+                </select>
+                <div id="admHorarioMsg" class="muted"></div>
+              </div>
+
+              <div class="full">
+                <label>Nome do cliente</label>
+                <input name="nome" id="admNome" placeholder="Nome do cliente" required />
+              </div>
+
+              <div class="full">
+                <button class="btn btnPrimary" type="submit">Salvar agendamento</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: AGENDAMENTOS -->
+    <div class="tabPanel" id="tabAgendamentos">
+      <!-- (mantido igual ao seu) -->
+      <div class="grid">
+        <div class="card">
+          <div class="row" style="justify-content:space-between;">
+            <div>
+              <h2 style="margin:0;">Agendamentos</h2>
+              <div class="muted">
+                Mostra <strong>confirmados</strong> (status aprovado), <strong>reservados</strong> e <strong>mensalistas</strong>.
+              </div>
+            </div>
+
+            <div class="row">
+              <span class="muted">Barbeiro:</span>
+              <select id="agBarberFilter">
+                <option value="">Selecione</option>
+                <% barbers.forEach(b => { %>
+                  <option value="<%= b.id %>"><%= b.name %></option>
+                <% }) %>
+              </select>
+
+              <span class="muted">De:</span>
+              <input type="date" id="agStart" />
+
+              <span class="muted">Até:</span>
+              <input type="date" id="agEnd" />
+
+              <button class="btn" type="button" id="agBtnSemana">Semana</button>
+              <button class="btn" type="button" id="agBtnHoje">Hoje</button>
+
+              <span class="pill" style="background:#f1f1f1;">Total: <span id="agTotal"><%= agendaAll.length %></span></span>
+            </div>
+          </div>
+
+          <div id="agHint" class="bad" style="display:none; margin-top:10px;">
+            Selecione um barbeiro para listar os agendamentos.
+          </div>
+
+          <div class="row" style="margin-top:10px; gap:8px;">
+            <span class="tag confirmado">confirmado</span>
+            <span class="tag reservado">reservado</span>
+            <span class="tag mensalista">mensalista</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <% if (!agendaAll.length) { %>
+            <div class="muted">Nenhum agendamento ainda.</div>
+          <% } else { %>
+            <div class="agendaWrap" id="agAgenda">
+              <% agendaDates.forEach(dateKey => {
+                   const items = agendaByDate[dateKey] || [];
+              %>
+                <div class="dayCard agDayCard" data-date="<%= dateKey %>">
+                  <div class="dayHeader">
+                    <strong><%= ymdToDmy(dateKey) %></strong>
+                    <span class="countBadge"><span class="agDayCount"><%= items.length %></span> horário(s)</span>
+                  </div>
+
+                  <div class="slotList">
+                    <% items.forEach(a => { %>
+                      <%
+                        const isMensalista = !!a.is_mensalista;
+                        const st = isMensalista ? "mensalista" : (a.status || "");
+                        const isConfirmado = (!isMensalista && st === "aprovado");
+                        const isReservado = (!isMensalista && st === "reservado");
+                        const tagClass = isMensalista ? "mensalista" : (isConfirmado ? "confirmado" : "reservado");
+                        const tagText = isMensalista ? "mensalista" : (isConfirmado ? "confirmado" : "reservado");
+                      %>
+
+                      <div
+                        class="slotItem agSlot"
+                        data-id="<%= a.id %>"
+                        data-barber-id="<%= a.barber_id %>"
+                        data-status="<%= st %>"
+                        data-is-mensalista="<%= isMensalista ? '1' : '0' %>"
+                      >
+                        <div class="slotLeft">
+                          <span class="timePill"><%= a.horario %></span>
+                          <div class="info">
+                            <div><%= a.nome %></div>
+                            <small>Barbeiro: <%= a.barber_name || "" %></small>
+                          </div>
+                        </div>
+
+                        <div class="slotRight">
+                          <span class="tag <%= tagClass %>"><%= tagText %></span>
+
+                          <% if (isReservado) { %>
+                            <button class="btn btnWarn" type="button" onclick="confirmarManual(<%= a.id %>)">
+                              Confirmar manualmente
+                            </button>
+                          <% } %>
+
+                          <% if (!isMensalista) { %>
+                            <button class="btn" type="button" onclick="cancelarAg(<%= a.id %>)">Cancelar</button>
+                          <% } %>
+                        </div>
+                      </div>
+                    <% }) %>
+                  </div>
+                </div>
+              <% }) %>
+            </div>
+          <% } %>
+        </div>
+      </div>
+    </div>
   </main>
 
-  <!-- Modal: Pendentes -->
-  <div id="pendOverlay" class="overlay" aria-hidden="true">
-    <div class="modalBox" role="dialog" aria-modal="true" aria-label="Filtro de pendentes">
-      <div class="modalHead">
-        <strong>Filtrar pendentes</strong>
-        <span class="pill" style="background:#222; color:#fff;">obrigatório</span>
-      </div>
-      <div class="modalBody">
-        <div class="muted">Selecione o barbeiro e o período.</div>
-
-        <label>Barbeiro</label>
-        <select id="pendModalBarber">
-          <option value="">Selecione</option>
-          <% barbers.forEach(b => { %>
-            <option value="<%= b.id %>"><%= b.name %></option>
-          <% }) %>
-        </select>
-
-        <div class="cols" style="margin-top:8px;">
-          <div>
-            <label>De</label>
-            <input type="date" id="pendModalStart" />
-          </div>
-          <div>
-            <label>Até</label>
-            <input type="date" id="pendModalEnd" />
-          </div>
-        </div>
-
-        <div class="muted" style="margin-top:10px;">
-          Padrão: hoje até hoje + 7 dias.
-        </div>
-      </div>
-      <div class="modalFoot">
-        <button class="btn" type="button" id="pendModalSemana">Semana</button>
-        <button class="btn btnPrimary" type="button" id="pendModalApply">Aplicar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal: Confirmados -->
-  <div id="confOverlay" class="overlay" aria-hidden="true">
-    <div class="modalBox" role="dialog" aria-modal="true" aria-label="Filtro de confirmados">
-      <div class="modalHead">
-        <strong>Filtrar confirmados</strong>
-        <span class="pill" style="background:#222; color:#fff;">obrigatório</span>
-      </div>
-      <div class="modalBody">
-        <div class="muted">Selecione o barbeiro e confirme o período.</div>
-
-        <label>Barbeiro</label>
-        <select id="confModalBarber">
-          <option value="">Selecione</option>
-          <% barbers.forEach(b => { %>
-            <option value="<%= b.id %>"><%= b.name %></option>
-          <% }) %>
-        </select>
-
-        <div class="cols" style="margin-top:8px;">
-          <div>
-            <label>De</label>
-            <input type="date" id="confModalStart" />
-          </div>
-          <div>
-            <label>Até</label>
-            <input type="date" id="confModalEnd" />
-          </div>
-        </div>
-
-        <div class="muted" style="margin-top:10px;">
-          “Semana” = data inicial até o mesmo dia da semana seguinte.
-        </div>
-      </div>
-      <div class="modalFoot">
-        <button class="btn" type="button" id="confModalSemana">Semana</button>
-        <button class="btn btnPrimary" type="button" id="confModalApply">Aplicar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal Calendário -->
+  <!-- Calendário -->
   <div id="admOverlay" class="overlay" aria-hidden="true">
     <div class="cal" role="dialog" aria-modal="true" aria-label="Selecionar data">
       <div class="cal-head">
@@ -868,14 +682,12 @@
           <button type="button" id="admNextMonth">▶</button>
         </div>
       </div>
-
       <div class="cal-body">
         <div class="dow">
           <div>DOM</div><div>SEG</div><div>TER</div><div>QUA</div><div>QUI</div><div>SEX</div><div>SÁB</div>
         </div>
         <div id="admDays" class="days"></div>
       </div>
-
       <div class="cal-foot">
         <button type="button" id="admCancelCal">Cancelar</button>
         <button type="button" class="primary" id="admOkCal">Confirmar</button>
@@ -912,33 +724,10 @@
     const tabs = [
       { btn: "tabBtnBarbeiros", panel:"tabBarbeiros" },
       { btn: "tabBtnConfig", panel:"tabConfig" },
-      { btn: "tabBtnManual", panel:"tabManual" },
-      { btn: "tabBtnPendentes", panel:"tabPendentes" },
-      { btn: "tabBtnConfirmados", panel:"tabConfirmados" },
       { btn: "tabBtnMensalistas", panel:"tabMensalistas" },
+      { btn: "tabBtnManual", panel:"tabManual" },
+      { btn: "tabBtnAgendamentos", panel:"tabAgendamentos" },
     ];
-
-    function resetManualForm(){
-      const form = document.getElementById("adminAgendarForm");
-      const admBarberId = document.getElementById("admBarberId");
-      const admData = document.getElementById("admData");
-      const admHorario = document.getElementById("admHorario");
-      const admHorarioMsg = document.getElementById("admHorarioMsg");
-      const admNome = document.getElementById("admNome");
-      const admStatus = document.getElementById("admStatus");
-
-      if(form) form.reset();
-      if(admBarberId) admBarberId.value = "";
-      if(admData) admData.value = "";
-      if(admNome) admNome.value = "";
-      if(admStatus) admStatus.value = "agendado";
-
-      if(admHorario){
-        admHorario.innerHTML = `<option value="">Selecione barbeiro e data</option>`;
-        admHorario.disabled = true;
-      }
-      if(admHorarioMsg) admHorarioMsg.textContent = "";
-    }
 
     function activateTab(btnId){
       tabs.forEach(t=>{
@@ -948,325 +737,134 @@
         b.classList.toggle("active", active);
         p.classList.toggle("active", active);
       });
-
-      if(btnId === "tabBtnPendentes"){
-        openPendOverlay(true);
-      }
-      if(btnId === "tabBtnConfirmados"){
-        openConfOverlay(true);
-      }
-      if(btnId === "tabBtnManual"){
-        resetManualForm();
-      }
+      if(btnId === "tabBtnAgendamentos") applyAgendamentos();
       if(btnId === "tabBtnMensalistas"){
-        if(menStart && !menStart.value){
-          menStart.value = todayYMDMen();
-        }
-        applyMenListFilter();
+        if(menStart && !menStart.value) menStart.value = todayYMDMen();
       }
     }
-
     tabs.forEach(t=>{
       document.getElementById(t.btn).addEventListener("click", ()=>activateTab(t.btn));
     });
 
     async function updateStatus(id, status){
-      try{
-        const r = await fetch("/admin/status", {
-          method:"POST",
-          headers:{ "Content-Type":"application/json" },
-          body: JSON.stringify({ id, status })
-        });
-        const j = await r.json();
-        if(!j.ok) throw new Error("fail");
-        const row = document.querySelector(`tr.agRow[data-id="${id}"]`);
-        if(row){
-          row.dataset.status = status;
-          const pill = row.querySelector(".jsStatusPill");
-          if(pill) pill.textContent = status;
-        }
-        applyPendentesFilter();
-      }catch(e){
-        alert("Erro ao mudar status.");
-      }
-    }
-    window.updateStatus = updateStatus;
-
-    const barberFilter = document.getElementById("barberFilter");
-    const dateFilterStart = document.getElementById("dateFilterStart");
-    const dateFilterEnd = document.getElementById("dateFilterEnd");
-    const showCancelados = document.getElementById("showCancelados");
-    const showAprovados = document.getElementById("showAprovados");
-    const countInfo = document.getElementById("countInfo");
-
-    function setPendDates(startYMD, endYMD){
-      dateFilterStart.value = startYMD || "";
-      dateFilterEnd.value = endYMD || "";
-    }
-
-    function applyPendentesFilter(){
-      const bId = barberFilter.value;
-      const start = dateFilterStart.value;
-      const end = dateFilterEnd.value;
-
-      const allowCancel = !!showCancelados.checked;
-      const allowAprov = !!showAprovados.checked;
-
-      let shown = 0;
-      document.querySelectorAll(".agRow").forEach(tr=>{
-        const trBarber = tr.dataset.barberId;
-        const st = tr.dataset.status;
-        const dt = tr.dataset.date;
-
-        let ok = true;
-
-        if(!bId) ok = false;
-        if(ok && trBarber !== bId) ok = false;
-
-        if(ok && start && dt < start) ok = false;
-        if(ok && end && dt > end) ok = false;
-
-        if(ok){
-          if(st === "cancelado" && !allowCancel) ok = false;
-          if(st === "aprovado" && !allowAprov) ok = false;
-
-          if(st !== "agendado" && st !== "aprovado" && st !== "cancelado") ok = false;
-          if(st === "agendado") ok = true;
-          if(st === "cancelado") ok = allowCancel;
-          if(st === "aprovado") ok = allowAprov;
-        }
-
-        tr.style.display = ok ? "" : "none";
-        if(ok) shown++;
+      const r = await fetch("/admin/status", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ id, status })
       });
-
-      countInfo.textContent = `Mostrando ${shown} agendamento(s)`;
+      const j = await r.json();
+      if(!j.ok) throw new Error("fail");
     }
 
-    [barberFilter, dateFilterStart, dateFilterEnd, showCancelados, showAprovados].forEach(el=>{
-      el.addEventListener("change", applyPendentesFilter);
-    });
+    window.confirmarManual = async function(id){
+      if(!confirm("Confirmar manualmente este agendamento?")) return;
+      try{
+        await updateStatus(id, "aprovado");
+        const el = document.querySelector(`.agSlot[data-id="${id}"]`);
+        if(el) el.dataset.status = "aprovado";
+        applyAgendamentos();
+      }catch(e){ alert("Erro ao confirmar."); }
+    };
 
-    const btnHoje = document.getElementById("btnHoje");
-    const btnSemanaPend = document.getElementById("btnSemanaPend");
-    const btnTodosDias = document.getElementById("btnTodosDias");
+    window.cancelarAg = async function(id){
+      if(!confirm("Cancelar este agendamento?")) return;
+      try{
+        await updateStatus(id, "cancelado");
+        const el = document.querySelector(`.agSlot[data-id="${id}"]`);
+        if(el) el.dataset.status = "cancelado";
+        applyAgendamentos();
+      }catch(e){ alert("Erro ao cancelar."); }
+    };
 
-    function setToggleActive(btn){
-      [btnHoje, btnSemanaPend, btnTodosDias].forEach(b=>b.classList.remove("active"));
-      if(btn) btn.classList.add("active");
-    }
+    // ===== AGENDAMENTOS FILTER =====
+    const agBarberFilter = document.getElementById("agBarberFilter");
+    const agStart = document.getElementById("agStart");
+    const agEnd = document.getElementById("agEnd");
+    const agHint = document.getElementById("agHint");
+    const agTotal = document.getElementById("agTotal");
+    const agBtnSemana = document.getElementById("agBtnSemana");
+    const agBtnHoje = document.getElementById("agBtnHoje");
 
-    btnHoje.addEventListener("click", ()=>{
-      const t = new Date();
-      const y = fmtYMD(t);
-      setPendDates(y, y);
-      setToggleActive(btnHoje);
-      applyPendentesFilter();
-    });
-    btnSemanaPend.addEventListener("click", ()=>{
-      const t = new Date();
-      const s = fmtYMD(t);
-      const e = fmtYMD(addDays(t, 7));
-      setPendDates(s, e);
-      setToggleActive(btnSemanaPend);
-      applyPendentesFilter();
-    });
-    btnTodosDias.addEventListener("click", ()=>{
-      setPendDates("", "");
-      setToggleActive(btnTodosDias);
-      applyPendentesFilter();
-    });
+    function applyAgendamentos(){
+      const bId = agBarberFilter.value;
+      const start = agStart.value;
+      const end = agEnd.value;
 
-    const confBarberFilter = document.getElementById("confBarberFilter");
-    const confStart = document.getElementById("confStart");
-    const confEnd = document.getElementById("confEnd");
-    const confHint = document.getElementById("confHint");
-    const confTotal = document.getElementById("confTotal");
-
-    const confBtnHoje = document.getElementById("confBtnHoje");
-    const confBtnSemana = document.getElementById("confBtnSemana");
-    const confOnlyMensalistas = document.getElementById("confOnlyMensalistas");
-
-    function setConfToggleActive(btn){
-      [confBtnHoje, confBtnSemana].forEach(b=>b.classList.remove("active"));
-      if(btn) btn.classList.add("active");
-    }
-
-    function applyConfirmados(){
-      const bId = confBarberFilter.value;
-      const start = confStart.value;
-      const end = confEnd.value;
-
-      const onlyMen = !!confOnlyMensalistas?.checked;
-
-      if(!bId){
-        confHint.style.display = "";
-      }else{
-        confHint.style.display = "none";
-      }
+      agHint.style.display = bId ? "none" : "";
 
       let totalShown = 0;
-      document.querySelectorAll(".confDayCard").forEach(card=>{
+
+      document.querySelectorAll(".agDayCard").forEach(card=>{
         const dateKey = card.dataset.date;
+        const inRange = (!start || dateKey >= start) && (!end || dateKey <= end);
+
         let dayCount = 0;
 
-        const inRange =
-          (!start || dateKey >= start) &&
-          (!end || dateKey <= end);
-
-        card.querySelectorAll(".confSlot").forEach(slot=>{
+        card.querySelectorAll(".agSlot").forEach(slot=>{
           const sb = slot.dataset.barberId;
           const isMen = slot.dataset.isMensalista === "1";
+          const st = slot.dataset.status;
 
-          const ok =
-            !!bId &&
-            sb === bId &&
-            inRange &&
-            (!onlyMen || isMen);
+          if(st === "cancelado"){
+            slot.style.display = "none";
+            return;
+          }
+
+          const ok = !!bId && sb === bId && inRange;
 
           slot.style.display = ok ? "" : "none";
           if(ok){ dayCount++; totalShown++; }
+
+          const tag = slot.querySelector(".tag");
+          const btnConfirm = slot.querySelector(".btnWarn");
+
+          if(tag){
+            if(isMen){
+              tag.className = "tag mensalista";
+              tag.textContent = "mensalista";
+              if(btnConfirm) btnConfirm.style.display = "none";
+            }else if(st === "aprovado"){
+              tag.className = "tag confirmado";
+              tag.textContent = "confirmado";
+              if(btnConfirm) btnConfirm.style.display = "none";
+            }else{
+              tag.className = "tag reservado";
+              tag.textContent = "reservado";
+              if(btnConfirm) btnConfirm.style.display = "";
+            }
+          }
         });
 
-        const badge = card.querySelector(".confDayCount");
+        const badge = card.querySelector(".agDayCount");
         if(badge) badge.textContent = String(dayCount);
-
         card.style.display = (dayCount > 0) ? "" : "none";
       });
 
-      confTotal.textContent = String(totalShown);
+      agTotal.textContent = String(totalShown);
     }
 
-    confBarberFilter.addEventListener("change", ()=>{
-      setConfToggleActive(null);
-      applyConfirmados();
-    });
-    confStart.addEventListener("change", ()=>{
-      setConfToggleActive(null);
-      applyConfirmados();
-    });
-    confEnd.addEventListener("change", ()=>{
-      setConfToggleActive(null);
-      applyConfirmados();
-    });
-    confOnlyMensalistas.addEventListener("change", applyConfirmados);
+    agBarberFilter.addEventListener("change", applyAgendamentos);
+    agStart.addEventListener("change", applyAgendamentos);
+    agEnd.addEventListener("change", applyAgendamentos);
 
-    confBtnHoje.addEventListener("click", ()=>{
+    agBtnHoje.addEventListener("click", ()=>{
       const t = new Date();
       const y = fmtYMD(t);
-      confStart.value = y;
-      confEnd.value = y;
-      setConfToggleActive(confBtnHoje);
-      applyConfirmados();
+      agStart.value = y;
+      agEnd.value = y;
+      applyAgendamentos();
     });
 
-    confBtnSemana.addEventListener("click", ()=>{
+    agBtnSemana.addEventListener("click", ()=>{
       const t = new Date();
       const s = fmtYMD(t);
       const e = fmtYMD(addDays(t, 7));
-      confStart.value = s;
-      confEnd.value = e;
-      setConfToggleActive(confBtnSemana);
-      applyConfirmados();
+      agStart.value = s;
+      agEnd.value = e;
+      applyAgendamentos();
     });
 
-    const pendOverlay = document.getElementById("pendOverlay");
-    const pendModalBarber = document.getElementById("pendModalBarber");
-    const pendModalStart = document.getElementById("pendModalStart");
-    const pendModalEnd = document.getElementById("pendModalEnd");
-    const pendModalApply = document.getElementById("pendModalApply");
-    const pendModalSemana = document.getElementById("pendModalSemana");
-
-    function openPendOverlay(forceReset){
-      if(forceReset){
-        const t = new Date();
-        pendModalStart.value = fmtYMD(t);
-        pendModalEnd.value = fmtYMD(addDays(t, 7));
-        pendModalBarber.value = "";
-      }
-      pendOverlay.classList.add("show");
-    }
-    function closePendOverlay(){
-      pendOverlay.classList.remove("show");
-    }
-
-    pendModalSemana.addEventListener("click", ()=>{
-      const s = pendModalStart.value ? parseYMD(pendModalStart.value) : new Date();
-      pendModalStart.value = fmtYMD(s);
-      pendModalEnd.value = fmtYMD(addDays(s, 7));
-    });
-
-    pendModalApply.addEventListener("click", ()=>{
-      const b = pendModalBarber.value;
-      const s = pendModalStart.value;
-      const e = pendModalEnd.value;
-
-      if(!b){
-        alert("Selecione o barbeiro.");
-        return;
-      }
-      if(s && e && e < s){
-        alert("Período inválido.");
-        return;
-      }
-
-      barberFilter.value = b;
-      setPendDates(s, e);
-      closePendOverlay();
-
-      setToggleActive(null);
-      applyPendentesFilter();
-    });
-
-    const confOverlay = document.getElementById("confOverlay");
-    const confModalBarber = document.getElementById("confModalBarber");
-    const confModalStart = document.getElementById("confModalStart");
-    const confModalEnd = document.getElementById("confModalEnd");
-    const confModalApply = document.getElementById("confModalApply");
-    const confModalSemana = document.getElementById("confModalSemana");
-
-    function openConfOverlay(forceReset){
-      if(forceReset){
-        const t = new Date();
-        confModalStart.value = fmtYMD(t);
-        confModalEnd.value = fmtYMD(addDays(t, 7));
-        confModalBarber.value = "";
-      }
-      confOverlay.classList.add("show");
-    }
-    function closeConfOverlay(){
-      confOverlay.classList.remove("show");
-    }
-
-    confModalSemana.addEventListener("click", ()=>{
-      const s = confModalStart.value ? parseYMD(confModalStart.value) : new Date();
-      confModalStart.value = fmtYMD(s);
-      confModalEnd.value = fmtYMD(addDays(s, 7));
-    });
-
-    confModalApply.addEventListener("click", ()=>{
-      const b = confModalBarber.value;
-      const s = confModalStart.value;
-      const e = confModalEnd.value;
-
-      if(!b){
-        alert("Selecione o barbeiro.");
-        return;
-      }
-      if(s && e && e < s){
-        alert("Período inválido.");
-        return;
-      }
-
-      confBarberFilter.value = b;
-      confStart.value = s;
-      confEnd.value = e;
-      closeConfOverlay();
-
-      setConfToggleActive(null);
-      applyConfirmados();
-    });
-
+    // ===== CALENDÁRIO (manual) =====
     const admOverlay = document.getElementById("admOverlay");
     const admData = document.getElementById("admData");
     const admBarberId = document.getElementById("admBarberId");
@@ -1294,13 +892,10 @@
         calMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         selectedYMD = null;
       }
-
       admOverlay.classList.add("show");
       renderCal();
     }
-    function closeAdmCal(){
-      admOverlay.classList.remove("show");
-    }
+    function closeAdmCal(){ admOverlay.classList.remove("show"); }
 
     function renderCal(){
       const y = calMonth.getFullYear();
@@ -1357,14 +952,6 @@
     admOkCal.addEventListener("click", ()=>{
       if(!selectedYMD) { alert("Selecione uma data."); return; }
 
-      const today = new Date();
-      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const sel = parseYMD(selectedYMD);
-      if(sel && sel < todayStart){
-        alert("Não é permitido selecionar data anterior a hoje.");
-        return;
-      }
-
       const d = parseYMD(selectedYMD);
       admData.value = `${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${d.getFullYear()}`;
 
@@ -1386,95 +973,42 @@
       const ymd = dmyToYMD(dmy);
       if(!ymd) return;
 
-      const today = new Date();
-      const todayYMD = fmtYMD(new Date(today.getFullYear(), today.getMonth(), today.getDate()));
-      if(ymd < todayYMD){
-        admHorarioMsg.textContent = "Não é permitido agendar em data anterior a hoje.";
-        return;
-      }
-
       try{
         const r = await fetch(`/horarios?barberId=${encodeURIComponent(b)}&data=${encodeURIComponent(ymd)}`);
         const slots = await r.json();
 
         let finalSlots = Array.isArray(slots) ? slots.slice() : [];
 
+        const today = new Date();
+        const todayYMD = fmtYMD(new Date(today.getFullYear(), today.getMonth(), today.getDate()));
         if(ymd === todayYMD){
           const nowMin = minutesNow();
           finalSlots = finalSlots.filter(h=>{
             const slotMin = timeToMinutes(h);
-            if(slotMin == null) return false;
-            return (slotMin - nowMin) >= 10;
+            return slotMin != null && (slotMin - nowMin) >= 10;
           });
         }
 
         if(!finalSlots.length){
           admHorario.innerHTML = `<option value="">Sem horários disponíveis</option>`;
           admHorario.disabled = true;
-
-          if(ymd === todayYMD){
-            admHorarioMsg.textContent = "Sem horários disponíveis para hoje (mín. 10 min de antecedência).";
-          }else{
-            admHorarioMsg.textContent = "Sem horários disponíveis para esta data.";
-          }
+          admHorarioMsg.textContent = "Sem horários disponíveis.";
           return;
         }
 
         admHorario.innerHTML = `<option value="">Selecione</option>` + finalSlots.map(h=>`<option value="${h}">${h}</option>`).join("");
         admHorario.disabled = false;
-
-        if(ymd === todayYMD){
-          admHorarioMsg.textContent = "Regra hoje: só aparece horário com pelo menos 10 min de antecedência.";
-        }
       }catch(e){
         admHorarioMsg.textContent = "Erro ao carregar horários.";
       }
     }
     admBarberId.addEventListener("change", refreshAdminHorarios);
 
-    document.getElementById("adminAgendarForm")?.addEventListener("submit", (e)=>{
-      const b = admBarberId.value;
-      const dmy = admData.value;
-      const h = admHorario.value;
-
-      if(!b || !dmy || !h) return;
-
-      const ymd = dmyToYMD(dmy);
-      if(!ymd){
-        e.preventDefault();
-        alert("Data inválida.");
-        return;
-      }
-
-      const today = new Date();
-      const todayYMD = fmtYMD(new Date(today.getFullYear(), today.getMonth(), today.getDate()));
-
-      if(ymd < todayYMD){
-        e.preventDefault();
-        alert("Não é permitido agendar em data anterior a hoje.");
-        return;
-      }
-
-      if(ymd === todayYMD){
-        const nowMin = minutesNow();
-        const slotMin = timeToMinutes(h);
-        if(slotMin == null || (slotMin - nowMin) < 10){
-          e.preventDefault();
-          alert("Horário inválido para hoje. Regra: mínimo 10 minutos de antecedência (tolerância 0).");
-          return;
-        }
-      }
-    });
-
-    /* ===========================
-       MENSALISTAS (Plano semanal)
-       =========================== */
-
+    /* Mensalistas JS */
     function todayYMDMen(){
       const t = new Date();
       return fmtYMD(new Date(t.getFullYear(), t.getMonth(), t.getDate()));
     }
-
     const menForm = document.getElementById("mensalistaForm");
     const menPlanId = document.getElementById("menPlanId");
     const menBarberId = document.getElementById("menBarberId");
@@ -1491,15 +1025,12 @@
     const menEditName = document.getElementById("menEditName");
 
     async function refreshMensalistaHorarios(){
-      if(!menHorario) return;
-
       menHorario.innerHTML = `<option value="">Selecione barbeiro e dia da semana</option>`;
       menHorario.disabled = true;
       if(menHorarioMsg) menHorarioMsg.textContent = "";
 
       const b = menBarberId?.value;
       const wd = menWeekday?.value;
-
       if(!b || wd === "" || wd == null) return;
 
       if(menHorarioMsg) menHorarioMsg.textContent = "Carregando horários...";
@@ -1510,7 +1041,7 @@
         if(!Array.isArray(slots) || slots.length === 0){
           menHorario.innerHTML = `<option value="">Sem horários disponíveis</option>`;
           menHorario.disabled = true;
-          if(menHorarioMsg) menHorarioMsg.textContent = "Sem horários disponíveis para este barbeiro nesse dia.";
+          if(menHorarioMsg) menHorarioMsg.textContent = "Sem horários.";
           return;
         }
 
@@ -1523,48 +1054,36 @@
     }
 
     function setMensalistaEditMode(on, nomeLabel){
-      if(!menCancelEdit || !menSubmitBtn) return;
-
       if(on){
         menCancelEdit.style.display = "";
         menSubmitBtn.textContent = "Salvar edição";
-        if(menEditPill && menEditName){
-          menEditPill.style.display = "";
-          menEditName.textContent = nomeLabel || "";
-        }
+        menEditPill.style.display = "";
+        menEditName.textContent = nomeLabel || "";
       }else{
         menCancelEdit.style.display = "none";
         menSubmitBtn.textContent = "Salvar plano mensalista";
-        if(menEditPill) menEditPill.style.display = "none";
-        if(menEditName) menEditName.textContent = "";
+        menEditPill.style.display = "none";
+        menEditName.textContent = "";
       }
     }
 
     function resetMensalistaForm(){
-      if(!menForm) return;
-
       if(menPlanId) menPlanId.value = "";
       menForm.action = "/admin/mensalistas";
-
-      if(menBarberId) menBarberId.value = "";
-      if(menNome) menNome.value = "";
-      if(menWeekday) menWeekday.value = "";
-
-      if(menHorario){
-        menHorario.innerHTML = `<option value="">Selecione barbeiro e dia da semana</option>`;
-        menHorario.disabled = true;
-      }
+      menBarberId.value = "";
+      menNome.value = "";
+      menWeekday.value = "";
+      menHorario.innerHTML = `<option value="">Selecione barbeiro e dia da semana</option>`;
+      menHorario.disabled = true;
       if(menHorarioMsg) menHorarioMsg.textContent = "";
-
-      if(menStart) menStart.value = todayYMDMen();
-      if(menEnd) menEnd.value = "";
-
+      menStart.value = todayYMDMen();
+      menEnd.value = "";
       setMensalistaEditMode(false);
     }
 
     window.startEditMensalista = async function(btn){
       const tr = btn?.closest("tr");
-      if(!tr || !menForm) return;
+      if(!tr) return;
 
       const id = tr.dataset.menId;
       const barberId = tr.dataset.menBarberId;
@@ -1574,88 +1093,37 @@
       const weekday = tr.dataset.menWeekday || "";
       const horario = tr.dataset.menHorario || "";
 
-      if(menPlanId) menPlanId.value = id || "";
-      if(menBarberId) menBarberId.value = barberId || "";
-      if(menNome) menNome.value = nome;
-      if(menWeekday) menWeekday.value = weekday;
+      menPlanId.value = id || "";
+      menBarberId.value = barberId || "";
+      menNome.value = nome;
+      menWeekday.value = weekday;
 
-      if(menStart) menStart.value = start || todayYMDMen();
-      if(menEnd) menEnd.value = end || "";
+      menStart.value = start || todayYMDMen();
+      menEnd.value = end || "";
 
       setMensalistaEditMode(true, nome);
 
       await refreshMensalistaHorarios();
-      if(menHorario && horario){
-        menHorario.value = horario;
-      }
+      menHorario.value = horario;
 
       menForm.action = `/admin/mensalistas/${encodeURIComponent(id)}/update`;
       menForm.scrollIntoView({ behavior:"smooth", block:"start" });
     };
 
-    menCancelEdit?.addEventListener("click", resetMensalistaForm);
-    menBarberId?.addEventListener("change", refreshMensalistaHorarios);
-    menWeekday?.addEventListener("change", refreshMensalistaHorarios);
-
-    menForm?.addEventListener("submit", (e)=>{
-      if(menStart && !menStart.value){
-        menStart.value = todayYMDMen();
-      }
-      if(menPlanId?.value && menForm && !/\/update$/.test(menForm.action)){
-        menForm.action = `/admin/mensalistas/${encodeURIComponent(menPlanId.value)}/update`;
-      }
-    });
-
-    /* ===========================
-       ✅ FILTRO LISTA MENSALISTAS
-       =========================== */
-    const menListBarberFilter = document.getElementById("menListBarberFilter");
-    const menApplyFilterBtn = document.getElementById("menApplyFilter");
-    const menClearFilterBtn = document.getElementById("menClearFilter");
-    const menCountInfo = document.getElementById("menCountInfo");
-
-    function applyMenListFilter(){
-      const bId = menListBarberFilter?.value || "";
-
-      let shown = 0;
-      document.querySelectorAll("tr.menRow").forEach(tr=>{
-        const trBarber = tr.dataset.menBarberId || "";
-        const ok = (!bId) || (trBarber === bId);
-        tr.style.display = ok ? "" : "none";
-        if(ok) shown++;
-      });
-
-      if(menCountInfo){
-        menCountInfo.textContent = `Mostrando ${shown} mensalista(s)`;
-      }
-    }
-
-    menApplyFilterBtn?.addEventListener("click", applyMenListFilter);
-    menClearFilterBtn?.addEventListener("click", ()=>{
-      if(menListBarberFilter) menListBarberFilter.value = "";
-      applyMenListFilter();
-    });
-    menListBarberFilter?.addEventListener("change", applyMenListFilter);
-
-    // ===== boot =====
-    applyPendentesFilter();
-    applyConfirmados();
-    applyMenListFilter();
+    menCancelEdit.addEventListener("click", resetMensalistaForm);
+    menBarberId.addEventListener("change", refreshMensalistaHorarios);
+    menWeekday.addEventListener("change", refreshMensalistaHorarios);
 
     document.addEventListener("DOMContentLoaded", ()=>{
-      if(menStart && !menStart.value){
-        menStart.value = todayYMDMen();
-      }
+      if(menStart && !menStart.value) menStart.value = todayYMDMen();
 
       const tab = new URLSearchParams(window.location.search).get("tab");
-      if(tab === "manual") activateTab("tabBtnManual");
-      if(tab === "pendentes") activateTab("tabBtnPendentes");
-      if(tab === "confirmados") activateTab("tabBtnConfirmados");
-      if(tab === "mensalistas") activateTab("tabBtnMensalistas");
+      if(tab === "configgeral") activateTab("tabBtnBarbeiros");
       if(tab === "config") activateTab("tabBtnConfig");
-      if(tab === "barbeiros") activateTab("tabBtnBarbeiros");
+      if(tab === "mensalistas") activateTab("tabBtnMensalistas");
+      if(tab === "manual") activateTab("tabBtnManual");
+      if(tab === "agendamentos") activateTab("tabBtnAgendamentos");
     });
   </script>
-
 </body>
 </html>

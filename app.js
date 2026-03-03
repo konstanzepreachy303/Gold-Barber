@@ -21,6 +21,7 @@ const BASE_URL = process.env.BASE_URL ? String(process.env.BASE_URL).trim() : ""
 // -------------------- basic config --------------------
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
+app.set("view cache", false);
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
@@ -58,6 +59,25 @@ function dbRun(sql, params = []) {
       else resolve({ lastID: this.lastID, changes: this.changes });
     });
   });
+}
+
+// -------------------- settings helpers --------------------
+async function getSetting(key, fallback) {
+  const row = await dbGet(`SELECT value FROM app_settings WHERE key = ? LIMIT 1`, [key]);
+  if (!row) return fallback;
+  return row.value;
+}
+async function getSettingInt(key, fallback) {
+  const raw = await getSetting(key, String(fallback));
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
+}
+async function setSetting(key, value) {
+  await dbRun(
+    `INSERT INTO app_settings (key, value) VALUES (?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+    [key, String(value)]
+  );
 }
 
 // -------------------- date/time helpers --------------------
@@ -117,7 +137,7 @@ function todayYMD() {
 }
 
 /**
- * ✅ Regra "horário ao vivo" (tolerância 0)
+ * ✅ Regra "horário ao vivo"
  * Pode agendar se: agora <= (inicioDoSlot - minAdvanceMinutes)
  */
 function canBookSlotLive(ymd, hhmm, minAdvanceMinutes = 10) {
@@ -140,6 +160,33 @@ function buildBaseUrl(req) {
   if (BASE_URL) return BASE_URL.replace(/\/+$/, "");
   const proto = req.headers["x-forwarded-proto"] || req.protocol;
   return `${proto}://${req.get("host")}`;
+}
+
+// -------------------- ✅ garante admin/admin 123 --------------------
+async function ensureAdminDefault() {
+  try {
+    await dbRun(`
+      CREATE TABLE IF NOT EXISTS admin_users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL
+      );
+    `);
+
+    const hash = await bcrypt.hash("123", 10);
+
+    await dbRun(
+      `INSERT OR IGNORE INTO admin_users (username, password_hash) VALUES ('admin', ?)`,
+      [hash]
+    );
+
+    // ✅ força senha sempre ser 123
+    await dbRun(`UPDATE admin_users SET password_hash = ? WHERE username = 'admin'`, [hash]);
+
+    console.log("✅ Admin garantido: admin / 123");
+  } catch (e) {
+    console.error("❌ ensureAdminDefault:", e);
+  }
 }
 
 // -------------------- barber config & slots --------------------
@@ -213,7 +260,6 @@ async function sampleDateForWeekday(barberId, weekday) {
   if (!cfg.workDays?.[wd]) return null;
 
   let cursor = todayYMD();
-
   for (let i = 0; i < 400; i++) {
     if (getDowFromYMD(cursor) === wd) break;
     cursor = addDaysYMD(cursor, 1);
@@ -254,6 +300,45 @@ async function hasMensalistaConflict(barberId, ymd, horario) {
 
   return !!row;
 }
+
+// -------------------- ✅ LIMPEZA: apaga reservados expirados --------------------
+async function cleanupReservasExpiradas() {
+  try {
+    const minutos = await getSettingInt("reserva_expira_minutos", 30);
+
+    await dbRun(`
+      DELETE FROM agendamento_confirm_tokens
+       WHERE used_at IS NULL
+         AND datetime(expires_at) <= datetime('now')
+    `);
+
+    const rows = await dbAll(
+      `
+      SELECT id
+        FROM agendamentos
+       WHERE status = 'reservado'
+         AND datetime(created_at) <= datetime('now', ?)
+    `,
+      [`-${minutos} minutes`]
+    );
+
+    if (!rows.length) return;
+
+    const ids = rows.map((r) => r.id);
+    const placeholders = ids.map(() => "?").join(",");
+
+    await dbRun(
+      `DELETE FROM agendamento_confirm_tokens WHERE agendamento_id IN (${placeholders})`,
+      ids
+    );
+    await dbRun(`DELETE FROM agendamentos WHERE id IN (${placeholders})`, ids);
+  } catch (e) {
+    console.error("❌ cleanupReservasExpiradas:", e);
+  }
+}
+
+// roda a cada 60s
+setInterval(cleanupReservasExpiradas, 60 * 1000);
 
 // -------------------- PUBLIC ROUTES --------------------
 app.get("/", (req, res) => {
@@ -308,7 +393,6 @@ app.get("/horarios", async (req, res) => {
     (h) => !ocupados.includes(h) && !travados.includes(h)
   );
 
-  // ✅ Regra ao vivo (hoje)
   livres = livres.filter((h) => canBookSlotLive(data, h, 10));
 
   res.json(livres);
@@ -330,7 +414,7 @@ app.get("/horarios_weekday", async (req, res) => {
   res.json(slots);
 });
 
-// ✅ confirmação pelo link único
+// ✅ confirmação pelo link único (vira APROVADO)
 app.get("/confirmar", async (req, res) => {
   try {
     const token = String(req.query.token || "").trim();
@@ -341,10 +425,8 @@ app.get("/confirmar", async (req, res) => {
       SELECT t.id AS token_id,
              t.agendamento_id,
              t.expires_at,
-             t.used_at,
-             a.status
+             t.used_at
         FROM agendamento_confirm_tokens t
-        JOIN agendamentos a ON a.id = t.agendamento_id
        WHERE t.token = ?
        LIMIT 1
     `,
@@ -352,10 +434,7 @@ app.get("/confirmar", async (req, res) => {
     );
 
     if (!row) return res.status(400).send("❌ Link inválido ou expirado.");
-
-    if (row.used_at) {
-      return res.sendFile(path.join(__dirname, "views", "sucesso.html"));
-    }
+    if (row.used_at) return res.sendFile(path.join(__dirname, "views", "sucesso.html"));
 
     const stillValid = await dbGet(
       `SELECT 1 AS ok FROM agendamento_confirm_tokens WHERE id = ? AND datetime(expires_at) > datetime('now') LIMIT 1`,
@@ -380,13 +459,12 @@ app.get("/confirmar", async (req, res) => {
   }
 });
 
-// ✅ agendar (público) — telefone NÃO é mais obrigatório
+// ✅ agendar (público) — cria RESERVADO e token expira no tempo configurado
 app.post("/agendar", async (req, res) => {
   try {
     const body = req.body || {};
     const nome = String(body.nome || "").trim();
 
-    // ✅ telefone opcional (não valida e não bloqueia por telefone)
     const telefoneRaw = String(body.telefone || "").trim();
     const telefone = telefoneRaw ? telefoneRaw.replace(/\D+/g, "") : "";
 
@@ -394,16 +472,11 @@ app.post("/agendar", async (req, res) => {
     const horario = String(body.horario || "").trim();
     const bId = Number(body.barberId);
 
-    // ✅ agora NÃO exige telefone
     if (!nome || !data || !horario || !bId) {
-      return res
-        .status(400)
-        .send("❌ Preencha nome, barbeiro, data e horário.");
+      return res.status(400).send("❌ Preencha nome, barbeiro, data e horário.");
     }
 
-    if (!isValidYMD(data)) {
-      return res.status(400).send("❌ Data inválida.");
-    }
+    if (!isValidYMD(data)) return res.status(400).send("❌ Data inválida.");
 
     const barber = await dbGet(
       `SELECT * FROM barbers WHERE id = ? AND is_active = 1`,
@@ -413,22 +486,15 @@ app.post("/agendar", async (req, res) => {
 
     const slots = await generateSlotsForDateAndBarber(data, bId);
     if (!slots.includes(horario)) {
-      return res
-        .status(400)
-        .send("❌ Horário inválido para esse barbeiro nessa data.");
+      return res.status(400).send("❌ Horário inválido para esse barbeiro nessa data.");
     }
 
-    // ✅ Regra ao vivo (server-side)
     if (!canBookSlotLive(data, horario, 10)) {
-      return res
-        .status(400)
-        .send("❌ Esse horário já passou do limite mínimo de antecedência (10 min).");
+      return res.status(400).send("❌ Esse horário já passou do limite mínimo de antecedência (10 min).");
     }
 
     if (await hasMensalistaConflict(bId, data, horario)) {
-      return res
-        .status(400)
-        .send("❌ Horário indisponível (reservado para mensalista).");
+      return res.status(400).send("❌ Horário indisponível (mensalista).");
     }
 
     const conflito = await dbGet(
@@ -442,45 +508,42 @@ app.post("/agendar", async (req, res) => {
     );
     if (conflito) return res.status(400).send("❌ Horário indisponível.");
 
-    // ✅ salva telefone como "000..." se vier vazio (evita erro se coluna for NOT NULL)
     const telefoneToSave = telefone ? telefone : "00000000000";
 
-    // cria pendente
     const ins = await dbRun(
       `INSERT INTO agendamentos (barber_id, nome, telefone, data, horario, status)
-       VALUES (?, ?, ?, ?, ?, 'agendado')`,
+       VALUES (?, ?, ?, ?, ?, 'reservado')`,
       [bId, nome, telefoneToSave, data, horario]
     );
-
     const agendamentoId = ins.lastID;
 
-    // token link único (30 min)
+    const minutos = await getSettingInt("reserva_expira_minutos", 30);
+
     const token = crypto.randomBytes(24).toString("hex");
     await dbRun(
       `
       INSERT INTO agendamento_confirm_tokens (agendamento_id, token, expires_at)
-      VALUES (?, ?, datetime('now', '+30 minutes'))
+      VALUES (?, ?, datetime('now', ?))
     `,
-      [agendamentoId, token]
+      [agendamentoId, token, `+${minutos} minutes`]
     );
 
     const baseUrl = buildBaseUrl(req);
     const confirmUrl = `${baseUrl}/confirmar?token=${encodeURIComponent(token)}`;
 
-    // ✅ WhatsApp abre PARA O NÚMERO DA BARBEARIA (sem telefone do cliente)
     const waText =
       `Olá! Quero confirmar meu agendamento na Gold Barber:\n\n` +
       `👤 Cliente: ${nome}\n` +
       `💇‍♂️ Barbeiro: ${barber.name}\n` +
       `📅 Data: ${data}\n` +
       `🕒 Horário: ${horario}\n\n` +
-      `✅ Clique para confirmar: ${confirmUrl}`;
+      `✅ Clique para confirmar: ${confirmUrl}\n\n` +
+      `⏳ Essa reserva expira em ${minutos} minutos.`;
 
     const waLink = `https://wa.me/${BARBERSHOP_WPP}?text=${encodeURIComponent(waText)}`;
 
     return res.render("confirmar_whatsapp", {
       nome,
-      // telefone agora é opcional (mandamos vazio)
       telefone: telefone || "",
       barberName: barber.name,
       data,
@@ -503,15 +566,11 @@ app.get("/admin/login", (req, res) => {
 app.post("/admin/login", async (req, res) => {
   const { username, password } = req.body || {};
 
-  const user = await dbGet(`SELECT * FROM admin_users WHERE username = ?`, [
-    username,
-  ]);
-  if (!user)
-    return res.render("admin_login", { error: "Usuário/senha inválidos" });
+  const user = await dbGet(`SELECT * FROM admin_users WHERE username = ?`, [username]);
+  if (!user) return res.render("admin_login", { error: "Usuário/senha inválidos" });
 
   const ok = await bcrypt.compare(String(password || ""), user.password_hash);
-  if (!ok)
-    return res.render("admin_login", { error: "Usuário/senha inválidos" });
+  if (!ok) return res.render("admin_login", { error: "Usuário/senha inválidos" });
 
   req.session.adminUser = { id: user.id, username: user.username };
   return res.redirect("/admin");
@@ -523,9 +582,9 @@ app.post("/admin/logout", (req, res) => {
 
 // -------------------- ADMIN PANEL --------------------
 app.get("/admin", requireAdmin, async (req, res) => {
-  const barbers = await dbAll(
-    `SELECT id, name, is_active FROM barbers ORDER BY id`
-  );
+  await cleanupReservasExpiradas();
+
+  const barbers = await dbAll(`SELECT id, name, is_active FROM barbers ORDER BY id`);
 
   const agendamentos = await dbAll(
     `SELECT a.*, b.name AS barber_name
@@ -569,8 +628,7 @@ app.get("/admin", requireAdmin, async (req, res) => {
     const rangeStart = start > winStart ? start : winStart;
     const rangeEnd = end ? (end < winEnd ? end : winEnd) : winEnd;
 
-    if (!isValidYMD(rangeStart) || !isValidYMD(rangeEnd) || rangeEnd < rangeStart)
-      continue;
+    if (!isValidYMD(rangeStart) || !isValidYMD(rangeEnd) || rangeEnd < rangeStart) continue;
 
     let cursor = rangeStart;
     while (cursor <= rangeEnd && getDowFromYMD(cursor) !== Number(p.weekday)) {
@@ -593,6 +651,8 @@ app.get("/admin", requireAdmin, async (req, res) => {
     }
   }
 
+  const reservaExpiraMinutos = await getSettingInt("reserva_expira_minutos", 30);
+
   res.render("admin", {
     agendamentos,
     barbers,
@@ -600,6 +660,7 @@ app.get("/admin", requireAdmin, async (req, res) => {
     mensalistas,
     mensalistaConfirmados,
     adminUser: req.session.adminUser,
+    reservaExpiraMinutos,
   });
 });
 
@@ -611,16 +672,40 @@ app.post("/admin/status", requireAdmin, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ✅ salvar tempo de expiração na aba Configuração
+app.post("/admin/config/reserva", requireAdmin, async (req, res) => {
+  const minutos = Number((req.body || {}).reservaExpiraMinutos);
+  const fixed = Number.isFinite(minutos) ? Math.max(1, Math.min(720, Math.floor(minutos))) : 30;
+
+  await setSetting("reserva_expira_minutos", fixed);
+  await cleanupReservasExpiradas();
+
+  return res.redirect("/admin?tab=configgeral");
+});
+
+// -------------------- barbers admin --------------------
+
+// ✅ criar novo barbeiro
+app.post("/admin/barbeiros/create", requireAdmin, async (req, res) => {
+  const name = String((req.body || {}).name || "").trim();
+  if (!name) return res.status(400).send("Nome inválido.");
+
+  const ins = await dbRun(`INSERT INTO barbers (name, is_active) VALUES (?, 1)`, [name]);
+  const newId = ins.lastID;
+
+  await dbRun(`INSERT OR IGNORE INTO barber_config (barber_id) VALUES (?)`, [newId]);
+
+  return res.redirect("/admin?tab=configgeral");
+});
+
 app.post("/admin/barbeiros/:id/toggle", requireAdmin, async (req, res) => {
   const barberId = Number(req.params.id);
-  const current = await dbGet(`SELECT is_active FROM barbers WHERE id = ?`, [
-    barberId,
-  ]);
-  if (!current) return res.redirect("/admin");
+  const current = await dbGet(`SELECT is_active FROM barbers WHERE id = ?`, [barberId]);
+  if (!current) return res.redirect("/admin?tab=configgeral");
 
   const next = current.is_active ? 0 : 1;
   await dbRun(`UPDATE barbers SET is_active = ? WHERE id = ?`, [next, barberId]);
-  res.redirect("/admin");
+  res.redirect("/admin?tab=configgeral");
 });
 
 app.post("/admin/barbeiros/:id/nome", requireAdmin, async (req, res) => {
@@ -630,7 +715,22 @@ app.post("/admin/barbeiros/:id/nome", requireAdmin, async (req, res) => {
   if (!name) return res.status(400).send("Nome inválido.");
 
   await dbRun(`UPDATE barbers SET name = ? WHERE id = ?`, [name, barberId]);
-  res.redirect("/admin");
+  res.redirect("/admin?tab=configgeral");
+});
+
+// ✅ EXCLUIR barbeiro (novo)
+app.post("/admin/barbeiros/:id/delete", requireAdmin, async (req, res) => {
+  const barberId = Number(req.params.id);
+  if (!barberId) return res.redirect("/admin?tab=configgeral");
+
+  // evita deletar se só tiver 1 barbeiro
+  const total = await dbGet(`SELECT COUNT(*) AS c FROM barbers`);
+  if (total && Number(total.c) <= 1) {
+    return res.status(400).send("❌ Não é possível excluir o último barbeiro.");
+  }
+
+  await dbRun(`DELETE FROM barbers WHERE id = ?`, [barberId]);
+  return res.redirect("/admin?tab=configgeral");
 });
 
 app.post("/admin/barbeiro/:id/config", requireAdmin, async (req, res) => {
@@ -692,7 +792,7 @@ app.post("/admin/barbeiro/:id/config", requireAdmin, async (req, res) => {
     );
   }
 
-  res.redirect("/admin");
+  res.redirect("/admin?tab=config");
 });
 
 // -------------------- ✅ PLANO MENSALISTA --------------------
@@ -711,27 +811,15 @@ async function handleCreateMensalista(req, res) {
   const horario = String(body.horario || "").trim();
 
   if (!barberId || !nome || !start_ymd || !isValidYMD(start_ymd) || !horario) {
-    return res
-      .status(400)
-      .send("❌ Preencha: barbeiro, nome, data início, dia da semana e horário.");
+    return res.status(400).send("❌ Preencha: barbeiro, nome, data início, dia da semana e horário.");
   }
-  if (!(weekday >= 0 && weekday <= 6)) {
-    return res.status(400).send("❌ Dia da semana inválido.");
-  }
-  if (end_ymd && !isValidYMD(end_ymd)) {
-    return res.status(400).send("❌ Data fim inválida.");
-  }
-  if (end_ymd && end_ymd < start_ymd) {
-    return res.status(400).send("❌ Data fim não pode ser menor que a data início.");
-  }
+  if (!(weekday >= 0 && weekday <= 6)) return res.status(400).send("❌ Dia da semana inválido.");
+  if (end_ymd && !isValidYMD(end_ymd)) return res.status(400).send("❌ Data fim inválida.");
+  if (end_ymd && end_ymd < start_ymd) return res.status(400).send("❌ Data fim não pode ser menor que a data início.");
 
   const slots = await slotsForWeekday(barberId, weekday);
   if (!slots.includes(horario)) {
-    return res
-      .status(400)
-      .send(
-        "❌ Horário inválido para o dia da semana escolhido (ou barbeiro não trabalha nesse dia)."
-      );
+    return res.status(400).send("❌ Horário inválido para o dia da semana escolhido.");
   }
 
   const endCompare = end_ymd || "9999-12-31";
@@ -750,11 +838,7 @@ async function handleCreateMensalista(req, res) {
   );
 
   if (existsPlan) {
-    return res
-      .status(400)
-      .send(
-        "❌ Já existe um mensalista nesse mesmo dia/horário para esse barbeiro (período sobreposto)."
-      );
+    return res.status(400).send("❌ Já existe mensalista nesse dia/horário (período sobreposto).");
   }
 
   await dbRun(
@@ -766,12 +850,12 @@ async function handleCreateMensalista(req, res) {
     [barberId, nome, telefone || null, start_ymd, end_ymd, weekday, horario]
   );
 
-  return res.redirect("/admin");
+  return res.redirect("/admin?tab=mensalistas");
 }
 
 async function handleUpdateMensalista(req, res) {
   const id = Number(req.params.id);
-  if (!id) return res.redirect("/admin");
+  if (!id) return res.redirect("/admin?tab=mensalistas");
 
   const body = req.body || {};
   const barberId = Number(body.barberId);
@@ -786,28 +870,14 @@ async function handleUpdateMensalista(req, res) {
   const horario = String(body.horario || "").trim();
 
   if (!barberId || !nome || !start_ymd || !isValidYMD(start_ymd) || !horario) {
-    return res
-      .status(400)
-      .send("❌ Preencha: barbeiro, nome, data início, dia da semana e horário.");
+    return res.status(400).send("❌ Preencha: barbeiro, nome, data início, dia da semana e horário.");
   }
-  if (!(weekday >= 0 && weekday <= 6)) {
-    return res.status(400).send("❌ Dia da semana inválido.");
-  }
-  if (end_ymd && !isValidYMD(end_ymd)) {
-    return res.status(400).send("❌ Data fim inválida.");
-  }
-  if (end_ymd && end_ymd < start_ymd) {
-    return res.status(400).send("❌ Data fim não pode ser menor que a data início.");
-  }
+  if (!(weekday >= 0 && weekday <= 6)) return res.status(400).send("❌ Dia da semana inválido.");
+  if (end_ymd && !isValidYMD(end_ymd)) return res.status(400).send("❌ Data fim inválida.");
+  if (end_ymd && end_ymd < start_ymd) return res.status(400).send("❌ Data fim não pode ser menor que a data início.");
 
   const slots = await slotsForWeekday(barberId, weekday);
-  if (!slots.includes(horario)) {
-    return res
-      .status(400)
-      .send(
-        "❌ Horário inválido para o dia da semana escolhido (ou barbeiro não trabalha nesse dia)."
-      );
-  }
+  if (!slots.includes(horario)) return res.status(400).send("❌ Horário inválido para o dia da semana.");
 
   const endCompare = end_ymd || "9999-12-31";
   const existsPlan = await dbGet(
@@ -824,13 +894,7 @@ async function handleUpdateMensalista(req, res) {
   `,
     [id, barberId, weekday, horario, endCompare, start_ymd]
   );
-  if (existsPlan) {
-    return res
-      .status(400)
-      .send(
-        "❌ Já existe um mensalista nesse mesmo dia/horário para esse barbeiro (período sobreposto)."
-      );
-  }
+  if (existsPlan) return res.status(400).send("❌ Já existe mensalista nesse dia/horário (sobreposto).");
 
   await dbRun(
     `
@@ -847,21 +911,21 @@ async function handleUpdateMensalista(req, res) {
     [barberId, nome, telefone || null, start_ymd, end_ymd, weekday, horario, id]
   );
 
-  return res.redirect("/admin");
+  return res.redirect("/admin?tab=mensalistas");
 }
 
 async function handleDeleteMensalista(req, res) {
   const id = Number(req.params.id);
-  if (!id) return res.redirect("/admin");
+  if (!id) return res.redirect("/admin?tab=mensalistas");
   await dbRun(`DELETE FROM mensalista_plans WHERE id = ?`, [id]);
-  return res.redirect("/admin");
+  return res.redirect("/admin?tab=mensalistas");
 }
 
 app.post("/admin/mensalistas", requireAdmin, handleCreateMensalista);
 app.post("/admin/mensalistas/:id/update", requireAdmin, handleUpdateMensalista);
 app.post("/admin/mensalistas/:id/delete", requireAdmin, handleDeleteMensalista);
 
-// ✅ ADMIN: AGENDAR MANUALMENTE (mantido)
+// ✅ ADMIN: AGENDAR MANUALMENTE (SEM STATUS — sempre APROVADO)
 app.post("/admin/agendar", requireAdmin, async (req, res) => {
   const body = req.body || {};
 
@@ -871,7 +935,6 @@ app.post("/admin/agendar", requireAdmin, async (req, res) => {
   const dataInput = String(body.data || "").trim();
   const horario = String(body.horario || "").trim();
 
-  const status = String(body.status || "agendado").trim();
   const data = toYMD(dataInput);
 
   if (!barberId || !nome || !data || !horario) {
@@ -883,9 +946,7 @@ app.post("/admin/agendar", requireAdmin, async (req, res) => {
 
   const slots = await generateSlotsForDateAndBarber(data, barberId);
   if (!slots.includes(horario)) {
-    return res
-      .status(400)
-      .send("❌ Horário inválido para esse barbeiro nessa data (ou é folga).");
+    return res.status(400).send("❌ Horário inválido para esse barbeiro nessa data (ou é folga).");
   }
 
   if (await hasMensalistaConflict(barberId, data, horario)) {
@@ -908,8 +969,8 @@ app.post("/admin/agendar", requireAdmin, async (req, res) => {
 
   await dbRun(
     `INSERT INTO agendamentos (barber_id, nome, telefone, data, horario, status)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [barberId, nome, telefone || "00000000000", data, horario, status || "agendado"]
+     VALUES (?, ?, ?, ?, ?, 'aprovado')`,
+    [barberId, nome, telefone || "00000000000", data, horario]
   );
 
   return res.render("admin_sucesso", {
@@ -918,13 +979,19 @@ app.post("/admin/agendar", requireAdmin, async (req, res) => {
     telefone: telefone || "",
     data,
     horario,
-    status,
+    status: "confirmado",
+    statusLabel: "confirmado",
   });
 });
 
 // -------------------- start --------------------
-app.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
-  console.log(`📲 WhatsApp oficial: ${BARBERSHOP_WPP}`);
-  if (BASE_URL) console.log(`🌐 BASE_URL: ${BASE_URL}`);
-});
+(async () => {
+  await ensureAdminDefault();
+  await cleanupReservasExpiradas();
+
+  app.listen(PORT, () => {
+    console.log(`✅ Server running on http://localhost:${PORT}`);
+    console.log(`📲 WhatsApp oficial: ${BARBERSHOP_WPP}`);
+    if (BASE_URL) console.log(`🌐 BASE_URL: ${BASE_URL}`);
+  });
+})();
