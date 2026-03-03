@@ -98,19 +98,48 @@
 </head>
 
 <body>
+  <%
+    // ✅ fallback seguro: se waText não vier do backend, monta aqui
+    const _nome = (typeof nome !== "undefined" ? String(nome) : "").trim();
+    const _barberName = (typeof barberName !== "undefined" ? String(barberName) : "").trim();
+    const _data = (typeof data !== "undefined" ? String(data) : "").trim();
+    const _horario = (typeof horario !== "undefined" ? String(horario) : "").trim();
+    const _confirmUrl = (typeof confirmUrl !== "undefined" ? String(confirmUrl) : "").trim();
+
+    const _waText =
+      (typeof waText !== "undefined" && waText)
+        ? String(waText)
+        : (
+          `Olá! Quero confirmar meu agendamento na Gold Barber:\n\n` +
+          `👤 Cliente: ${_nome}\n` +
+          `💇‍♂️ Barbeiro: ${_barberName}\n` +
+          `📅 Data: ${_data}\n` +
+          `🕒 Horário: ${_horario}\n\n` +
+          `✅ Clique para confirmar: ${_confirmUrl}`
+        );
+
+    // ✅ garante waLink mesmo se não vier (mas se vier, usa o seu)
+    const _waLink =
+      (typeof waLink !== "undefined" && waLink)
+        ? String(waLink)
+        : (
+          // se não tiver número, ainda forma um link válido
+          `https://wa.me/?text=${encodeURIComponent(_waText)}`
+        );
+  %>
+
   <div class="box">
     <h1>📲 Confirmar pelo WhatsApp</h1>
-
 
     <div class="pill">
       WhatsApp da barbearia: <%= barbershopWppDisplay || "—" %>
     </div>
 
     <div class="card">
-      <textarea id="msg" readonly><%- (waText || "") %></textarea>
+      <textarea id="msg" readonly><%- _waText %></textarea>
 
       <div class="btns">
-        <a class="primary" id="openWpp" href="<%- waLink %>">Abrir WhatsApp</a>
+        <a class="primary" id="openWpp" href="<%- _waLink %>">Abrir WhatsApp</a>
       </div>
 
       <div class="hint">
@@ -123,17 +152,8 @@
   </div>
 
   <script>
-    const copyBtn = document.getElementById("copyBtn");
-    const msg = document.getElementById("msg");
-
-    copyBtn.addEventListener("click", async () => {
-      try{
-        await navigator.clipboard.writeText(msg.value);
-      }catch(e){
-        msg.select();
-        document.execCommand("copy");
-      }
-    });
+    // ✅ seu script estava quebrando porque não existe #copyBtn
+    // Mantive a página igual e só evitei erro no console.
   </script>
 </body>
 </html>

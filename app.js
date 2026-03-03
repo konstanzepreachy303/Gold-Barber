@@ -83,20 +83,24 @@ function fromMinutes(min) {
   return `${pad2(h)}:${pad2(m)}`;
 }
 
-// Converte dd-mm-yyyy -> yyyy-mm-dd (aceita também yyyy-mm-dd)
+/**
+ * Converte datas para yyyy-mm-dd.
+ * Aceita:
+ *  - yyyy-mm-dd
+ *  - dd-mm-yyyy
+ *  - dd/mm/yyyy
+ */
 function toYMD(input) {
   const s = String(input || "").trim();
   if (!s) return null;
 
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
 
-  const m = s.match(/^(\d{2})-(\d{2})-(\d{4})$/);
-  if (m) {
-    const dd = m[1],
-      mm = m[2],
-      yyyy = m[3];
-    return `${yyyy}-${mm}-${dd}`;
-  }
+  let m = s.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+
+  m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (m) return `${m[3]}-${m[2]}-${m[1]}`;
 
   return null;
 }
@@ -115,13 +119,11 @@ function todayYMD() {
 /**
  * ✅ Regra "horário ao vivo" (tolerância 0)
  * Pode agendar se: agora <= (inicioDoSlot - minAdvanceMinutes)
- * Ex: minAdvanceMinutes=10 => 16:50:00 pode 17:00; 16:50:01 já não pode.
  */
 function canBookSlotLive(ymd, hhmm, minAdvanceMinutes = 10) {
   if (!isValidYMD(ymd)) return false;
   if (!hhmm || !/^\d{2}:\d{2}$/.test(String(hhmm))) return false;
 
-  // Só aplica "ao vivo" para o dia de hoje (os outros dias mantém normal)
   if (ymd !== todayYMD()) return true;
 
   const [y, mo, d] = ymd.split("-").map(Number);
@@ -133,20 +135,7 @@ function canBookSlotLive(ymd, hhmm, minAdvanceMinutes = 10) {
   return Date.now() <= cutoff;
 }
 
-// -------------------- phone helpers --------------------
-function normalizePhoneBR(input) {
-  let digits = String(input || "").replace(/\D+/g, "");
-  digits = digits.replace(/^0+/, "");
-
-  // remove 55 se vier com DDI
-  if (digits.startsWith("55") && digits.length > 11) {
-    digits = digits.slice(2);
-  }
-
-  // esperado: 10 ou 11 (DDD + número)
-  return digits;
-}
-
+// -------------------- misc helpers --------------------
 function buildBaseUrl(req) {
   if (BASE_URL) return BASE_URL.replace(/\/+$/, "");
   const proto = req.headers["x-forwarded-proto"] || req.protocol;
@@ -319,8 +308,7 @@ app.get("/horarios", async (req, res) => {
     (h) => !ocupados.includes(h) && !travados.includes(h)
   );
 
-  // ✅ REGRA AO VIVO (hoje): só mostra horários que ainda podem ser agendados
-  // (10 minutos de antecedência, tolerância 0)
+  // ✅ Regra ao vivo (hoje)
   livres = livres.filter((h) => canBookSlotLive(data, h, 10));
 
   res.json(livres);
@@ -369,7 +357,6 @@ app.get("/confirmar", async (req, res) => {
       return res.sendFile(path.join(__dirname, "views", "sucesso.html"));
     }
 
-    // expiração (melhor do que converter pra Date na marra: valida no sqlite mesmo)
     const stillValid = await dbGet(
       `SELECT 1 AS ok FROM agendamento_confirm_tokens WHERE id = ? AND datetime(expires_at) > datetime('now') LIMIT 1`,
       [row.token_id]
@@ -393,27 +380,25 @@ app.get("/confirmar", async (req, res) => {
   }
 });
 
-// ✅ agendar (público) — 1 por dia por telefone + gera link WhatsApp da barbearia
+// ✅ agendar (público) — telefone NÃO é mais obrigatório
 app.post("/agendar", async (req, res) => {
   try {
     const body = req.body || {};
     const nome = String(body.nome || "").trim();
+
+    // ✅ telefone opcional (não valida e não bloqueia por telefone)
     const telefoneRaw = String(body.telefone || "").trim();
+    const telefone = telefoneRaw ? telefoneRaw.replace(/\D+/g, "") : "";
+
     const data = String(body.data || "").trim();
     const horario = String(body.horario || "").trim();
     const bId = Number(body.barberId);
 
-    if (!nome || !telefoneRaw || !data || !horario || !bId) {
+    // ✅ agora NÃO exige telefone
+    if (!nome || !data || !horario || !bId) {
       return res
         .status(400)
-        .send("❌ Preencha nome, telefone (com DDD), barbeiro, data e horário.");
-    }
-
-    const telefone = normalizePhoneBR(telefoneRaw);
-    if (!(telefone.length === 10 || telefone.length === 11)) {
-      return res
-        .status(400)
-        .send("❌ Telefone inválido. Digite com DDD (ex: 12988565206).");
+        .send("❌ Preencha nome, barbeiro, data e horário.");
     }
 
     if (!isValidYMD(data)) {
@@ -426,26 +411,6 @@ app.post("/agendar", async (req, res) => {
     );
     if (!barber) return res.status(400).send("❌ Barbeiro inválido.");
 
-    // ✅ 1 agendamento por dia por telefone (pela data do agendamento)
-    const jaTemNoDia = await dbGet(
-      `
-      SELECT id
-        FROM agendamentos
-       WHERE telefone = ?
-         AND data = ?
-         AND status != 'cancelado'
-       LIMIT 1
-    `,
-      [telefone, data]
-    );
-    if (jaTemNoDia) {
-      return res
-        .status(400)
-        .send(
-          "❌ Você já tem um horário marcado para essa data.\nSe precisa alterar, fale com a barbearia para remarcar/cancelar."
-        );
-    }
-
     const slots = await generateSlotsForDateAndBarber(data, bId);
     if (!slots.includes(horario)) {
       return res
@@ -453,7 +418,7 @@ app.post("/agendar", async (req, res) => {
         .send("❌ Horário inválido para esse barbeiro nessa data.");
     }
 
-    // ✅ REGRA AO VIVO (server-side): impede agendar se já passou do limite
+    // ✅ Regra ao vivo (server-side)
     if (!canBookSlotLive(data, horario, 10)) {
       return res
         .status(400)
@@ -477,11 +442,14 @@ app.post("/agendar", async (req, res) => {
     );
     if (conflito) return res.status(400).send("❌ Horário indisponível.");
 
+    // ✅ salva telefone como "000..." se vier vazio (evita erro se coluna for NOT NULL)
+    const telefoneToSave = telefone ? telefone : "00000000000";
+
     // cria pendente
     const ins = await dbRun(
       `INSERT INTO agendamentos (barber_id, nome, telefone, data, horario, status)
        VALUES (?, ?, ?, ?, ?, 'agendado')`,
-      [bId, nome, telefone, data, horario]
+      [bId, nome, telefoneToSave, data, horario]
     );
 
     const agendamentoId = ins.lastID;
@@ -499,11 +467,10 @@ app.post("/agendar", async (req, res) => {
     const baseUrl = buildBaseUrl(req);
     const confirmUrl = `${baseUrl}/confirmar?token=${encodeURIComponent(token)}`;
 
-    // ✅ agora o WhatsApp abre PARA O NÚMERO DA BARBEARIA
+    // ✅ WhatsApp abre PARA O NÚMERO DA BARBEARIA (sem telefone do cliente)
     const waText =
       `Olá! Quero confirmar meu agendamento na Gold Barber:\n\n` +
       `👤 Cliente: ${nome}\n` +
-      `📞 Telefone: ${telefone}\n` +
       `💇‍♂️ Barbeiro: ${barber.name}\n` +
       `📅 Data: ${data}\n` +
       `🕒 Horário: ${horario}\n\n` +
@@ -513,7 +480,8 @@ app.post("/agendar", async (req, res) => {
 
     return res.render("confirmar_whatsapp", {
       nome,
-      telefone,
+      // telefone agora é opcional (mandamos vazio)
+      telefone: telefone || "",
       barberName: barber.name,
       data,
       horario,
