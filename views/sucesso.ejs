@@ -82,26 +82,38 @@
 </head>
 <body>
   <%
-    // ✅ À prova de cache/variável faltando
-    const status =
+    function formatDateBR(d){
+      if(!d) return "";
+      // yyyy-mm-dd -> dd/mm/yyyy
+      if(/^\d{4}-\d{2}-\d{2}$/.test(String(d))){
+        const [y,m,day] = String(d).split("-");
+        return `${day}/${m}/${y}`;
+      }
+      return String(d);
+    }
+
+    // À prova de variável faltando
+    const _status =
       (typeof statusLabel !== "undefined" && statusLabel)
-        ? statusLabel
+        ? String(statusLabel)
         : "confirmado";
+
+    const _dataFmt = formatDateBR(typeof data !== "undefined" ? data : "");
   %>
 
   <div class="box">
-    <h1 class="ok">✅ Agendamento salvo</h1>
+    <h1 class="ok">✅ Agendamento confirmado</h1>
 
     <p class="sub">
-      O agendamento foi registrado no sistema.
+      O agendamento foi confirmado com sucesso.
     </p>
 
     <div class="card">
-      <div class="row"><span class="k">Barbeiro</span><span><%= barberName %></span></div>
-      <div class="row"><span class="k">Cliente</span><span><%= nome %></span></div>
-      <div class="row"><span class="k">Data</span><span><%= data %></span></div>
-      <div class="row"><span class="k">Horário</span><span><%= horario %></span></div>
-      <div class="row"><span class="k">Status</span><span><%= status %></span></div>
+      <div class="row"><span class="k">Barbeiro</span><span><%= barberName || "-" %></span></div>
+      <div class="row"><span class="k">Cliente</span><span><%= nome || "-" %></span></div>
+      <div class="row"><span class="k">Data</span><span><%= _dataFmt || "-" %></span></div>
+      <div class="row"><span class="k">Horário</span><span><%= horario || "-" %></span></div>
+      <div class="row"><span class="k">Status</span><span><%= _status %></span></div>
     </div>
 
     <div class="btns">

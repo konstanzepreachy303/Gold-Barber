@@ -37,7 +37,7 @@
     }
     textarea{
       width:100%;
-      min-height:220px;
+      min-height:260px;
       resize:vertical;
       border-radius:12px;
       border:1px solid #2a2a2a;
@@ -45,9 +45,10 @@
       color:#fff;
       padding:12px;
       font-size:14px;
-      line-height:1.5;
+      line-height:1.55;
       font-family: Arial, sans-serif;
       box-sizing:border-box;
+      white-space:pre-wrap;
     }
     .btns{
       display:flex;
@@ -99,61 +100,111 @@
 
 <body>
   <%
-    // ✅ fallback seguro: se waText não vier do backend, monta aqui
+    // ===== Helpers =====
+    function onlyDigits(s){
+      return String(s || "").replace(/\D/g, "");
+    }
+
+    function formatDateBR(d){
+      if(!d) return "";
+      // Converte YYYY-MM-DD -> DD/MM/YYYY
+      if(/^\d{4}-\d{2}-\d{2}$/.test(d)){
+        const [y,m,day] = d.split("-");
+        return `${day}/${m}/${y}`;
+      }
+      return d; // se já vier formatado, mantém
+    }
+
+    // Dados (fallback seguro)
     const _nome = (typeof nome !== "undefined" ? String(nome) : "").trim();
     const _barberName = (typeof barberName !== "undefined" ? String(barberName) : "").trim();
-    const _data = (typeof data !== "undefined" ? String(data) : "").trim();
+    const _dataRaw = (typeof data !== "undefined" ? String(data) : "").trim();
+    const _data = formatDateBR(_dataRaw);
     const _horario = (typeof horario !== "undefined" ? String(horario) : "").trim();
     const _confirmUrl = (typeof confirmUrl !== "undefined" ? String(confirmUrl) : "").trim();
 
+    // WhatsApp da barbearia
+    const _wppDisplay = (typeof barbershopWppDisplay !== "undefined" ? String(barbershopWppDisplay) : "").trim();
+    const _phoneDigits = onlyDigits(_wppDisplay) || ""; // ex: "5512988565206"
+
+    // Expiração (se existir no backend; se não, usa 30)
+    const _expMin = (typeof reservaExpiraMinutos !== "undefined" && reservaExpiraMinutos !== null)
+      ? Number(reservaExpiraMinutos)
+      : 30;
+
+    // ===== Mensagem formal (com emojis mais estáveis) =====
+    // Obs.: evitamos emojis "complexos" (tipo 💇‍♂️) que quebram mais fácil no desktop.
+    const niceText =
+      `💈 GOLD BARBER\n` +
+      `Confirmação de Agendamento\n\n` +
+      `Olá${_nome ? `, ${_nome}` : ""}!\n\n` +
+      `Seu horário foi reservado com sucesso.\n` +
+      `Para garantir o atendimento, confirme pelo link abaixo.\n\n` +
+      `📌 Detalhes do agendamento:\n` +
+      `• Barbeiro: ${_barberName || "-"}\n` +
+      `• Data: ${_data || "-"}\n` +
+      `• Horário: ${_horario || "-"}\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `✅ Confirme clicando no Link abaixo:\n` +
+      `${_confirmUrl || "-"}\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `⚠️ A confirmação é necessária para manter o horário reservado.\n` +
+      `⏳ O link expira em ${_expMin} minutos.\n\n` +
+      `Estamos prontos para deixar seu visual impecável!`;
+
+    // Se o backend já envia waText, usamos ele; senão usamos o modelo acima
     const _waText =
       (typeof waText !== "undefined" && waText)
         ? String(waText)
-        : (
-          `Olá! Quero confirmar meu agendamento na Gold Barber:\n\n` +
-          `👤 Cliente: ${_nome}\n` +
-          `💇‍♂️ Barbeiro: ${_barberName}\n` +
-          `📅 Data: ${_data}\n` +
-          `🕒 Horário: ${_horario}\n\n` +
-          `✅ Clique para confirmar: ${_confirmUrl}`
-        );
-
-    // ✅ garante waLink mesmo se não vier (mas se vier, usa o seu)
-    const _waLink =
-      (typeof waLink !== "undefined" && waLink)
-        ? String(waLink)
-        : (
-          // se não tiver número, ainda forma um link válido
-          `https://wa.me/?text=${encodeURIComponent(_waText)}`
-        );
+        : niceText;
   %>
 
   <div class="box">
     <h1>📲 Confirmar pelo WhatsApp</h1>
 
     <div class="pill">
-      WhatsApp da barbearia: <%= barbershopWppDisplay || "—" %>
+      WhatsApp da barbearia: <%= _wppDisplay || "—" %>
     </div>
 
     <div class="card">
       <textarea id="msg" readonly><%- _waText %></textarea>
 
       <div class="btns">
-        <a class="primary" id="openWpp" href="<%- _waLink %>">Abrir WhatsApp</a>
+        <a class="primary" id="openWpp" href="#" rel="noopener">Abrir WhatsApp</a>
       </div>
 
       <div class="hint">
-        Dica: É necessario clicar no botão "abrir WhatsApp" para confirmar o agendamento do horario.
+        Dica: clique em <strong>“Abrir WhatsApp”</strong> para enviar a mensagem e confirmar o agendamento.
       </div>
-    </div>
-
-    <div class="btns" style="margin-top:14px;">
     </div>
   </div>
 
   <script>
-    // ✅ seu script estava quebrando porque não existe #copyBtn
-    // Mantive a página igual e só evitei erro no console.
+    (function(){
+      // Texto vindo do servidor, preservando emojis corretamente
+      const text = <%- JSON.stringify(_waText) %>;
+      const enc = encodeURIComponent(text);
+
+      // Se não tiver telefone, cai num link genérico com apenas o texto
+      const phoneDigits = "<%= _phoneDigits %>";
+      const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+
+      // Desktop: usar web.whatsapp.com (evita quebrar emojis no redirect do api.whatsapp.com)
+      // Mobile: usar wa.me
+      let url;
+      if (!phoneDigits){
+        url = isMobile
+          ? `https://wa.me/?text=${enc}`
+          : `https://web.whatsapp.com/send?text=${enc}`;
+      } else {
+        url = isMobile
+          ? `https://wa.me/${phoneDigits}?text=${enc}`
+          : `https://web.whatsapp.com/send?phone=${phoneDigits}&text=${enc}`;
+      }
+
+      const a = document.getElementById("openWpp");
+      if(a) a.href = url;
+    })();
   </script>
 </body>
 </html>

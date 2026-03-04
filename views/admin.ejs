@@ -107,6 +107,36 @@
     .tag.reservado{border-color:#c9a227; box-shadow:0 0 0 2px rgba(201,162,39,.18);}
     .tag.mensalista{border-color:#111; box-shadow:0 0 0 2px rgba(0,0,0,.12);}
 
+    /* Picker de Mês (mais fácil de visualizar) */
+    .monthPickerBox{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      background:#111;
+      color:#fff;
+      padding:10px 10px;
+      border-radius:14px;
+      border:1px solid #1f1f1f;
+      box-shadow: 0 0 0 2px rgba(201, 162, 39, 0.18);
+    }
+    .monthPickerBox .muted{color:#d8d8d8;}
+    .monthPickerBox select{
+      background:#151515;
+      color:#fff;
+      border:1px solid #2a2a2a;
+      border-radius:12px;
+      padding:10px 12px;
+      font-weight:900;
+      min-width:150px;
+    }
+    .monthPickerBox select:focus{outline: none; box-shadow: 0 0 0 2px rgba(201, 162, 39, 0.25);}
+    .monthPickerHint{
+      margin-top:6px;
+      font-size:12px;
+      font-weight:800;
+      color:#666;
+    }
+
     /* Calendário */
     .overlay {
       position: fixed;
@@ -217,6 +247,7 @@
       return map[Number(n)] ?? String(n);
     }
 
+    // AGENDAMENTOS: inclui aprovado (confirmado), reservado e mensalistas
     const agendaBase = (agendamentos || []).filter(a => a.status === "aprovado" || a.status === "reservado");
     const agendaAll = agendaBase.concat(mensalistaConfirmados || []);
 
@@ -263,6 +294,14 @@
           <div class="muted">
             O tempo abaixo controla em quantos minutos um agendamento <strong>reservado</strong> expira
             (se o cliente não confirmar no WhatsApp). Depois disso, ele é removido do banco.
+          </div>
+
+          <div class="row" style="margin-top:12px; align-items:center;">
+            <label style="margin:0; display:flex; gap:10px; align-items:center; font-weight:900;">
+              <input type="checkbox" id="agAutoRefreshToggle" />
+              Atualização automática da aba Agendamentos (30s)
+            </label>
+            <span class="muted">Recarrega sozinho e mantém seus filtros (sem F5).</span>
           </div>
 
           <form method="POST" action="/admin/config/reserva" style="margin-top:12px;">
@@ -468,7 +507,28 @@
         </div>
 
         <div class="card">
-          <h2 style="margin-bottom:6px;">Mensalistas cadastrados</h2>
+          <div class="row" style="justify-content:space-between; align-items:flex-end;">
+            <div>
+              <h2 style="margin:0 0 6px 0;">Mensalistas cadastrados</h2>
+              <div class="muted">Filtre para encontrar mais rápido.</div>
+            </div>
+
+            <div class="row" style="align-items:flex-end;">
+              <div>
+                <span class="muted" style="font-weight:900;">Barbeiro</span><br/>
+                <select id="menBarberFilter">
+                  <option value="">Todos</option>
+                  <% barbers.forEach(b => { %>
+                    <option value="<%= b.id %>"><%= b.name %></option>
+                  <% }) %>
+                </select>
+              </div>
+
+              <div class="pill" style="background:#f1f1f1; align-self:center;">
+                Total: <span id="menTotal">0</span>
+              </div>
+            </div>
+          </div>
 
           <% if (!(mensalistas || []).length) { %>
             <div class="muted">Nenhum plano mensalista cadastrado ainda.</div>
@@ -563,42 +623,97 @@
 
     <!-- TAB: AGENDAMENTOS -->
     <div class="tabPanel" id="tabAgendamentos">
-      <!-- (mantido igual ao seu) -->
       <div class="grid">
         <div class="card">
           <div class="row" style="justify-content:space-between;">
             <div>
               <h2 style="margin:0;">Agendamentos</h2>
               <div class="muted">
-                Mostra <strong>confirmados</strong> (status aprovado), <strong>reservados</strong> e <strong>mensalistas</strong>.
+                Filtre por barbeiro, período e tipo (reservado/confirmado/mensalista).
               </div>
             </div>
 
-            <div class="row">
-              <span class="muted">Barbeiro:</span>
-              <select id="agBarberFilter">
-                <option value="">Selecione</option>
-                <% barbers.forEach(b => { %>
-                  <option value="<%= b.id %>"><%= b.name %></option>
-                <% }) %>
-              </select>
+            <div class="row" style="align-items:flex-end;">
+              <div>
+                <span class="muted" style="font-weight:900;">Barbeiro</span><br/>
+                <select id="agBarberFilter">
+                  <option value="">Selecione</option>
+                  <% barbers.forEach(b => { %>
+                    <option value="<%= b.id %>"><%= b.name %></option>
+                  <% }) %>
+                </select>
+              </div>
 
-              <span class="muted">De:</span>
-              <input type="date" id="agStart" />
+              <div>
+                <span class="muted" style="font-weight:900;">Período</span><br/>
+                <select id="agPeriodo">
+                  <option value="hoje">Hoje</option>
+                  <option value="semana">Semana (Seg–Sáb)</option>
+                  <option value="mes">Mês (hoje → fim do mês)</option>
+                  <option value="mes_inteiro">Mês inteiro (selecionar)</option>
+                </select>
+              </div>
 
-              <span class="muted">Até:</span>
-              <input type="date" id="agEnd" />
+              <!-- MÊS INTEIRO (melhor seleção) -->
+              <div id="agMesWrap" style="display:none;">
+                <span class="muted" style="font-weight:900;">Selecionar mês</span><br/>
+                <div class="monthPickerBox">
+                  <select id="agMesMonth" aria-label="Mês">
+                    <option value="">Mês</option>
+                    <option value="01">Janeiro</option>
+                    <option value="02">Fevereiro</option>
+                    <option value="03">Março</option>
+                    <option value="04">Abril</option>
+                    <option value="05">Maio</option>
+                    <option value="06">Junho</option>
+                    <option value="07">Julho</option>
+                    <option value="08">Agosto</option>
+                    <option value="09">Setembro</option>
+                    <option value="10">Outubro</option>
+                    <option value="11">Novembro</option>
+                    <option value="12">Dezembro</option>
+                  </select>
 
-              <button class="btn" type="button" id="agBtnSemana">Semana</button>
-              <button class="btn" type="button" id="agBtnHoje">Hoje</button>
+                  <select id="agMesYear" aria-label="Ano">
+                    <option value="">Ano</option>
+                  </select>
+                </div>
+                <div class="monthPickerHint">Dica: escolha mês e ano (fica bem mais fácil no celular).</div>
+              </div>
 
-              <span class="pill" style="background:#f1f1f1;">Total: <span id="agTotal"><%= agendaAll.length %></span></span>
+              <div>
+                <span class="muted" style="font-weight:900;">Tipo</span><br/>
+                <select id="agTipo">
+                  <option value="todos">Todos</option>
+                  <option value="reservado">Reservado</option>
+                  <option value="confirmado">Confirmado</option>
+                  <option value="mensalista">Mensalista</option>
+                </select>
+              </div>
+
+              <div class="pill" style="background:#f1f1f1; align-self:center;">
+                Total: <span id="agTotal">0</span>
+              </div>
+
+              <button class="btn" type="button" id="agRefreshBtn" title="Recarregar agendamentos (sem precisar dar F5)">
+                Atualizar
+              </button>
+
+              <div class="muted" style="align-self:center;">
+                Última atualização: <span id="agLastUpdate">—</span>
+              </div>
+
+              <div class="muted" style="align-self:center;">
+                Próxima em: <span id="agNextRefresh">—</span>
+              </div>
             </div>
           </div>
 
           <div id="agHint" class="bad" style="display:none; margin-top:10px;">
             Selecione um barbeiro para listar os agendamentos.
           </div>
+
+          <div class="muted" id="agPeriodoLabel" style="margin-top:10px;">—</div>
 
           <div class="row" style="margin-top:10px; gap:8px;">
             <span class="tag confirmado">confirmado</span>
@@ -698,6 +813,10 @@
   <script>
     function pad2(n){ return String(n).padStart(2, "0"); }
     function fmtYMD(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+
+    // ✅ Label em DD-MM-AAAA (apenas visual; o filtro continua em YYYY-MM-DD internamente)
+    function fmtDMY(d){ return `${pad2(d.getDate())}-${pad2(d.getMonth()+1)}-${d.getFullYear()}`; }
+
     function addDays(d, days){ const x = new Date(d.getTime()); x.setDate(x.getDate()+days); return x; }
     function parseYMD(ymd){
       if(!ymd) return null;
@@ -738,6 +857,9 @@
         p.classList.toggle("active", active);
       });
       if(btnId === "tabBtnAgendamentos") applyAgendamentos();
+      // liga/desliga auto-refresh dependendo da aba ativa
+      stopAutoRefresh();
+      startAutoRefreshIfNeeded();
       if(btnId === "tabBtnMensalistas"){
         if(menStart && !menStart.value) menStart.value = todayYMDMen();
       }
@@ -776,41 +898,163 @@
       }catch(e){ alert("Erro ao cancelar."); }
     };
 
-    // ===== AGENDAMENTOS FILTER =====
+    // ===== AGENDAMENTOS FILTER (PROFISSIONAL) =====
     const agBarberFilter = document.getElementById("agBarberFilter");
-    const agStart = document.getElementById("agStart");
-    const agEnd = document.getElementById("agEnd");
+    const agPeriodo = document.getElementById("agPeriodo");
+    const agTipo = document.getElementById("agTipo");
+    const agMesWrap = document.getElementById("agMesWrap");
+
+    // Novo picker (mês/ano) - bem mais fácil
+    const agMesMonth = document.getElementById("agMesMonth");
+    const agMesYear = document.getElementById("agMesYear");
+
+    const agPeriodoLabel = document.getElementById("agPeriodoLabel");
     const agHint = document.getElementById("agHint");
     const agTotal = document.getElementById("agTotal");
-    const agBtnSemana = document.getElementById("agBtnSemana");
-    const agBtnHoje = document.getElementById("agBtnHoje");
+
+    function startOfWorkWeekMon(d){
+      const day = d.getDay(); // 0=dom ... 6=sab
+      const diffToMon = (day === 0) ? -6 : (1 - day);
+      const mon = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      mon.setDate(mon.getDate() + diffToMon);
+      return mon;
+    }
+
+    function endOfWorkWeekSat(d){
+      const mon = startOfWorkWeekMon(d);
+      const sat = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate());
+      sat.setDate(sat.getDate() + 5); // seg + 5 = sab
+      return sat;
+    }
+
+    function lastDayOfMonth(d){
+      return new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    }
+
+    function buildMonthYearOptions(){
+      // deixa o select de ano mais "ditado": mostra uma faixa de anos sem precisar digitar
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const startY = currentYear - 2;
+      const endY = currentYear + 3;
+
+      agMesYear.innerHTML = `<option value="">Ano</option>` + Array.from({length: (endY-startY+1)}, (_,i)=>{
+        const y = startY + i;
+        return `<option value="${y}">${y}</option>`;
+      }).join("");
+
+      // defaults para facilitar: mês/ano atual
+      agMesYear.value = String(currentYear);
+      agMesMonth.value = pad2(now.getMonth()+1);
+    }
+
+    function rangeForPeriodo(){
+      const now = new Date();
+      const p = agPeriodo.value;
+
+      if (p === "hoje"){
+        const ymd = fmtYMD(now);
+        return { start: ymd, end: ymd, label: `Hoje (${fmtDMY(now)})` };
+      }
+
+      if (p === "semana"){
+        const mon = startOfWorkWeekMon(now);
+        const sat = endOfWorkWeekSat(now);
+        return {
+          start: fmtYMD(mon),
+          end: fmtYMD(sat),
+          label: `Semana (Seg–Sáb): ${fmtDMY(mon)} → ${fmtDMY(sat)}`
+        };
+      }
+
+      if (p === "mes"){
+        const end = lastDayOfMonth(now);
+        return {
+          start: fmtYMD(now),
+          end: fmtYMD(end),
+          label: `Mês (hoje → fim): ${fmtDMY(now)} → ${fmtDMY(end)}`
+        };
+      }
+
+      // mes_inteiro (mês + ano)
+      const mm = agMesMonth.value; // "01".."12"
+      const yy = agMesYear.value;  // "2026"
+      if (!mm || !yy){
+        return { start: "", end: "", label: "Selecione mês e ano." };
+      }
+
+      const yearNum = Number(yy);
+      const monthNum = Number(mm); // 1-12
+      const first = new Date(yearNum, monthNum - 1, 1);
+      const last = new Date(yearNum, monthNum, 0);
+
+      return {
+        start: fmtYMD(first),
+        end: fmtYMD(last),
+        label: `Mês inteiro: ${fmtDMY(first)} → ${fmtDMY(last)}`
+      };
+    }
+
+    function tipoMatches(slotEl){
+      const isMensalista = slotEl.dataset.isMensalista === "1";
+      const st = slotEl.dataset.status || "";
+
+      const t = agTipo.value;
+      if (t === "todos") return true;
+      if (t === "mensalista") return isMensalista;
+      if (t === "confirmado") return !isMensalista && st === "aprovado";
+      if (t === "reservado") return !isMensalista && st === "reservado";
+      return true;
+    }
 
     function applyAgendamentos(){
       const bId = agBarberFilter.value;
-      const start = agStart.value;
-      const end = agEnd.value;
 
+      // barbeiro obrigatório (mantido)
       agHint.style.display = bId ? "none" : "";
+
+      // mês inteiro: mostra picker mais fácil
+      if (agPeriodo.value === "mes_inteiro"){
+        agMesWrap.style.display = "block";
+      } else {
+        agMesWrap.style.display = "none";
+      }
+
+      const { start, end, label } = rangeForPeriodo();
+      if (agPeriodoLabel) agPeriodoLabel.textContent = label;
 
       let totalShown = 0;
 
       document.querySelectorAll(".agDayCard").forEach(card=>{
         const dateKey = card.dataset.date;
-        const inRange = (!start || dateKey >= start) && (!end || dateKey <= end);
+
+        let inRange = !!bId;
+        if (inRange && start && dateKey < start) inRange = false;
+        if (inRange && end && dateKey > end) inRange = false;
 
         let dayCount = 0;
 
         card.querySelectorAll(".agSlot").forEach(slot=>{
           const sb = slot.dataset.barberId;
           const isMen = slot.dataset.isMensalista === "1";
-          const st = slot.dataset.status;
+          const st = slot.dataset.status || "";
 
           if(st === "cancelado"){
             slot.style.display = "none";
             return;
           }
 
-          const ok = !!bId && sb === bId && inRange;
+          let ok = true;
+
+          if(!inRange) ok = false;
+          if(ok && sb !== bId) ok = false;
+
+          if (ok && agPeriodo.value === "mes_inteiro"){
+            // mês inteiro: apenas confirmados + mensalistas
+            if (!(isMen || st === "aprovado")) ok = false;
+          } else {
+            if (!tipoMatches(slot)) ok = false;
+          }
 
           slot.style.display = ok ? "" : "none";
           if(ok){ dayCount++; totalShown++; }
@@ -841,28 +1085,159 @@
       });
 
       agTotal.textContent = String(totalShown);
+
+      // mantém as seleções persistidas + atualiza horário
+      saveAgFilters();
+      updateAgLastUpdate();
     }
 
-    agBarberFilter.addEventListener("change", applyAgendamentos);
-    agStart.addEventListener("change", applyAgendamentos);
-    agEnd.addEventListener("change", applyAgendamentos);
-
-    agBtnHoje.addEventListener("click", ()=>{
-      const t = new Date();
-      const y = fmtYMD(t);
-      agStart.value = y;
-      agEnd.value = y;
-      applyAgendamentos();
+    // listeners
+    ["change","input"].forEach(evt=>{
+      agBarberFilter.addEventListener(evt, applyAgendamentos);
+      agPeriodo.addEventListener(evt, applyAgendamentos);
+      agTipo.addEventListener(evt, applyAgendamentos);
+      agMesMonth.addEventListener(evt, applyAgendamentos);
+      agMesYear.addEventListener(evt, applyAgendamentos);
     });
 
-    agBtnSemana.addEventListener("click", ()=>{
-      const t = new Date();
-      const s = fmtYMD(t);
-      const e = fmtYMD(addDays(t, 7));
-      agStart.value = s;
-      agEnd.value = e;
+    // init
+    (function initAgendamentoFiltro(){
+      buildMonthYearOptions();
+
+      // Restaura filtros salvos (para o botão "Atualizar" manter sua seleção)
+      try{
+        const raw = localStorage.getItem("ag_filters_v1");
+        if(raw){
+          const f = JSON.parse(raw);
+          if(f && typeof f === "object"){
+            if(typeof f.barber === "string") agBarberFilter.value = f.barber;
+            if(typeof f.periodo === "string") agPeriodo.value = f.periodo;
+            if(typeof f.tipo === "string") agTipo.value = f.tipo;
+            if(typeof f.mm === "string") agMesMonth.value = f.mm;
+            if(typeof f.yy === "string") agMesYear.value = f.yy;
+          }
+        }else{
+          // defaults
+          if (agPeriodo) agPeriodo.value = "hoje";
+          if (agTipo) agTipo.value = "todos";
+        }
+      }catch(e){
+        // defaults
+        if (agPeriodo) agPeriodo.value = "hoje";
+        if (agTipo) agTipo.value = "todos";
+      }
+
       applyAgendamentos();
-    });
+      updateAgLastUpdate();
+    })();
+
+    function updateAgLastUpdate(){
+      const el = document.getElementById("agLastUpdate");
+      if(!el) return;
+      const d = new Date();
+      el.textContent = `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+    }
+
+    function saveAgFilters(){
+      try{
+        const payload = {
+          barber: agBarberFilter.value || "",
+          periodo: agPeriodo.value || "hoje",
+          tipo: agTipo.value || "todos",
+          mm: agMesMonth.value || "",
+          yy: agMesYear.value || ""
+        };
+        localStorage.setItem("ag_filters_v1", JSON.stringify(payload));
+      }catch(e){}
+    }
+
+    // ===== Auto atualização (controlada por checkbox na aba Configuração) =====
+    const AG_AUTO_KEY = "ag_auto_refresh_v1";
+    const AG_AUTO_INTERVAL_SEC = 30;
+
+    let agAutoTimer = null;
+    let agAutoRemaining = AG_AUTO_INTERVAL_SEC;
+
+    function setAutoRefreshUI(isOn){
+      const cb = document.getElementById("agAutoRefreshToggle");
+      if(cb) cb.checked = !!isOn;
+      const next = document.getElementById("agNextRefresh");
+      if(next) next.textContent = isOn ? `${agAutoRemaining}s` : "—";
+    }
+
+    function loadAutoRefreshSetting(){
+      try{ return localStorage.getItem(AG_AUTO_KEY) === "1"; }catch(e){ return false; }
+    }
+
+    function saveAutoRefreshSetting(isOn){
+      try{ localStorage.setItem(AG_AUTO_KEY, isOn ? "1" : "0"); }catch(e){}
+    }
+
+    function stopAutoRefresh(){
+      if(agAutoTimer){
+        clearInterval(agAutoTimer);
+        agAutoTimer = null;
+      }
+      agAutoRemaining = AG_AUTO_INTERVAL_SEC;
+      setAutoRefreshUI(loadAutoRefreshSetting());
+    }
+
+    function startAutoRefreshIfNeeded(){
+      // Só roda se estiver habilitado e se a aba de agendamentos estiver ativa
+      const isOn = loadAutoRefreshSetting();
+      const agTab = document.getElementById("tabAgendamentos");
+      const isAgActive = agTab && agTab.classList.contains("active");
+
+      if(!isOn || !isAgActive){
+        stopAutoRefresh();
+        return;
+      }
+
+      if(agAutoTimer) return; // já rodando
+
+      agAutoRemaining = AG_AUTO_INTERVAL_SEC;
+      setAutoRefreshUI(true);
+
+      agAutoTimer = setInterval(()=>{
+        const agTabNow = document.getElementById("tabAgendamentos");
+        const stillActive = agTabNow && agTabNow.classList.contains("active");
+        const stillOn = loadAutoRefreshSetting();
+
+        if(!stillOn || !stillActive){
+          stopAutoRefresh();
+          return;
+        }
+
+        agAutoRemaining -= 1;
+        const next = document.getElementById("agNextRefresh");
+        if(next) next.textContent = `${agAutoRemaining}s`;
+
+        if(agAutoRemaining <= 0){
+          // Recarrega mantendo filtros (mesma lógica do botão "Atualizar")
+          saveAgFilters();
+          const url = new URL(window.location.href);
+          url.searchParams.set("tab", "agendamentos");
+          url.searchParams.set("_t", String(Date.now()));
+          window.location.href = url.toString();
+        }
+      }, 1000);
+    }
+
+
+
+    const agRefreshBtn = document.getElementById("agRefreshBtn");
+    if(agRefreshBtn){
+      agRefreshBtn.addEventListener("click", ()=>{
+        // salva filtros e recarrega a página já voltando na aba de agendamentos
+        saveAgFilters();
+        const url = new URL(window.location.href);
+        url.searchParams.set("tab", "agendamentos");
+        // cache buster
+        url.searchParams.set("_t", String(Date.now()));
+        window.location.href = url.toString();
+      });
+    }
+
 
     // ===== CALENDÁRIO (manual) =====
     const admOverlay = document.getElementById("admOverlay");
@@ -1114,16 +1489,57 @@
     menBarberId.addEventListener("change", refreshMensalistaHorarios);
     menWeekday.addEventListener("change", refreshMensalistaHorarios);
 
+    // ===== Filtro de mensalistas por barbeiro =====
+    const menBarberFilter = document.getElementById("menBarberFilter");
+    const menTotal = document.getElementById("menTotal");
+
+    function applyMenBarberFilter(){
+      const v = menBarberFilter ? menBarberFilter.value : "";
+      let shown = 0;
+
+      document.querySelectorAll(".menRow").forEach(tr=>{
+        const bid = tr.dataset.menBarberId || "";
+        const ok = (!v) || (bid === v);
+        tr.style.display = ok ? "" : "none";
+        if(ok) shown++;
+      });
+
+      if(menTotal) menTotal.textContent = String(shown);
+    }
+
+    if(menBarberFilter){
+      menBarberFilter.addEventListener("change", applyMenBarberFilter);
+      // init
+      setTimeout(applyMenBarberFilter, 0);
+    }
+
+
     document.addEventListener("DOMContentLoaded", ()=>{
+      // Inicializa checkbox de auto atualização (fica na aba Configuração)
+      const cb = document.getElementById("agAutoRefreshToggle");
+      if(cb){
+        cb.checked = loadAutoRefreshSetting();
+        cb.addEventListener("change", ()=>{
+          saveAutoRefreshSetting(cb.checked);
+          // se estiver na aba de agendamentos, liga/desliga na hora
+          stopAutoRefresh();
+          startAutoRefreshIfNeeded();
+        });
+      }
+      // Atualiza UI do contador se existir
+      setAutoRefreshUI(loadAutoRefreshSetting());
+
       if(menStart && !menStart.value) menStart.value = todayYMDMen();
 
       const tab = new URLSearchParams(window.location.search).get("tab");
       if(tab === "configgeral") activateTab("tabBtnBarbeiros");
       if(tab === "config") activateTab("tabBtnConfig");
       if(tab === "mensalistas") activateTab("tabBtnMensalistas");
-      if(tab === "manual") activateTab("tabBtnManual");
-      if(tab === "agendamentos") activateTab("tabBtnAgendamentos");
+      if(tab === "manual") activateTab("tabBtnManual");      if(tab === "agendamentos") activateTab("tabBtnAgendamentos");
+
+      // Se já carregar direto em agendamentos e o auto estiver ligado, começa o contador
+      startAutoRefreshIfNeeded();
     });
-  </script>
+</script>
 </body>
 </html>

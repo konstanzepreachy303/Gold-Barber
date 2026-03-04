@@ -434,12 +434,38 @@ app.get("/confirmar", async (req, res) => {
     );
 
     if (!row) return res.status(400).send("❌ Link inválido ou expirado.");
-    if (row.used_at) return res.sendFile(path.join(__dirname, "views", "sucesso.html"));
+
+    // Se já foi usado, só mostra a tela de sucesso renderizada (sem quebrar EJS)
+    if (row.used_at) {
+      const ag = await dbGet(
+        `
+        SELECT a.*, b.name AS barber_name
+          FROM agendamentos a
+          JOIN barbers b ON b.id = a.barber_id
+         WHERE a.id = ?
+         LIMIT 1
+      `,
+        [row.agendamento_id]
+      );
+
+      return res.render("sucesso", {
+        barberName: ag?.barber_name || "",
+        nome: ag?.nome || "",
+        data: ag?.data || "",
+        horario: ag?.horario || "",
+        statusLabel: ag?.status || "confirmado",
+      });
+    }
 
     const stillValid = await dbGet(
-      `SELECT 1 AS ok FROM agendamento_confirm_tokens WHERE id = ? AND datetime(expires_at) > datetime('now') LIMIT 1`,
+      `SELECT 1 AS ok
+         FROM agendamento_confirm_tokens
+        WHERE id = ?
+          AND datetime(expires_at) > datetime('now')
+        LIMIT 1`,
       [row.token_id]
     );
+
     if (!stillValid) {
       return res.status(400).send("❌ Link expirado. Faça um novo agendamento.");
     }
@@ -447,12 +473,32 @@ app.get("/confirmar", async (req, res) => {
     await dbRun(`UPDATE agendamentos SET status = 'aprovado' WHERE id = ?`, [
       row.agendamento_id,
     ]);
+
     await dbRun(
-      `UPDATE agendamento_confirm_tokens SET used_at = datetime('now') WHERE id = ?`,
+      `UPDATE agendamento_confirm_tokens
+          SET used_at = datetime('now')
+        WHERE id = ?`,
       [row.token_id]
     );
 
-    return res.sendFile(path.join(__dirname, "views", "sucesso.html"));
+    const ag = await dbGet(
+      `
+      SELECT a.*, b.name AS barber_name
+        FROM agendamentos a
+        JOIN barbers b ON b.id = a.barber_id
+       WHERE a.id = ?
+       LIMIT 1
+    `,
+      [row.agendamento_id]
+    );
+
+    return res.render("sucesso", {
+      barberName: ag?.barber_name || "",
+      nome: ag?.nome || "",
+      data: ag?.data || "",
+      horario: ag?.horario || "",
+      statusLabel: ag?.status || "aprovado",
+    });
   } catch (e) {
     console.error(e);
     return res.status(500).send("❌ Erro ao confirmar. Tente novamente.");
