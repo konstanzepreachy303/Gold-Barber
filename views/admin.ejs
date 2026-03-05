@@ -108,17 +108,7 @@
     .tag.mensalista{border-color:#111; box-shadow:0 0 0 2px rgba(0,0,0,.12);}
 
     /* Picker de Mês (mais fácil de visualizar) */
-    .monthPickerBox{
-      display:flex;
-      gap:8px;
-      align-items:center;
-      background:#111;
-      color:#fff;
-      padding:10px 10px;
-      border-radius:14px;
-      border:1px solid #1f1f1f;
-      box-shadow: 0 0 0 2px rgba(201, 162, 39, 0.18);
-    }
+    .monthPickerBox{display:flex; gap:8px; align-items:center; flex-wrap:nowrap;}
     .monthPickerBox .muted{color:#d8d8d8;}
     .monthPickerBox select{
       background:#151515;
@@ -656,7 +646,7 @@
 
               <!-- MÊS INTEIRO (melhor seleção) -->
               <div id="agMesWrap" style="display:none;">
-                <span class="muted" style="font-weight:900;">Selecionar mês</span><br/>
+                <span class="muted" style="font-weight:900;">Mês</span><br/>
                 <div class="monthPickerBox">
                   <select id="agMesMonth" aria-label="Mês">
                     <option value="">Mês</option>
@@ -678,8 +668,7 @@
                     <option value="">Ano</option>
                   </select>
                 </div>
-                <div class="monthPickerHint">Dica: escolha mês e ano (fica bem mais fácil no celular).</div>
-              </div>
+</div>
 
               <div>
                 <span class="muted" style="font-weight:900;">Tipo</span><br/>
@@ -1015,7 +1004,7 @@
 
       // mês inteiro: mostra picker mais fácil
       if (agPeriodo.value === "mes_inteiro"){
-        agMesWrap.style.display = "block";
+        agMesWrap.style.display = "";
       } else {
         agMesWrap.style.display = "none";
       }
@@ -1049,12 +1038,7 @@
           if(!inRange) ok = false;
           if(ok && sb !== bId) ok = false;
 
-          if (ok && agPeriodo.value === "mes_inteiro"){
-            // mês inteiro: apenas confirmados + mensalistas
-            if (!(isMen || st === "aprovado")) ok = false;
-          } else {
-            if (!tipoMatches(slot)) ok = false;
-          }
+          if (!tipoMatches(slot)) ok = false;
 
           slot.style.display = ok ? "" : "none";
           if(ok){ dayCount++; totalShown++; }
