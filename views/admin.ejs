@@ -668,7 +668,7 @@
                     <option value="">Ano</option>
                   </select>
                 </div>
-</div>
+              </div>
 
               <div>
                 <span class="muted" style="font-weight:900;">Tipo</span><br/>
@@ -893,7 +893,7 @@
     const agTipo = document.getElementById("agTipo");
     const agMesWrap = document.getElementById("agMesWrap");
 
-    // Novo picker (mês/ano) - bem mais fácil
+    // picker (mês/ano)
     const agMesMonth = document.getElementById("agMesMonth");
     const agMesYear = document.getElementById("agMesYear");
 
@@ -920,30 +920,34 @@
       return new Date(d.getFullYear(), d.getMonth() + 1, 0);
     }
 
+    // ✅ AJUSTE: não pré-seleciona mês/ano (para "solicitar" ao escolher mes_inteiro)
     function buildMonthYearOptions(){
-      // deixa o select de ano mais "ditado": mostra uma faixa de anos sem precisar digitar
       const now = new Date();
       const currentYear = now.getFullYear();
       const startY = currentYear - 2;
       const endY = currentYear + 3;
 
-      agMesYear.innerHTML = `<option value="">Ano</option>` + Array.from({length: (endY-startY+1)}, (_,i)=>{
-        const y = startY + i;
-        return `<option value="${y}">${y}</option>`;
-      }).join("");
+      agMesYear.innerHTML =
+        `<option value="">Ano</option>` +
+        Array.from({length: (endY-startY+1)}, (_,i)=>{
+          const y = startY + i;
+          return `<option value="${y}">${y}</option>`;
+        }).join("");
 
-      // defaults para facilitar: mês/ano atual
-      agMesYear.value = String(currentYear);
-      agMesMonth.value = pad2(now.getMonth()+1);
+      // NÃO define defaults aqui (fica vazio até o usuário escolher)
+      // agMesYear.value = "";
+      // agMesMonth.value = "";
     }
 
+    // ✅ AJUSTE: mes_inteiro só "vale" quando mês E ano estiverem escolhidos.
+    // Se não estiverem, retorna { incomplete:true } e o applyAgendamentos não mostra nada no período.
     function rangeForPeriodo(){
       const now = new Date();
       const p = agPeriodo.value;
 
       if (p === "hoje"){
         const ymd = fmtYMD(now);
-        return { start: ymd, end: ymd, label: `Hoje (${fmtDMY(now)})` };
+        return { start: ymd, end: ymd, label: `Hoje (${fmtDMY(now)})`, incomplete:false };
       }
 
       if (p === "semana"){
@@ -952,7 +956,8 @@
         return {
           start: fmtYMD(mon),
           end: fmtYMD(sat),
-          label: `Semana (Seg–Sáb): ${fmtDMY(mon)} → ${fmtDMY(sat)}`
+          label: `Semana (Seg–Sáb): ${fmtDMY(mon)} → ${fmtDMY(sat)}`,
+          incomplete:false
         };
       }
 
@@ -961,7 +966,8 @@
         return {
           start: fmtYMD(now),
           end: fmtYMD(end),
-          label: `Mês (hoje → fim): ${fmtDMY(now)} → ${fmtDMY(end)}`
+          label: `Mês (hoje → fim): ${fmtDMY(now)} → ${fmtDMY(end)}`,
+          incomplete:false
         };
       }
 
@@ -969,7 +975,12 @@
       const mm = agMesMonth.value; // "01".."12"
       const yy = agMesYear.value;  // "2026"
       if (!mm || !yy){
-        return { start: "", end: "", label: "Selecione mês e ano." };
+        return {
+          start: "",
+          end: "",
+          label: "Mês inteiro: selecione o mês e o ano.",
+          incomplete:true
+        };
       }
 
       const yearNum = Number(yy);
@@ -980,7 +991,8 @@
       return {
         start: fmtYMD(first),
         end: fmtYMD(last),
-        label: `Mês inteiro: ${fmtDMY(first)} → ${fmtDMY(last)}`
+        label: `Mês inteiro: ${fmtDMY(first)} → ${fmtDMY(last)}`,
+        incomplete:false
       };
     }
 
@@ -1002,14 +1014,14 @@
       // barbeiro obrigatório (mantido)
       agHint.style.display = bId ? "none" : "";
 
-      // mês inteiro: mostra picker mais fácil
+      // mês inteiro: mostra picker
       if (agPeriodo.value === "mes_inteiro"){
         agMesWrap.style.display = "";
       } else {
         agMesWrap.style.display = "none";
       }
 
-      const { start, end, label } = rangeForPeriodo();
+      const { start, end, label, incomplete } = rangeForPeriodo();
       if (agPeriodoLabel) agPeriodoLabel.textContent = label;
 
       let totalShown = 0;
@@ -1017,7 +1029,14 @@
       document.querySelectorAll(".agDayCard").forEach(card=>{
         const dateKey = card.dataset.date;
 
+        // ✅ AJUSTE: se estiver em "mes_inteiro" e ainda não escolheu mês/ano,
+        // não mostra nada (evita o bug de "fora de escala" / range vazio).
         let inRange = !!bId;
+
+        if (inRange && agPeriodo.value === "mes_inteiro" && incomplete){
+          inRange = false;
+        }
+
         if (inRange && start && dateKey < start) inRange = false;
         if (inRange && end && dateKey > end) inRange = false;
 
@@ -1075,14 +1094,30 @@
       updateAgLastUpdate();
     }
 
-    // listeners
+    // ✅ AJUSTE: ao escolher "mes_inteiro", se não tiver valores salvos, limpa mês/ano
+    function handlePeriodoChange(){
+      if (agPeriodo.value === "mes_inteiro"){
+        agMesWrap.style.display = "";
+
+        // Se estiver vazio, força "solicitar" mês e ano (sem auto-pegar mês atual)
+        if (!agMesMonth.value) agMesMonth.value = "";
+        if (!agMesYear.value) agMesYear.value = "";
+
+        applyAgendamentos();
+        return;
+      }
+      agMesWrap.style.display = "none";
+      applyAgendamentos();
+    }
+
+    // listeners (mantém todos os outros filtros funcionando junto)
     ["change","input"].forEach(evt=>{
       agBarberFilter.addEventListener(evt, applyAgendamentos);
-      agPeriodo.addEventListener(evt, applyAgendamentos);
       agTipo.addEventListener(evt, applyAgendamentos);
       agMesMonth.addEventListener(evt, applyAgendamentos);
       agMesYear.addEventListener(evt, applyAgendamentos);
     });
+    agPeriodo.addEventListener("change", handlePeriodoChange);
 
     // init
     (function initAgendamentoFiltro(){
@@ -1104,12 +1139,23 @@
           // defaults
           if (agPeriodo) agPeriodo.value = "hoje";
           if (agTipo) agTipo.value = "todos";
+
+          // ✅ AJUSTE: sem defaults para mês/ano
+          if (agMesMonth) agMesMonth.value = "";
+          if (agMesYear) agMesYear.value = "";
         }
       }catch(e){
         // defaults
         if (agPeriodo) agPeriodo.value = "hoje";
         if (agTipo) agTipo.value = "todos";
+
+        if (agMesMonth) agMesMonth.value = "";
+        if (agMesYear) agMesYear.value = "";
       }
+
+      // garante estado do wrap coerente
+      if (agPeriodo.value === "mes_inteiro") agMesWrap.style.display = "";
+      else agMesWrap.style.display = "none";
 
       applyAgendamentos();
       updateAgLastUpdate();
@@ -1207,8 +1253,6 @@
       }, 1000);
     }
 
-
-
     const agRefreshBtn = document.getElementById("agRefreshBtn");
     if(agRefreshBtn){
       agRefreshBtn.addEventListener("click", ()=>{
@@ -1221,7 +1265,6 @@
         window.location.href = url.toString();
       });
     }
-
 
     // ===== CALENDÁRIO (manual) =====
     const admOverlay = document.getElementById("admOverlay");
@@ -1497,7 +1540,6 @@
       setTimeout(applyMenBarberFilter, 0);
     }
 
-
     document.addEventListener("DOMContentLoaded", ()=>{
       // Inicializa checkbox de auto atualização (fica na aba Configuração)
       const cb = document.getElementById("agAutoRefreshToggle");
@@ -1519,11 +1561,12 @@
       if(tab === "configgeral") activateTab("tabBtnBarbeiros");
       if(tab === "config") activateTab("tabBtnConfig");
       if(tab === "mensalistas") activateTab("tabBtnMensalistas");
-      if(tab === "manual") activateTab("tabBtnManual");      if(tab === "agendamentos") activateTab("tabBtnAgendamentos");
+      if(tab === "manual") activateTab("tabBtnManual");
+      if(tab === "agendamentos") activateTab("tabBtnAgendamentos");
 
       // Se já carregar direto em agendamentos e o auto estiver ligado, começa o contador
       startAutoRefreshIfNeeded();
     });
-</script>
+  </script>
 </body>
 </html>
