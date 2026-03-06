@@ -31,9 +31,15 @@ function all(sql, params = []) {
       CREATE TABLE IF NOT EXISTS barbers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
+        redirect_phone TEXT,
         is_active INTEGER NOT NULL DEFAULT 1
       );
     `);
+
+    // Se o banco já existia sem redirect_phone, tenta adicionar
+    try {
+      await run(`ALTER TABLE barbers ADD COLUMN redirect_phone TEXT;`);
+    } catch (_) {}
 
     await run(`
       CREATE TABLE IF NOT EXISTS barber_config (
@@ -128,7 +134,7 @@ function all(sql, params = []) {
     // Defaults
     const hasBarber = await get(`SELECT id FROM barbers LIMIT 1`);
     if (!hasBarber) {
-      await run(`INSERT INTO barbers (name, is_active) VALUES ('Barbeiro 1', 1);`);
+      await run(`INSERT INTO barbers (name, redirect_phone, is_active) VALUES ('Barbeiro 1', NULL, 1);`);
       const b = await get(`SELECT id FROM barbers ORDER BY id LIMIT 1`);
       if (b) await run(`INSERT OR IGNORE INTO barber_config (barber_id) VALUES (?)`, [b.id]);
     } else {

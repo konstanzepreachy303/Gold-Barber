@@ -513,7 +513,6 @@
 
     /* ===== Melhorias visuais de status + botoes da agenda ===== */
 
-    /* Tags (confirmado / reservado / mensalista) mais “limpas” */
     .tag{
       display:inline-flex;
       align-items:center;
@@ -534,7 +533,6 @@
       box-shadow: 0 0 0 2px rgba(0,0,0,.35);
     }
 
-    /* Cores e destaque das tags */
     .tag.confirmado{
       background: rgba(25,195,125,.10);
       border-color: rgba(25,195,125,.55);
@@ -556,7 +554,6 @@
     }
     .tag.mensalista::before{ background: rgba(245,245,245,.75); }
 
-    /* Botoes “mini” só pra agenda */
     .btnMini{
       padding: 7px 10px;
       border-radius: 999px;
@@ -564,7 +561,6 @@
       line-height: 1;
     }
 
-    /* Confirmar (mais curto e bem visível) */
     .btnConfirm{
       background: linear-gradient(180deg, rgba(201,162,39,.95), rgba(201,162,39,.80));
       color: #111;
@@ -575,7 +571,6 @@
       transform: translateY(-1px);
     }
 
-    /* Cancelar menor e mais discreto (outline) */
     .btnCancel{
       background: rgba(255,59,77,.06);
       border: 1px solid rgba(255,59,77,.35);
@@ -590,7 +585,6 @@
 
 <body>
   <%
-    // ✅ AJUSTE DE EXIBIÇÃO: agora retorna DD-MM-AAAA (só visual)
     function ymdToDmy(ymd) {
       if (!ymd || typeof ymd !== "string") return "";
       const m = ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -603,7 +597,22 @@
       return map[Number(n)] ?? String(n);
     }
 
-    // AGENDAMENTOS: inclui aprovado (confirmado), reservado e mensalistas
+    function onlyDigits(value){
+      return String(value || "").replace(/\D/g, "");
+    }
+
+    function formatPhoneDisplay(value){
+      const digits = onlyDigits(value);
+      if(!digits) return "";
+      if(digits.length === 13 && digits.startsWith("55")){
+        return `${digits.slice(0,2)} ${digits.slice(2,4)} ${digits.slice(4,9)}-${digits.slice(9)}`;
+      }
+      if(digits.length === 11){
+        return `${digits.slice(0,2)} ${digits.slice(2,7)}-${digits.slice(7)}`;
+      }
+      return digits;
+    }
+
     const agendaBase = (agendamentos || []).filter(a => a.status === "aprovado" || a.status === "reservado");
     const agendaAll = agendaBase.concat(mensalistaConfirmados || []);
 
@@ -645,7 +654,6 @@
   </div>
 
   <main>
-    <!-- TAB: CONFIGURAÇÃO -->
     <div class="tabPanel active" id="tabBarbeiros">
       <div class="grid">
 
@@ -682,9 +690,13 @@
           <h2>Criar novo barbeiro</h2>
           <form method="POST" action="/admin/barbeiros/create" style="margin-top:10px;">
             <div class="cols">
-              <div class="full">
+              <div>
                 <label>Nome do barbeiro</label>
                 <input name="name" placeholder="Ex: João" required />
+              </div>
+              <div>
+                <label>Telefone de direcionamento</label>
+                <input name="redirectPhone" placeholder="Ex: 5512988565206" />
               </div>
               <div class="full">
                 <button class="btn btnPrimary" type="submit" style="width:100%;">Criar barbeiro</button>
@@ -702,7 +714,7 @@
               <thead>
                 <tr>
                   <th style="width:60px;">ID</th>
-                  <th>Nome</th>
+                  <th>Nome / Telefone de direcionamento</th>
                   <th style="width:110px;">Status</th>
                   <th style="width:260px;">Ações</th>
                 </tr>
@@ -712,9 +724,20 @@
                   <tr>
                     <td><%= b.id %></td>
                     <td>
-                      <form method="POST" action="/admin/barbeiros/<%= b.id %>/nome" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                        <input name="name" value="<%= b.name %>" style="width:240px; max-width:100%;" />
-                        <button class="btn" type="submit">Salvar</button>
+                      <form method="POST" action="/admin/barbeiros/<%= b.id %>/nome" style="display:grid; gap:8px; max-width:420px;">
+                        <input name="name" value="<%= b.name %>" style="width:100%; max-width:100%;" />
+                        <input
+                          name="redirectPhone"
+                          value="<%= b.redirect_phone || '' %>"
+                          placeholder="Telefone de direcionamento"
+                          style="width:100%; max-width:100%;"
+                        />
+                        <div class="muted">
+                          <%= b.redirect_phone ? `Telefone atual: ${formatPhoneDisplay(b.redirect_phone)}` : "Telefone atual: não definido" %>
+                        </div>
+                        <div>
+                          <button class="btn" type="submit">Salvar</button>
+                        </div>
                       </form>
                     </td>
                     <td>
@@ -742,7 +765,6 @@
       </div>
     </div>
 
-    <!-- TAB: CONFIG POR BARBEIROS -->
     <div class="tabPanel" id="tabConfig">
       <div class="grid">
         <div class="card">
@@ -810,13 +832,13 @@
       </div>
     </div>
 
-    <!-- TAB: PLANO MENSALISTA -->
     <div class="tabPanel" id="tabMensalistas">
       <div class="grid">
         <div class="card">
           <h2>Plano mensalista</h2>
           <div class="muted">
-            Cria um bloqueio fixo semanal (ex.: toda quarta 18:30). Esse horário fica indisponível no agendamento público.
+            O barbeiro seleciona uma <strong>data inicial</strong> e o sistema replica automaticamente o mesmo horário por mais 3 semanas.
+            A <strong>data final</strong> é preenchida automaticamente com a última ocorrência.
           </div>
 
           <div id="menEditPill" class="pill" style="display:none; margin-top:10px; background: rgba(201,162,39,.10); border:1px solid rgba(201,162,39,.20); color: var(--gold2);">
@@ -825,8 +847,7 @@
 
           <form method="POST" action="/admin/mensalistas" id="mensalistaForm" style="margin-top:12px;">
             <input type="hidden" id="menPlanId" value="" />
-            <input type="hidden" name="start" id="menStart" />
-            <input type="hidden" name="end" id="menEnd" />
+            <input type="hidden" name="weekday" id="menWeekdayHidden" />
 
             <div class="cols">
               <div>
@@ -845,23 +866,21 @@
               </div>
 
               <div>
-                <label>Dia da semana</label>
-                <select name="weekday" id="menWeekday" required>
-                  <option value="">Selecione</option>
-                  <option value="0">Domingo</option>
-                  <option value="1">Segunda</option>
-                  <option value="2">Terça</option>
-                  <option value="3">Quarta</option>
-                  <option value="4">Quinta</option>
-                  <option value="5">Sexta</option>
-                  <option value="6">Sábado</option>
-                </select>
+                <label>Data inicial</label>
+                <input type="date" name="start" id="menStart" required />
+                <div class="muted">Ao selecionar a data inicial, o sistema cria esta data + mais 3 semanas iguais.</div>
+              </div>
+
+              <div>
+                <label>Data final</label>
+                <input type="date" name="end" id="menEnd" readonly />
+                <div class="muted">Preenchida automaticamente com a última semana do plano.</div>
               </div>
 
               <div>
                 <label>Horário</label>
                 <select name="horario" id="menHorario" required disabled>
-                  <option value="">Selecione barbeiro e dia da semana</option>
+                  <option value="">Selecione barbeiro e data inicial</option>
                 </select>
                 <div class="muted" id="menHorarioMsg"></div>
               </div>
@@ -907,7 +926,8 @@
                   <tr>
                     <th>Barbeiro</th>
                     <th>Nome</th>
-                    <th>Dia da Semana</th>
+                    <th>Data inicial</th>
+                    <th>Data final</th>
                     <th>Horário</th>
                     <th style="width:210px;">Ações</th>
                   </tr>
@@ -926,7 +946,8 @@
                     >
                       <td><%= m.barber_name || m.barber_id %></td>
                       <td><%= m.nome %></td>
-                      <td><%= weekdayLabel(m.weekday) %></td>
+                      <td><%= ymdToDmy(m.start_ymd) %></td>
+                      <td><%= ymdToDmy(m.end_ymd || '') %></td>
                       <td><%= m.horario %></td>
                       <td style="display:flex; gap:8px; flex-wrap:wrap;">
                         <button class="btn" type="button" onclick="startEditMensalista(this)">Editar</button>
@@ -944,7 +965,6 @@
       </div>
     </div>
 
-    <!-- TAB: MANUAL -->
     <div class="tabPanel" id="tabManual">
       <div class="grid">
         <div class="card">
@@ -990,7 +1010,6 @@
       </div>
     </div>
 
-    <!-- TAB: AGENDAMENTOS -->
     <div class="tabPanel" id="tabAgendamentos">
       <div class="grid">
         <div class="card">
@@ -1154,7 +1173,6 @@
     </div>
   </main>
 
-  <!-- Calendário -->
   <div id="admOverlay" class="overlay" aria-hidden="true">
     <div class="cal" role="dialog" aria-modal="true" aria-label="Selecionar data">
       <div class="cal-head">
@@ -1180,8 +1198,6 @@
   <script>
     function pad2(n){ return String(n).padStart(2, "0"); }
     function fmtYMD(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
-
-    // ✅ Label em DD-MM-AAAA (apenas visual; o filtro continua em YYYY-MM-DD internamente)
     function fmtDMY(d){ return `${pad2(d.getDate())}-${pad2(d.getMonth()+1)}-${d.getFullYear()}`; }
 
     function addDays(d, days){ const x = new Date(d.getTime()); x.setDate(x.getDate()+days); return x; }
@@ -1206,6 +1222,15 @@
       if(!m) return null;
       return Number(m[1]) * 60 + Number(m[2]);
     }
+    function calcMensalistaEnd(startYMD){
+      const dt = parseYMD(startYMD);
+      if(!dt) return "";
+      return fmtYMD(addDays(dt, 21));
+    }
+    function weekdayFromYMD(ymd){
+      const dt = parseYMD(ymd);
+      return dt ? String(dt.getDay()) : "";
+    }
 
     const tabs = [
       { btn: "tabBtnBarbeiros", panel:"tabBarbeiros" },
@@ -1228,6 +1253,7 @@
       startAutoRefreshIfNeeded();
       if(btnId === "tabBtnMensalistas"){
         if(menStart && !menStart.value) menStart.value = todayYMDMen();
+        updateMensalistaDateFields();
       }
     }
     tabs.forEach(t=>{
@@ -1264,7 +1290,6 @@
       }catch(e){ alert("Erro ao cancelar."); }
     };
 
-    // ===== AGENDAMENTOS FILTER =====
     const agBarberFilter = document.getElementById("agBarberFilter");
     const agPeriodo = document.getElementById("agPeriodo");
     const agTipo = document.getElementById("agTipo");
@@ -1285,7 +1310,7 @@
     function endOfWorkWeekSat(d){
       const mon = startOfWorkWeekMon(d);
       const sat = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate());
-      sat.setDate(sat.getDate() + 5);
+      sat.setDate(mon.getDate() + 5);
       return sat;
     }
     function lastDayOfMonth(d){
@@ -1315,10 +1340,9 @@
         return { start: ymd, end: ymd, label: `Hoje (${fmtDMY(now)})`, incomplete:false };
       }
       if (p === "semana"){
-        // ✅ Semana: de HOJE até o sábado desta semana
         const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const dow = todayStart.getDay(); // 0=Dom ... 6=Sáb
-        const daysToSat = (6 - dow + 7) % 7; // se hoje é sábado => 0
+        const dow = todayStart.getDay();
+        const daysToSat = (6 - dow + 7) % 7;
         const sat = addDays(todayStart, daysToSat);
         return {
           start: fmtYMD(todayStart),
@@ -1524,7 +1548,6 @@
       }catch(e){}
     }
 
-    // ===== Auto atualização =====
     const AG_AUTO_KEY = "ag_auto_refresh_v1";
     const AG_AUTO_INTERVAL_SEC = 30;
 
@@ -1605,7 +1628,6 @@
       });
     }
 
-    // ===== CALENDÁRIO (manual) =====
     const admOverlay = document.getElementById("admOverlay");
     const admData = document.getElementById("admData");
     const admBarberId = document.getElementById("admBarberId");
@@ -1743,7 +1765,6 @@
     }
     admBarberId.addEventListener("change", refreshAdminHorarios);
 
-    /* Mensalistas JS */
     function todayYMDMen(){
       const t = new Date();
       return fmtYMD(new Date(t.getFullYear(), t.getMonth(), t.getDate()));
@@ -1752,7 +1773,7 @@
     const menPlanId = document.getElementById("menPlanId");
     const menBarberId = document.getElementById("menBarberId");
     const menNome = document.getElementById("menNome");
-    const menWeekday = document.getElementById("menWeekday");
+    const menWeekdayHidden = document.getElementById("menWeekdayHidden");
     const menHorario = document.getElementById("menHorario");
     const menHorarioMsg = document.getElementById("menHorarioMsg");
     const menStart = document.getElementById("menStart");
@@ -1763,18 +1784,26 @@
     const menEditPill = document.getElementById("menEditPill");
     const menEditName = document.getElementById("menEditName");
 
+    function updateMensalistaDateFields(){
+      const start = menStart?.value || "";
+      if(menEnd) menEnd.value = start ? calcMensalistaEnd(start) : "";
+      if(menWeekdayHidden) menWeekdayHidden.value = start ? weekdayFromYMD(start) : "";
+    }
+
     async function refreshMensalistaHorarios(){
-      menHorario.innerHTML = `<option value="">Selecione barbeiro e dia da semana</option>`;
+      menHorario.innerHTML = `<option value="">Selecione barbeiro e data inicial</option>`;
       menHorario.disabled = true;
       if(menHorarioMsg) menHorarioMsg.textContent = "";
 
       const b = menBarberId?.value;
-      const wd = menWeekday?.value;
-      if(!b || wd === "" || wd == null) return;
+      const start = menStart?.value;
+      if(!b || !start) return;
+
+      updateMensalistaDateFields();
 
       if(menHorarioMsg) menHorarioMsg.textContent = "Carregando horários...";
       try{
-        const r = await fetch(`/horarios_weekday?barberId=${encodeURIComponent(b)}&weekday=${encodeURIComponent(wd)}`);
+        const r = await fetch(`/horarios?barberId=${encodeURIComponent(b)}&data=${encodeURIComponent(start)}`);
         const slots = await r.json();
 
         if(!Array.isArray(slots) || slots.length === 0){
@@ -1811,12 +1840,11 @@
       menForm.action = "/admin/mensalistas";
       menBarberId.value = "";
       menNome.value = "";
-      menWeekday.value = "";
-      menHorario.innerHTML = `<option value="">Selecione barbeiro e dia da semana</option>`;
+      menStart.value = todayYMDMen();
+      updateMensalistaDateFields();
+      menHorario.innerHTML = `<option value="">Selecione barbeiro e data inicial</option>`;
       menHorario.disabled = true;
       if(menHorarioMsg) menHorarioMsg.textContent = "";
-      menStart.value = todayYMDMen();
-      menEnd.value = "";
       setMensalistaEditMode(false);
     }
 
@@ -1829,16 +1857,14 @@
       const nome = tr.dataset.menNome || "";
       const start = tr.dataset.menStart || "";
       const end = tr.dataset.menEnd || "";
-      const weekday = tr.dataset.menWeekday || "";
       const horario = tr.dataset.menHorario || "";
 
       menPlanId.value = id || "";
       menBarberId.value = barberId || "";
       menNome.value = nome;
-      menWeekday.value = weekday;
-
       menStart.value = start || todayYMDMen();
-      menEnd.value = end || "";
+      menEnd.value = end || calcMensalistaEnd(menStart.value);
+      if(menWeekdayHidden) menWeekdayHidden.value = weekdayFromYMD(menStart.value);
 
       setMensalistaEditMode(true, nome);
 
@@ -1851,9 +1877,12 @@
 
     menCancelEdit.addEventListener("click", resetMensalistaForm);
     menBarberId.addEventListener("change", refreshMensalistaHorarios);
-    menWeekday.addEventListener("change", refreshMensalistaHorarios);
+    menStart.addEventListener("change", ()=>{
+      updateMensalistaDateFields();
+      refreshMensalistaHorarios();
+    });
+    menStart.addEventListener("input", updateMensalistaDateFields);
 
-    // ===== Filtro de mensalistas por barbeiro =====
     const menBarberFilter = document.getElementById("menBarberFilter");
     const menTotal = document.getElementById("menTotal");
 
@@ -1889,6 +1918,7 @@
       setAutoRefreshUI(loadAutoRefreshSetting());
 
       if(menStart && !menStart.value) menStart.value = todayYMDMen();
+      updateMensalistaDateFields();
 
       const tab = new URLSearchParams(window.location.search).get("tab");
       if(tab === "configgeral") activateTab("tabBtnBarbeiros");

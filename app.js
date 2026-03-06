@@ -11,7 +11,7 @@ const db = require("./database");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ✅ WhatsApp oficial da barbearia (E.164 sem '+')
+// ✅ WhatsApp oficial da barbearia (fallback / E.164 sem '+')
 const BARBERSHOP_WPP =
   (process.env.BARBERSHOP_WPP || "5512988565206").replace(/\D/g, "");
 
@@ -103,6 +103,12 @@ function fromMinutes(min) {
   return `${pad2(h)}:${pad2(m)}`;
 }
 
+function formatDateToDMY(ymd) {
+  if (!isValidYMD(ymd)) return ymd || "";
+  const [y, m, d] = ymd.split("-");
+  return `${d}-${m}-${y}`;
+}
+
 /**
  * Converte datas para yyyy-mm-dd.
  * Aceita:
@@ -160,6 +166,28 @@ function buildBaseUrl(req) {
   if (BASE_URL) return BASE_URL.replace(/\/+$/, "");
   const proto = req.headers["x-forwarded-proto"] || req.protocol;
   return `${proto}://${req.get("host")}`;
+}
+
+function normalizePhoneDigits(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function formatWhatsAppDisplay(phoneDigits) {
+  const digits = normalizePhoneDigits(phoneDigits);
+
+  if (!digits) return "—";
+
+  // 55 + DDD + 9XXXX + XXXX
+  if (digits.length === 13 && digits.startsWith("55")) {
+    return `${digits.slice(0, 2)} ${digits.slice(2, 4)} ${digits.slice(4, 9)}-${digits.slice(9)}`;
+  }
+
+  // DDD + 9XXXX + XXXX
+  if (digits.length === 11) {
+    return `${digits.slice(0, 2)} ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  }
+
+  return digits;
 }
 
 // -------------------- ✅ garante admin/admin 123 --------------------
@@ -435,7 +463,6 @@ app.get("/confirmar", async (req, res) => {
 
     if (!row) return res.status(400).send("❌ Link inválido ou expirado.");
 
-    // Se já foi usado, só mostra a tela de sucesso renderizada (sem quebrar EJS)
     if (row.used_at) {
       const ag = await dbGet(
         `
@@ -577,16 +604,17 @@ app.post("/agendar", async (req, res) => {
     const baseUrl = buildBaseUrl(req);
     const confirmUrl = `${baseUrl}/confirmar?token=${encodeURIComponent(token)}`;
 
+    const redirectPhone = normalizePhoneDigits(barber.redirect_phone) || BARBERSHOP_WPP;
+    const dataFormatada = formatDateToDMY(data);
+
     const waText =
       `Olá! Quero confirmar meu agendamento na Gold Barber:\n\n` +
       `👤 Cliente: ${nome}\n` +
       `💇‍♂️ Barbeiro: ${barber.name}\n` +
-      `📅 Data: ${data}\n` +
+      `📅 Data: ${dataFormatada}\n` +
       `🕒 Horário: ${horario}\n\n` +
       `✅ Clique para confirmar: ${confirmUrl}\n\n` +
       `⏳ Essa reserva expira em ${minutos} minutos.`;
-
-    const waLink = `https://wa.me/${BARBERSHOP_WPP}?text=${encodeURIComponent(waText)}`;
 
     return res.render("confirmar_whatsapp", {
       nome,
@@ -595,8 +623,9 @@ app.post("/agendar", async (req, res) => {
       data,
       horario,
       confirmUrl,
-      waLink,
-      barbershopWppDisplay: "12 98856-5206",
+      waText,
+      reservaExpiraMinutos: minutos,
+      barbershopWppDisplay: formatWhatsAppDisplay(redirectPhone),
     });
   } catch (e) {
     console.error(e);
@@ -630,7 +659,9 @@ app.post("/admin/logout", (req, res) => {
 app.get("/admin", requireAdmin, async (req, res) => {
   await cleanupReservasExpiradas();
 
-  const barbers = await dbAll(`SELECT id, name, is_active FROM barbers ORDER BY id`);
+  const barbers = await dbAll(
+    `SELECT id, name, redirect_phone, is_active FROM barbers ORDER BY id`
+  );
 
   const agendamentos = await dbAll(
     `SELECT a.*, b.name AS barber_name
@@ -658,7 +689,7 @@ app.get("/admin", requireAdmin, async (req, res) => {
       p.horario
     FROM mensalista_plans p
     JOIN barbers b ON b.id = p.barber_id
-    ORDER BY p.barber_id, p.dow, p.horario
+    ORDER BY p.barber_id, p.start_ymd, p.horario
   `
   );
 
@@ -734,9 +765,14 @@ app.post("/admin/config/reserva", requireAdmin, async (req, res) => {
 // ✅ criar novo barbeiro
 app.post("/admin/barbeiros/create", requireAdmin, async (req, res) => {
   const name = String((req.body || {}).name || "").trim();
+  const redirectPhone = normalizePhoneDigits((req.body || {}).redirectPhone || "");
+
   if (!name) return res.status(400).send("Nome inválido.");
 
-  const ins = await dbRun(`INSERT INTO barbers (name, is_active) VALUES (?, 1)`, [name]);
+  const ins = await dbRun(
+    `INSERT INTO barbers (name, redirect_phone, is_active) VALUES (?, ?, 1)`,
+    [name, redirectPhone || null]
+  );
   const newId = ins.lastID;
 
   await dbRun(`INSERT OR IGNORE INTO barber_config (barber_id) VALUES (?)`, [newId]);
@@ -757,19 +793,22 @@ app.post("/admin/barbeiros/:id/toggle", requireAdmin, async (req, res) => {
 app.post("/admin/barbeiros/:id/nome", requireAdmin, async (req, res) => {
   const barberId = Number(req.params.id);
   const name = String((req.body || {}).name || "").trim();
+  const redirectPhone = normalizePhoneDigits((req.body || {}).redirectPhone || "");
 
   if (!name) return res.status(400).send("Nome inválido.");
 
-  await dbRun(`UPDATE barbers SET name = ? WHERE id = ?`, [name, barberId]);
+  await dbRun(
+    `UPDATE barbers SET name = ?, redirect_phone = ? WHERE id = ?`,
+    [name, redirectPhone || null, barberId]
+  );
   res.redirect("/admin?tab=configgeral");
 });
 
-// ✅ EXCLUIR barbeiro (novo)
+// ✅ EXCLUIR barbeiro
 app.post("/admin/barbeiros/:id/delete", requireAdmin, async (req, res) => {
   const barberId = Number(req.params.id);
   if (!barberId) return res.redirect("/admin?tab=configgeral");
 
-  // evita deletar se só tiver 1 barbeiro
   const total = await dbGet(`SELECT COUNT(*) AS c FROM barbers`);
   if (total && Number(total.c) <= 1) {
     return res.status(400).send("❌ Não é possível excluir o último barbeiro.");
@@ -850,25 +889,49 @@ async function handleCreateMensalista(req, res) {
   const telefone = String(body.telefone || "").trim();
 
   const start_ymd = toYMD(String(body.start || "").trim());
-  const endRaw = String(body.end || "").trim();
-  const end_ymd = endRaw ? toYMD(endRaw) : null;
-
-  const weekday = Number(body.weekday);
   const horario = String(body.horario || "").trim();
 
   if (!barberId || !nome || !start_ymd || !isValidYMD(start_ymd) || !horario) {
-    return res.status(400).send("❌ Preencha: barbeiro, nome, data início, dia da semana e horário.");
+    return res.status(400).send("❌ Preencha: barbeiro, nome, data inicial e horário.");
   }
-  if (!(weekday >= 0 && weekday <= 6)) return res.status(400).send("❌ Dia da semana inválido.");
-  if (end_ymd && !isValidYMD(end_ymd)) return res.status(400).send("❌ Data fim inválida.");
-  if (end_ymd && end_ymd < start_ymd) return res.status(400).send("❌ Data fim não pode ser menor que a data início.");
 
-  const slots = await slotsForWeekday(barberId, weekday);
+  const weekday = getDowFromYMD(start_ymd);
+  const end_ymd = addDaysYMD(start_ymd, 21);
+
+  const barber = await dbGet(`SELECT id FROM barbers WHERE id = ? AND is_active = 1`, [barberId]);
+  if (!barber) {
+    return res.status(400).send("❌ Barbeiro inválido.");
+  }
+
+  const slots = await generateSlotsForDateAndBarber(start_ymd, barberId);
   if (!slots.includes(horario)) {
-    return res.status(400).send("❌ Horário inválido para o dia da semana escolhido.");
+    return res.status(400).send("❌ Horário inválido para a data inicial escolhida.");
   }
 
-  const endCompare = end_ymd || "9999-12-31";
+  for (let i = 0; i < 4; i++) {
+    const currentDate = addDaysYMD(start_ymd, i * 7);
+
+    const validSlots = await generateSlotsForDateAndBarber(currentDate, barberId);
+    if (!validSlots.includes(horario)) {
+      return res.status(400).send(`❌ O horário ${horario} não está disponível na data ${currentDate}.`);
+    }
+
+    const conflitoAgendamento = await dbGet(
+      `SELECT id
+         FROM agendamentos
+        WHERE barber_id = ?
+          AND data = ?
+          AND horario = ?
+          AND status != 'cancelado'
+        LIMIT 1`,
+      [barberId, currentDate, horario]
+    );
+
+    if (conflitoAgendamento) {
+      return res.status(400).send(`❌ Já existe agendamento no horário ${horario} na data ${currentDate}.`);
+    }
+  }
+
   const existsPlan = await dbGet(
     `
     SELECT id
@@ -880,7 +943,7 @@ async function handleCreateMensalista(req, res) {
        AND (end_ymd IS NULL OR end_ymd = '' OR end_ymd >= ?)
      LIMIT 1
   `,
-    [barberId, weekday, horario, endCompare, start_ymd]
+    [barberId, weekday, horario, end_ymd, start_ymd]
   );
 
   if (existsPlan) {
@@ -909,23 +972,49 @@ async function handleUpdateMensalista(req, res) {
   const telefone = String(body.telefone || "").trim();
 
   const start_ymd = toYMD(String(body.start || "").trim());
-  const endRaw = String(body.end || "").trim();
-  const end_ymd = endRaw ? toYMD(endRaw) : null;
-
-  const weekday = Number(body.weekday);
   const horario = String(body.horario || "").trim();
 
   if (!barberId || !nome || !start_ymd || !isValidYMD(start_ymd) || !horario) {
-    return res.status(400).send("❌ Preencha: barbeiro, nome, data início, dia da semana e horário.");
+    return res.status(400).send("❌ Preencha: barbeiro, nome, data inicial e horário.");
   }
-  if (!(weekday >= 0 && weekday <= 6)) return res.status(400).send("❌ Dia da semana inválido.");
-  if (end_ymd && !isValidYMD(end_ymd)) return res.status(400).send("❌ Data fim inválida.");
-  if (end_ymd && end_ymd < start_ymd) return res.status(400).send("❌ Data fim não pode ser menor que a data início.");
 
-  const slots = await slotsForWeekday(barberId, weekday);
-  if (!slots.includes(horario)) return res.status(400).send("❌ Horário inválido para o dia da semana.");
+  const weekday = getDowFromYMD(start_ymd);
+  const end_ymd = addDaysYMD(start_ymd, 21);
 
-  const endCompare = end_ymd || "9999-12-31";
+  const barber = await dbGet(`SELECT id FROM barbers WHERE id = ? AND is_active = 1`, [barberId]);
+  if (!barber) {
+    return res.status(400).send("❌ Barbeiro inválido.");
+  }
+
+  const slots = await generateSlotsForDateAndBarber(start_ymd, barberId);
+  if (!slots.includes(horario)) {
+    return res.status(400).send("❌ Horário inválido para a data inicial escolhida.");
+  }
+
+  for (let i = 0; i < 4; i++) {
+    const currentDate = addDaysYMD(start_ymd, i * 7);
+
+    const validSlots = await generateSlotsForDateAndBarber(currentDate, barberId);
+    if (!validSlots.includes(horario)) {
+      return res.status(400).send(`❌ O horário ${horario} não está disponível na data ${currentDate}.`);
+    }
+
+    const conflitoAgendamento = await dbGet(
+      `SELECT id
+         FROM agendamentos
+        WHERE barber_id = ?
+          AND data = ?
+          AND horario = ?
+          AND status != 'cancelado'
+        LIMIT 1`,
+      [barberId, currentDate, horario]
+    );
+
+    if (conflitoAgendamento) {
+      return res.status(400).send(`❌ Já existe agendamento no horário ${horario} na data ${currentDate}.`);
+    }
+  }
+
   const existsPlan = await dbGet(
     `
     SELECT id
@@ -938,9 +1027,12 @@ async function handleUpdateMensalista(req, res) {
        AND (end_ymd IS NULL OR end_ymd = '' OR end_ymd >= ?)
      LIMIT 1
   `,
-    [id, barberId, weekday, horario, endCompare, start_ymd]
+    [id, barberId, weekday, horario, end_ymd, start_ymd]
   );
-  if (existsPlan) return res.status(400).send("❌ Já existe mensalista nesse dia/horário (sobreposto).");
+
+  if (existsPlan) {
+    return res.status(400).send("❌ Já existe mensalista nesse dia/horário (sobreposto).");
+  }
 
   await dbRun(
     `
@@ -1037,7 +1129,7 @@ app.post("/admin/agendar", requireAdmin, async (req, res) => {
 
   app.listen(PORT, () => {
     console.log(`✅ Server running on http://localhost:${PORT}`);
-    console.log(`📲 WhatsApp oficial: ${BARBERSHOP_WPP}`);
+    console.log(`📲 WhatsApp oficial (fallback): ${BARBERSHOP_WPP}`);
     if (BASE_URL) console.log(`🌐 BASE_URL: ${BASE_URL}`);
   });
 })();
