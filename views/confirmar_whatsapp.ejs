@@ -37,7 +37,7 @@
     }
     textarea{
       width:100%;
-      min-height:260px;
+      min-height:320px;
       resize:vertical;
       border-radius:12px;
       border:1px solid #2a2a2a;
@@ -83,6 +83,7 @@
       color:#bdbdbd;
       font-size:12px;
       font-weight:800;
+      line-height:1.5;
     }
     .pill{
       display:inline-block;
@@ -119,8 +120,8 @@
     const _data = formatDateBR(_dataRaw);
     const _horario = (typeof horario !== "undefined" ? String(horario) : "").trim();
     const _confirmUrl = (typeof confirmUrl !== "undefined" ? String(confirmUrl) : "").trim();
+    const _cancelUrl = (typeof cancelUrl !== "undefined" ? String(cancelUrl) : "").trim();
 
-    // WhatsApp do barbeiro selecionado
     const _wppDisplay = (typeof barbershopWppDisplay !== "undefined" ? String(barbershopWppDisplay) : "").trim();
     const _phoneDigits = onlyDigits(_wppDisplay) || "";
 
@@ -128,38 +129,31 @@
       ? Number(reservaExpiraMinutos)
       : 30;
 
-    const mensagemExata =
-`💈 GOLD BARBER 💈
-Confirmação de Agendamento
-
-👥 Olá, ${_nome || "-" }!
-
-Seu horário foi reservado com sucesso.
-Para garantir o atendimento, confirme pelo link abaixo.
-
-━━━━━━━━━━━━━━━
-
-Detalhes do agendamento:
- 💇🏽‍♂️ PROFISSIONAL: ${_barberName || "-"}
-📌  DIA: ${_data || "-"}
-⌚ HORÁRIO: ${_horario || "-"}
-
-━━━━━━━━━━━━━━━
-
-✅ Confirme clicando no Link abaixo:
-${_confirmUrl || "-"}
-
-━━━━━━━━━━━━━━━
-
-⚠️ A confirmação é necessária para manter o horário reservado.
-⏳ O link expira em ${_expMin} minutos.
-
-COMPROVANTE DE AGENDAMENTO`;
+    const niceText =
+      `💈 GOLD BARBER\n` +
+      `Confirmação de Agendamento\n\n` +
+      `Olá${_nome ? `, ${_nome}` : ""}!\n\n` +
+      `Seu horário foi reservado com sucesso.\n` +
+      `Para garantir o atendimento, confirme pelo link abaixo.\n\n` +
+      `📌 Detalhes do agendamento:\n` +
+      `• Barbeiro: ${_barberName || "-"}\n` +
+      `• Data: ${_data || "-"}\n` +
+      `• Horário: ${_horario || "-"}\n` +
+      `• Status atual: reservado\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `✅ Confirmar horário:\n` +
+      `${_confirmUrl || "-"}\n\n` +
+      `❌ Cancelar horário:\n` +
+      `${_cancelUrl || "-"}\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `⚠️ A confirmação é necessária para manter o horário reservado.\n` +
+      `⏳ O link expira em ${_expMin} minutos.\n\n` +
+      `Estamos prontos para deixar seu visual impecável!`;
 
     const _waText =
       (typeof waText !== "undefined" && waText)
         ? String(waText)
-        : mensagemExata;
+        : niceText;
   %>
 
   <div class="box">
@@ -181,7 +175,8 @@ COMPROVANTE DE AGENDAMENTO`;
       </div>
 
       <div class="hint">
-        Dica: clique em <strong>“Abrir WhatsApp”</strong> para enviar a mensagem ao barbeiro selecionado e confirmar o agendamento.
+        Dica: clique em <strong>“Abrir WhatsApp”</strong> para enviar a mensagem ao barbeiro selecionado.
+        O cliente receberá no texto o link para <strong>confirmar</strong> e também o link para <strong>cancelar horário</strong>.
       </div>
     </div>
   </div>

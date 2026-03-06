@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title><%= pageTitle || "Agendamento" %></title>
+  <title>Cancelar agendamento</title>
   <style>
     body{
       margin:0;
@@ -17,7 +17,7 @@
       padding:18px;
     }
     .box{
-      width:560px;
+      width:620px;
       max-width:100%;
       background:#111;
       border:1px solid #222;
@@ -26,14 +26,24 @@
       box-shadow:0 14px 40px rgba(0,0,0,.55);
     }
     h1{margin:0 0 8px; font-size:22px;}
-    .ok{color:#7CFF92; font-weight:900;}
-    .warn{color:#ffd166; font-weight:900;}
     .danger{color:#ff7b7b; font-weight:900;}
+    .warn{color:#ffd166; font-weight:900;}
     .sub{
       color:#cfcfcf;
       margin:0 0 14px;
       font-weight:700;
       line-height:1.4;
+    }
+    .pill{
+      display:inline-block;
+      margin-top:10px;
+      padding:8px 12px;
+      border-radius:999px;
+      background:#1a1a1a;
+      border:1px solid #2a2a2a;
+      color:#ddd;
+      font-size:12px;
+      font-weight:900;
     }
     .card{
       margin-top:12px;
@@ -66,42 +76,21 @@
       padding:12px 14px;
       border-radius:14px;
       border:1px solid #333;
-      color:#111;
       font-weight:900;
-      background:#c9a227;
       cursor:pointer;
       flex:1;
       text-align:center;
       min-width:220px;
     }
-    a.secondary, button.secondary{
-      background:#151515;
-      color:#fff;
-      border:1px solid #2a2a2a;
-      font-weight:900;
-    }
-    a.danger, button.danger{
+    .primary{
       background:#a61d24;
       color:#fff;
       border:1px solid #c53030;
     }
-    form{
-      flex:1;
-      display:flex;
-    }
-    form button{
-      width:100%;
-    }
-    .badge{
-      display:inline-block;
-      margin-top:10px;
-      padding:8px 12px;
-      border-radius:999px;
-      background:#1a1a1a;
+    .secondary{
+      background:#151515;
+      color:#fff;
       border:1px solid #2a2a2a;
-      color:#ddd;
-      font-size:12px;
-      font-weight:900;
     }
     .hint{
       margin-top:10px;
@@ -123,32 +112,26 @@
       return String(d);
     }
 
-    const _status =
-      (typeof statusLabel !== "undefined" && statusLabel)
-        ? String(statusLabel)
-        : "confirmado";
-
     const _dataFmt = formatDateBR(typeof data !== "undefined" ? data : "");
-    const _heading = typeof heading !== "undefined" ? heading : "✅ Agendamento confirmado";
-    const _headingClass = typeof headingClass !== "undefined" ? headingClass : "ok";
-    const _subtitle = typeof subtitle !== "undefined"
-      ? subtitle
-      : "O agendamento foi confirmado com sucesso.";
-
-    const _cancelUrl = (typeof cancelUrl !== "undefined" && cancelUrl) ? String(cancelUrl) : "";
-    const _primaryHref = (typeof primaryHref !== "undefined" && primaryHref) ? String(primaryHref) : "/";
-    const _primaryLabel = (typeof primaryLabel !== "undefined" && primaryLabel) ? String(primaryLabel) : "Agendar um novo horário";
-    const _cancelLabel = (typeof cancelLabel !== "undefined" && cancelLabel) ? String(cancelLabel) : "Cancelar";
-    const _showCancelButton = !!_cancelUrl && _status !== "cancelado";
-    const _hint = (typeof hint !== "undefined" && hint) ? String(hint) : "";
+    const _status = (typeof statusLabel !== "undefined" && statusLabel) ? String(statusLabel) : "reservado";
+    const _alreadyCancelled = !!alreadyCancelled;
+    const _token = (typeof token !== "undefined" && token) ? String(token) : "";
   %>
 
   <div class="box">
-    <h1 class="<%= _headingClass %>"><%= _heading %></h1>
+    <h1 class="<%= _alreadyCancelled ? 'warn' : 'danger' %>">
+      <%= _alreadyCancelled ? '⚠️ Horário já cancelado' : '❌ Cancelar agendamento' %>
+    </h1>
 
-    <p class="sub"><%= _subtitle %></p>
+    <p class="sub">
+      <% if (_alreadyCancelled) { %>
+        Este horário já foi cancelado pelo cliente e o link de cancelamento não pode mais ser utilizado.
+      <% } else { %>
+        Confira os dados abaixo. Se tiver certeza, clique em <strong>“Cancelar agendamento”</strong>.
+      <% } %>
+    </p>
 
-    <div class="badge">Status atual: <%= _status %></div>
+    <div class="pill">Status atual: <%= _status %></div>
 
     <div class="card">
       <div class="row"><span class="k">Barbeiro</span><span><%= barberName || "-" %></span></div>
@@ -158,15 +141,21 @@
       <div class="row"><span class="k">Status</span><span><%= _status %></span></div>
     </div>
 
-    <% if (_hint) { %>
-      <div class="hint"><%= _hint %></div>
-    <% } %>
+    <div class="hint">
+      <% if (_alreadyCancelled) { %>
+        Nenhuma ação adicional é necessária.
+      <% } else { %>
+        Essa ação é definitiva para este link. Depois do cancelamento, o cliente verá a mensagem de horário já cancelado.
+      <% } %>
+    </div>
 
-    <div class="btns">
-      <a href="<%= _primaryHref %>"><%= _primaryLabel %></a>
 
-      <% if (_showCancelButton) { %>
-        <a href="<%= _cancelUrl %>" class="danger"><%= _cancelLabel %></a>
+
+      <% if (!_alreadyCancelled) { %>
+        <form method="POST" action="/cancelar/confirmar" onsubmit="return confirm('Tem certeza que deseja cancelar este agendamento?');" style="flex:1;display:flex;">
+          <input type="hidden" name="token" value="<%= _token %>">
+          <button type="submit" class="primary">Cancelar agendamento</button>
+        </form>
       <% } else { %>
         <a href="/" class="secondary">Fechar</a>
       <% } %>

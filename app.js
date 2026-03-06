@@ -190,6 +190,47 @@ function formatWhatsAppDisplay(phoneDigits) {
   return digits;
 }
 
+async function getAgendamentoComBarbeiro(agendamentoId) {
+  return dbGet(
+    `
+    SELECT a.*, b.name AS barber_name
+      FROM agendamentos a
+      JOIN barbers b ON b.id = a.barber_id
+     WHERE a.id = ?
+     LIMIT 1
+  `,
+    [agendamentoId]
+  );
+}
+
+function buildStatusLabel(status) {
+  if (status === "aprovado") return "confirmado";
+  if (status === "reservado") return "agendado";
+  if (status === "cancelado") return "cancelado";
+  return status || "agendado";
+}
+
+function buildSuccessViewPayload(ag, cancelUrl, extra = {}) {
+  const statusLabel = buildStatusLabel(ag?.status);
+
+  return {
+    pageTitle: extra.pageTitle || "Agendamento",
+    heading: extra.heading || "✅ Agendamento confirmado",
+    headingClass: extra.headingClass || "ok",
+    subtitle: extra.subtitle || "O agendamento foi confirmado com sucesso.",
+    primaryHref: "/",
+    primaryLabel: "Agendar um novo horário",
+    cancelLabel: "Cancelar",
+    cancelUrl: ag?.status === "cancelado" ? "" : cancelUrl,
+    barberName: ag?.barber_name || "",
+    nome: ag?.nome || "",
+    data: ag?.data || "",
+    horario: ag?.horario || "",
+    statusLabel,
+    hint: extra.hint || "",
+  };
+}
+
 // -------------------- ✅ garante admin/admin 123 --------------------
 async function ensureAdminDefault() {
   try {
@@ -210,8 +251,6 @@ async function ensureAdminDefault() {
 
     // ✅ força senha sempre ser 123
     await dbRun(`UPDATE admin_users SET password_hash = ? WHERE username = 'admin'`, [hash]);
-
-
   } catch (e) {
     console.error("❌ ensureAdminDefault:", e);
   }
@@ -428,6 +467,12 @@ async function cleanupReservasExpiradas() {
          AND datetime(expires_at) <= datetime('now')
     `);
 
+    await dbRun(`
+      DELETE FROM agendamento_cancel_tokens
+       WHERE used_at IS NULL
+         AND datetime(expires_at) <= datetime('now')
+    `);
+
     const rows = await dbAll(
       `
       SELECT id
@@ -445,6 +490,10 @@ async function cleanupReservasExpiradas() {
 
     await dbRun(
       `DELETE FROM agendamento_confirm_tokens WHERE agendamento_id IN (${placeholders})`,
+      ids
+    );
+    await dbRun(
+      `DELETE FROM agendamento_cancel_tokens WHERE agendamento_id IN (${placeholders})`,
       ids
     );
     await dbRun(`DELETE FROM agendamentos WHERE id IN (${placeholders})`, ids);
@@ -539,25 +588,48 @@ app.get("/confirmar", async (req, res) => {
 
     if (!row) return res.status(400).send("❌ Link inválido ou expirado.");
 
-    if (row.used_at) {
-      const ag = await dbGet(
-        `
-        SELECT a.*, b.name AS barber_name
-          FROM agendamentos a
-          JOIN barbers b ON b.id = a.barber_id
-         WHERE a.id = ?
-         LIMIT 1
-      `,
-        [row.agendamento_id]
-      );
+    const agAntes = await getAgendamentoComBarbeiro(row.agendamento_id);
+    if (!agAntes) return res.status(404).send("❌ Agendamento não encontrado.");
 
-      return res.render("sucesso", {
-        barberName: ag?.barber_name || "",
-        nome: ag?.nome || "",
-        data: ag?.data || "",
-        horario: ag?.horario || "",
-        statusLabel: ag?.status || "confirmado",
-      });
+    const cancelTokenRow = await dbGet(
+      `
+      SELECT token
+        FROM agendamento_cancel_tokens
+       WHERE agendamento_id = ?
+       LIMIT 1
+    `,
+      [row.agendamento_id]
+    );
+
+    const baseUrl = buildBaseUrl(req);
+    const cancelUrl = cancelTokenRow?.token
+      ? `${baseUrl}/cancelar?token=${encodeURIComponent(cancelTokenRow.token)}`
+      : "";
+
+    if (agAntes.status === "cancelado") {
+      return res.render(
+        "sucesso",
+        buildSuccessViewPayload(agAntes, "", {
+          pageTitle: "Agendamento cancelado",
+          heading: "⚠️ Horário já cancelado",
+          headingClass: "warn",
+          subtitle: "Este horário já foi cancelado pelo cliente.",
+          hint: "O link de cancelamento já foi utilizado anteriormente.",
+        })
+      );
+    }
+
+    if (row.used_at) {
+      return res.render(
+        "sucesso",
+        buildSuccessViewPayload(agAntes, cancelUrl, {
+          pageTitle: "Agendamento confirmado",
+          heading: "✅ Agendamento confirmado",
+          headingClass: "ok",
+          subtitle: "Este agendamento já estava confirmado.",
+          hint: "Caso precise, você ainda pode cancelar este horário pelo botão abaixo.",
+        })
+      );
     }
 
     const stillValid = await dbGet(
@@ -584,31 +656,145 @@ app.get("/confirmar", async (req, res) => {
       [row.token_id]
     );
 
-    const ag = await dbGet(
-      `
-      SELECT a.*, b.name AS barber_name
-        FROM agendamentos a
-        JOIN barbers b ON b.id = a.barber_id
-       WHERE a.id = ?
-       LIMIT 1
-    `,
-      [row.agendamento_id]
-    );
+    const agDepois = await getAgendamentoComBarbeiro(row.agendamento_id);
 
-    return res.render("sucesso", {
-      barberName: ag?.barber_name || "",
-      nome: ag?.nome || "",
-      data: ag?.data || "",
-      horario: ag?.horario || "",
-      statusLabel: ag?.status || "aprovado",
-    });
+    return res.render(
+      "sucesso",
+      buildSuccessViewPayload(agDepois, cancelUrl, {
+        pageTitle: "Agendamento confirmado",
+        heading: "✅ Agendamento confirmado",
+        headingClass: "ok",
+        subtitle: "O agendamento foi confirmado com sucesso.",
+        hint: "Se mudar de ideia, você pode cancelar este horário pelo botão abaixo.",
+      })
+    );
   } catch (e) {
     console.error(e);
     return res.status(500).send("❌ Erro ao confirmar. Tente novamente.");
   }
 });
 
-// ✅ agendar (público) — cria RESERVADO e token expira no tempo configurado
+// ✅ tela de cancelamento pelo link único
+app.get("/cancelar", async (req, res) => {
+  try {
+    const token = String(req.query.token || "").trim();
+    if (!token) return res.status(400).send("❌ Token inválido.");
+
+    const row = await dbGet(
+      `
+      SELECT t.id AS token_id,
+             t.agendamento_id,
+             t.expires_at,
+             t.used_at
+        FROM agendamento_cancel_tokens t
+       WHERE t.token = ?
+       LIMIT 1
+    `,
+      [token]
+    );
+
+    if (!row) return res.status(400).send("❌ Link inválido ou expirado.");
+
+    const ag = await getAgendamentoComBarbeiro(row.agendamento_id);
+    if (!ag) return res.status(404).send("❌ Agendamento não encontrado.");
+
+    const alreadyCancelled = ag.status === "cancelado" || !!row.used_at;
+
+    return res.render("cancelar_agendamento", {
+      token,
+      barberName: ag?.barber_name || "",
+      nome: ag?.nome || "",
+      data: ag?.data || "",
+      horario: ag?.horario || "",
+      statusLabel: buildStatusLabel(ag?.status),
+      alreadyCancelled,
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).send("❌ Erro ao abrir a tela de cancelamento.");
+  }
+});
+
+// ✅ confirmação final do cancelamento
+app.post("/cancelar/confirmar", async (req, res) => {
+  try {
+    const token = String((req.body || {}).token || "").trim();
+    if (!token) return res.status(400).send("❌ Token inválido.");
+
+    const row = await dbGet(
+      `
+      SELECT t.id AS token_id,
+             t.agendamento_id,
+             t.expires_at,
+             t.used_at
+        FROM agendamento_cancel_tokens t
+       WHERE t.token = ?
+       LIMIT 1
+    `,
+      [token]
+    );
+
+    if (!row) return res.status(400).send("❌ Link inválido ou expirado.");
+
+    const agAntes = await getAgendamentoComBarbeiro(row.agendamento_id);
+    if (!agAntes) return res.status(404).send("❌ Agendamento não encontrado.");
+
+    if (agAntes.status === "cancelado" || row.used_at) {
+      return res.render(
+        "sucesso",
+        buildSuccessViewPayload(agAntes, "", {
+          pageTitle: "Agendamento cancelado",
+          heading: "⚠️ Horário já cancelado",
+          headingClass: "warn",
+          subtitle: "Este horário já foi cancelado pelo cliente.",
+          hint: "O link de cancelamento não pode mais ser utilizado.",
+        })
+      );
+    }
+
+    const stillValid = await dbGet(
+      `SELECT 1 AS ok
+         FROM agendamento_cancel_tokens
+        WHERE id = ?
+          AND datetime(expires_at) > datetime('now')
+        LIMIT 1`,
+      [row.token_id]
+    );
+
+    if (!stillValid) {
+      return res.status(400).send("❌ Link de cancelamento expirado.");
+    }
+
+    await dbRun(`UPDATE agendamentos SET status = 'cancelado' WHERE id = ?`, [
+      row.agendamento_id,
+    ]);
+
+    await dbRun(
+      `UPDATE agendamento_cancel_tokens
+          SET used_at = datetime('now')
+        WHERE id = ?`,
+      [row.token_id]
+    );
+
+    const agDepois = await getAgendamentoComBarbeiro(row.agendamento_id);
+
+    return res.render(
+      "sucesso",
+      buildSuccessViewPayload(agDepois, "", {
+        pageTitle: "Agendamento cancelado",
+        heading: "❌ Agendamento cancelado",
+        headingClass: "danger",
+        subtitle: "O horário foi cancelado com sucesso.",
+        hint: "Este link de cancelamento já foi consumido e não poderá ser reutilizado.",
+      })
+    );
+  } catch (e) {
+    console.error(e);
+    return res.status(500).send("❌ Erro ao cancelar. Tente novamente.");
+  }
+});
+
+// ✅ agendar (público) — cria RESERVADO e tokens expiram no tempo configurado
 app.post("/agendar", async (req, res) => {
   try {
     const body = req.body || {};
@@ -668,22 +854,33 @@ app.post("/agendar", async (req, res) => {
 
     const minutos = await getSettingInt("reserva_expira_minutos", 30);
 
-    const token = crypto.randomBytes(24).toString("hex");
+    const confirmToken = crypto.randomBytes(24).toString("hex");
+    const cancelToken = crypto.randomBytes(24).toString("hex");
+
     await dbRun(
       `
       INSERT INTO agendamento_confirm_tokens (agendamento_id, token, expires_at)
       VALUES (?, ?, datetime('now', ?))
     `,
-      [agendamentoId, token, `+${minutos} minutes`]
+      [agendamentoId, confirmToken, `+${minutos} minutes`]
+    );
+
+    await dbRun(
+      `
+      INSERT INTO agendamento_cancel_tokens (agendamento_id, token, expires_at)
+      VALUES (?, ?, datetime('now', ?))
+    `,
+      [agendamentoId, cancelToken, `+${minutos} minutes`]
     );
 
     const baseUrl = buildBaseUrl(req);
-    const confirmUrl = `${baseUrl}/confirmar?token=${encodeURIComponent(token)}`;
+    const confirmUrl = `${baseUrl}/confirmar?token=${encodeURIComponent(confirmToken)}`;
+    const cancelUrl = `${baseUrl}/cancelar?token=${encodeURIComponent(cancelToken)}`;
 
     const redirectPhone = normalizePhoneDigits(barber.redirect_phone) || BARBERSHOP_WPP;
     const dataFormatada = formatDateToDMY(data);
 
-    const waText = 
+    const waText =
 `💈 *GOLD BARBER* 💈
 _Confirmação de Agendamento_
 
@@ -701,8 +898,13 @@ Para garantir o atendimento, *confirme pelo link abaixo.*
 
 ━━━━━━━━━━━━━━━
 
-✅ *Confirme clicando no Link abaixo:*
+✅ *Confirme clicando no link abaixo:*
 ${confirmUrl}
+
+━━━━━━━━━━━━━━━
+
+❌ *Cancelar horário:*
+${cancelUrl}
 
 ━━━━━━━━━━━━━━━
 
@@ -718,6 +920,7 @@ ${confirmUrl}
       data,
       horario,
       confirmUrl,
+      cancelUrl,
       waText,
       reservaExpiraMinutos: minutos,
       barbershopWppDisplay: formatWhatsAppDisplay(redirectPhone),

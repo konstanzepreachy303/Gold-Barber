@@ -102,6 +102,17 @@ function all(sql, params = []) {
       );
     `);
 
+await run(`
+  CREATE TABLE IF NOT EXISTS agendamento_cancel_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agendamento_id INTEGER NOT NULL,
+    token TEXT NOT NULL UNIQUE,
+    expires_at TEXT NOT NULL,
+    used_at TEXT,
+    FOREIGN KEY (agendamento_id) REFERENCES agendamentos(id) ON DELETE CASCADE
+  );
+`);
+
     await run(`
       CREATE TABLE IF NOT EXISTS mensalista_plans (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
