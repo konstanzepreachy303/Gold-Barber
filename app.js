@@ -211,9 +211,28 @@ async function ensureAdminDefault() {
     // ✅ força senha sempre ser 123
     await dbRun(`UPDATE admin_users SET password_hash = ? WHERE username = 'admin'`, [hash]);
 
-    console.log("✅ Admin garantido: admin / 123");
+
   } catch (e) {
     console.error("❌ ensureAdminDefault:", e);
+  }
+}
+
+async function ensureMensalistaOverridesTable() {
+  try {
+    await dbRun(`
+      CREATE TABLE IF NOT EXISTS mensalista_overrides (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        plan_id INTEGER NOT NULL,
+        original_date TEXT NOT NULL,
+        new_date TEXT NOT NULL,
+        new_horario TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now')),
+        UNIQUE(plan_id, original_date)
+      );
+    `);
+  } catch (e) {
+    console.error("❌ ensureMensalistaOverridesTable:", e);
   }
 }
 
@@ -307,26 +326,95 @@ async function slotsForWeekday(barberId, weekday) {
   return generateSlotsForDateAndBarber(sample, barberId);
 }
 
-async function hasMensalistaConflict(barberId, ymd, horario) {
-  if (!barberId || !isValidYMD(ymd) || !horario) return false;
+async function getMensalistaBlockedEntriesForDate(barberId, ymd, opts = {}) {
+  if (!barberId || !isValidYMD(ymd)) return [];
+
+  const ignorePlanId = Number(opts.ignorePlanId || 0) || 0;
+  const ignoreOriginalDate = opts.ignoreOriginalDate ? String(opts.ignoreOriginalDate) : "";
 
   const dow = getDowFromYMD(ymd);
 
-  const row = await dbGet(
+  const planRows = await dbAll(
     `
-    SELECT id
+    SELECT id AS plan_id, horario
       FROM mensalista_plans
      WHERE barber_id = ?
        AND dow = ?
-       AND horario = ?
        AND start_ymd <= ?
        AND (end_ymd IS NULL OR end_ymd = '' OR end_ymd >= ?)
-     LIMIT 1
   `,
-    [barberId, dow, horario, ymd, ymd]
+    [barberId, dow, ymd, ymd]
   );
 
-  return !!row;
+  let blocked = planRows.map((r) => ({
+    plan_id: Number(r.plan_id),
+    horario: String(r.horario || ""),
+    source: "plan",
+    original_date: null,
+  }));
+
+  const overrideRows = await dbAll(
+    `
+    SELECT
+      o.plan_id,
+      o.original_date,
+      o.new_date,
+      o.new_horario,
+      p.horario AS base_horario
+    FROM mensalista_overrides o
+    JOIN mensalista_plans p ON p.id = o.plan_id
+    WHERE p.barber_id = ?
+      AND (o.original_date = ? OR o.new_date = ?)
+  `,
+    [barberId, ymd, ymd]
+  );
+
+  for (const o of overrideRows) {
+    const planId = Number(o.plan_id);
+    const baseHorario = String(o.base_horario || "");
+    const originalDate = String(o.original_date || "");
+    const newDate = String(o.new_date || "");
+    const newHorario = String(o.new_horario || "");
+
+    if (originalDate === ymd) {
+      blocked = blocked.filter(
+        (item) => !(item.plan_id === planId && item.source === "plan" && item.horario === baseHorario)
+      );
+    }
+
+    if (newDate === ymd) {
+      blocked.push({
+        plan_id: planId,
+        horario: newHorario,
+        source: "override",
+        original_date: originalDate,
+      });
+    }
+  }
+
+  if (ignorePlanId && ignoreOriginalDate) {
+    blocked = blocked.filter(
+      (item) =>
+        !(
+          item.plan_id === ignorePlanId &&
+          item.source === "override" &&
+          item.original_date === ignoreOriginalDate
+        )
+    );
+  }
+
+  return blocked;
+}
+
+async function getMensalistaBlockedHorariosForDate(barberId, ymd, opts = {}) {
+  const entries = await getMensalistaBlockedEntriesForDate(barberId, ymd, opts);
+  return [...new Set(entries.map((e) => e.horario).filter(Boolean))];
+}
+
+async function hasMensalistaConflict(barberId, ymd, horario, opts = {}) {
+  if (!barberId || !isValidYMD(ymd) || !horario) return false;
+  const blocked = await getMensalistaBlockedHorariosForDate(barberId, ymd, opts);
+  return blocked.includes(horario);
 }
 
 // -------------------- ✅ LIMPEZA: apaga reservados expirados --------------------
@@ -403,19 +491,7 @@ app.get("/horarios", async (req, res) => {
   );
   const ocupados = ocupadosRows.map((r) => r.horario);
 
-  const dow = getDowFromYMD(data);
-  const mensalistaRows = await dbAll(
-    `
-    SELECT horario
-      FROM mensalista_plans
-     WHERE barber_id = ?
-       AND dow = ?
-       AND start_ymd <= ?
-       AND (end_ymd IS NULL OR end_ymd = '' OR end_ymd >= ?)
-  `,
-    [bId, dow, data, data]
-  );
-  const travados = mensalistaRows.map((r) => r.horario);
+  const travados = await getMensalistaBlockedHorariosForDate(bId, data);
 
   let livres = baseSlots.filter(
     (h) => !ocupados.includes(h) && !travados.includes(h)
@@ -607,14 +683,33 @@ app.post("/agendar", async (req, res) => {
     const redirectPhone = normalizePhoneDigits(barber.redirect_phone) || BARBERSHOP_WPP;
     const dataFormatada = formatDateToDMY(data);
 
-    const waText =
-      `Olá! Quero confirmar meu agendamento na Gold Barber:\n\n` +
-      `👤 Cliente: ${nome}\n` +
-      `💇‍♂️ Barbeiro: ${barber.name}\n` +
-      `📅 Data: ${dataFormatada}\n` +
-      `🕒 Horário: ${horario}\n\n` +
-      `✅ Clique para confirmar: ${confirmUrl}\n\n` +
-      `⏳ Essa reserva expira em ${minutos} minutos.`;
+    const waText = 
+`💈 *GOLD BARBER* 💈
+_Confirmação de Agendamento_
+
+👥 *Olá*, _*${nome}!*_
+
+Seu horário foi reservado com sucesso.
+Para garantir o atendimento, *confirme pelo link abaixo.*
+
+━━━━━━━━━━━━━━━
+
+*Detalhes do agendamento:*
+💇🏽‍♂️ *PROFISSIONAL:* ${barber.name}
+📌 *DIA:* ${dataFormatada}
+⌚ *HORÁRIO:* ${horario}
+
+━━━━━━━━━━━━━━━
+
+✅ *Confirme clicando no Link abaixo:*
+${confirmUrl}
+
+━━━━━━━━━━━━━━━
+
+⚠️ A confirmação é necessária para manter o horário reservado.
+⏳ O link expira em ${minutos} minutos.
+
+*COMPROVANTE DE AGENDAMENTO*`;
 
     return res.render("confirmar_whatsapp", {
       nome,
@@ -693,6 +788,22 @@ app.get("/admin", requireAdmin, async (req, res) => {
   `
   );
 
+  const overrideRows = await dbAll(
+    `
+    SELECT plan_id, original_date, new_date, new_horario
+      FROM mensalista_overrides
+  `
+  );
+  const overrideMap = new Map(
+    overrideRows.map((o) => [
+      `${Number(o.plan_id)}::${String(o.original_date || "")}`,
+      {
+        new_date: String(o.new_date || ""),
+        new_horario: String(o.new_horario || ""),
+      },
+    ])
+  );
+
   const today = todayYMD();
   const winStart = addDaysYMD(today, -365);
   const winEnd = addDaysYMD(today, 365);
@@ -713,6 +824,12 @@ app.get("/admin", requireAdmin, async (req, res) => {
     }
 
     while (cursor <= rangeEnd) {
+      const overrideKey = `${Number(p.id)}::${cursor}`;
+      const override = overrideMap.get(overrideKey);
+
+      const finalDate = override?.new_date || cursor;
+      const finalHorario = override?.new_horario || p.horario;
+
       mensalistaConfirmados.push({
         id: `m-${p.id}-${cursor}`,
         is_mensalista: true,
@@ -720,10 +837,11 @@ app.get("/admin", requireAdmin, async (req, res) => {
         barber_name: p.barber_name,
         nome: p.nome,
         telefone: p.telefone || "",
-        data: cursor,
-        horario: p.horario,
+        data: finalDate,
+        horario: finalHorario,
         status: "aprovado",
       });
+
       cursor = addDaysYMD(cursor, 7);
     }
   }
@@ -1052,9 +1170,91 @@ async function handleUpdateMensalista(req, res) {
   return res.redirect("/admin?tab=mensalistas");
 }
 
+async function handleTrocarHorarioMensalista(req, res) {
+  const body = req.body || {};
+
+  const planId = Number(body.planId);
+  const barberId = Number(body.barberId);
+  const originalDate = toYMD(String(body.originalDate || "").trim());
+  const originalHorario = String(body.originalHorario || "").trim();
+  const newDate = toYMD(String(body.newDate || "").trim());
+  const newHorario = String(body.newHorario || "").trim();
+
+  if (!planId || !barberId || !originalDate || !newDate || !originalHorario || !newHorario) {
+    return res.status(400).send("❌ Preencha os dados da troca de horário.");
+  }
+
+  if (!isValidYMD(originalDate) || !isValidYMD(newDate)) {
+    return res.status(400).send("❌ Data inválida.");
+  }
+
+  const plan = await dbGet(
+    `
+    SELECT id, barber_id, start_ymd, end_ymd, dow, horario
+      FROM mensalista_plans
+     WHERE id = ?
+     LIMIT 1
+  `,
+    [planId]
+  );
+
+  if (!plan || Number(plan.barber_id) !== barberId) {
+    return res.status(400).send("❌ Plano mensalista inválido.");
+  }
+
+  if (originalDate < plan.start_ymd || (plan.end_ymd && String(plan.end_ymd).trim() && originalDate > plan.end_ymd)) {
+    return res.status(400).send("❌ A ocorrência original está fora do período do plano.");
+  }
+
+  const slots = await generateSlotsForDateAndBarber(newDate, barberId);
+  if (!slots.includes(newHorario)) {
+    return res.status(400).send("❌ Novo horário inválido para a data escolhida.");
+  }
+
+  const conflitoAgendamento = await dbGet(
+    `SELECT id
+       FROM agendamentos
+      WHERE barber_id = ?
+        AND data = ?
+        AND horario = ?
+        AND status != 'cancelado'
+      LIMIT 1`,
+    [barberId, newDate, newHorario]
+  );
+
+  if (conflitoAgendamento) {
+    return res.status(400).send("❌ Já existe agendamento nesse horário.");
+  }
+
+  const conflitoMensalista = await hasMensalistaConflict(barberId, newDate, newHorario, {
+    ignorePlanId: planId,
+    ignoreOriginalDate: originalDate,
+  });
+
+  if (conflitoMensalista) {
+    return res.status(400).send("❌ Já existe mensalista nesse novo dia/horário.");
+  }
+
+  await dbRun(
+    `
+    INSERT INTO mensalista_overrides (plan_id, original_date, new_date, new_horario, updated_at)
+    VALUES (?, ?, ?, ?, datetime('now'))
+    ON CONFLICT(plan_id, original_date)
+    DO UPDATE SET
+      new_date = excluded.new_date,
+      new_horario = excluded.new_horario,
+      updated_at = datetime('now')
+  `,
+    [planId, originalDate, newDate, newHorario]
+  );
+
+  return res.redirect("/admin?tab=agendamentos");
+}
+
 async function handleDeleteMensalista(req, res) {
   const id = Number(req.params.id);
   if (!id) return res.redirect("/admin?tab=mensalistas");
+  await dbRun(`DELETE FROM mensalista_overrides WHERE plan_id = ?`, [id]);
   await dbRun(`DELETE FROM mensalista_plans WHERE id = ?`, [id]);
   return res.redirect("/admin?tab=mensalistas");
 }
@@ -1062,6 +1262,7 @@ async function handleDeleteMensalista(req, res) {
 app.post("/admin/mensalistas", requireAdmin, handleCreateMensalista);
 app.post("/admin/mensalistas/:id/update", requireAdmin, handleUpdateMensalista);
 app.post("/admin/mensalistas/:id/delete", requireAdmin, handleDeleteMensalista);
+app.post("/admin/mensalistas/trocar-horario", requireAdmin, handleTrocarHorarioMensalista);
 
 // ✅ ADMIN: AGENDAR MANUALMENTE (SEM STATUS — sempre APROVADO)
 app.post("/admin/agendar", requireAdmin, async (req, res) => {
@@ -1125,11 +1326,11 @@ app.post("/admin/agendar", requireAdmin, async (req, res) => {
 // -------------------- start --------------------
 (async () => {
   await ensureAdminDefault();
+  await ensureMensalistaOverridesTable();
   await cleanupReservasExpiradas();
 
   app.listen(PORT, () => {
-    console.log(`✅ Server running on http://localhost:${PORT}`);
-    console.log(`📲 WhatsApp oficial (fallback): ${BARBERSHOP_WPP}`);
+    console.log(`✅ Server Online http://localhost:${PORT}`);
     if (BASE_URL) console.log(`🌐 BASE_URL: ${BASE_URL}`);
   });
 })();

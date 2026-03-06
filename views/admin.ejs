@@ -39,7 +39,6 @@
         linear-gradient(180deg, var(--bg0), var(--bg1));
     }
 
-    /* ===== Topbar ===== */
     header{
       position: sticky;
       top: 0;
@@ -108,7 +107,6 @@
       align-items:center;
     }
 
-    /* ===== Pills / Tags ===== */
     .pill{
       padding: 6px 10px;
       border-radius: 999px;
@@ -141,7 +139,6 @@
       box-shadow: 0 0 0 2px rgba(255,255,255,.08);
     }
 
-    /* ===== Inputs ===== */
     label{
       font-weight: 900;
       display:block;
@@ -171,14 +168,12 @@
       color: var(--txt);
     }
 
-    /* Checkbox */
     input[type="checkbox"]{
       width:auto;
       accent-color: var(--gold);
       transform: translateY(1px);
     }
 
-    /* ===== Buttons ===== */
     .btn{
       padding: 11px 14px;
       border-radius: 12px;
@@ -219,7 +214,6 @@
       border: none;
     }
 
-    /* ===== Layout helpers ===== */
     .cols{
       display:grid;
       grid-template-columns: 1fr 1fr;
@@ -231,7 +225,6 @@
       .cols{ grid-template-columns: 1fr; }
     }
 
-    /* ===== Tabs ===== */
     .tabs{
       max-width:1100px;
       margin: 14px auto 0;
@@ -263,7 +256,6 @@
     .tabPanel{ display:none; }
     .tabPanel.active{ display:block; }
 
-    /* ===== Tables ===== */
     table{
       width:100%;
       border-collapse: collapse;
@@ -290,7 +282,6 @@
       background: rgba(201,162,39,.06);
     }
 
-    /* ===== Agenda ===== */
     .agendaWrap{
       display:grid;
       grid-template-columns: 1fr;
@@ -381,7 +372,6 @@
       justify-content:flex-end;
     }
 
-    /* ===== Picker Mês/Ano (mes_inteiro) ===== */
     .monthPickerBox{
       display:flex;
       gap: 8px;
@@ -403,7 +393,6 @@
       border-color: rgba(201,162,39,.7);
     }
 
-    /* ===== Calendário ===== */
     .overlay{
       position: fixed;
       inset: 0;
@@ -416,6 +405,13 @@
     }
     .overlay.show{ display:flex; }
 
+    #admOverlay{
+      z-index: 3000;
+    }
+    #swapOverlay{
+      z-index: 2000;
+    }
+
     .cal{
       width: 380px;
       max-width: 100%;
@@ -425,6 +421,9 @@
       overflow:hidden;
       box-shadow: 0 18px 55px rgba(0,0,0,.65);
       color: var(--txt);
+    }
+    .calWide{
+      width: 480px;
     }
     .cal-head{
       display:flex;
@@ -507,11 +506,8 @@
       border: none;
     }
 
-    /* Pequenas melhorias de usabilidade */
     form{ margin:0; }
     hr{ border:0; border-top: 1px solid rgba(255,255,255,.08); margin: 18px 0; }
-
-    /* ===== Melhorias visuais de status + botoes da agenda ===== */
 
     .tag{
       display:inline-flex;
@@ -579,6 +575,28 @@
     .btnCancel:hover{
       border-color: rgba(255,59,77,.60);
       box-shadow: 0 10px 24px rgba(0,0,0,.25);
+    }
+
+    .btnSwap{
+      background: rgba(255,59,77,.06);
+      border: 1px solid rgba(255,59,77,.35);
+      color: #ffd7db;
+    }
+    .btnSwap:hover{
+      border-color: rgba(255,59,77,.60);
+      box-shadow: 0 10px 24px rgba(0,0,0,.25);
+    }
+
+    .swapInfo{
+      display:grid;
+      gap:8px;
+      margin-bottom: 10px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.03);
+      font-size: 13px;
+      font-weight: 900;
     }
   </style>
 </head>
@@ -867,13 +885,13 @@
 
               <div>
                 <label>Data inicial</label>
-                <input type="date" name="start" id="menStart" required />
-                <div class="muted">Ao selecionar a data inicial, o sistema cria esta data + mais 3 semanas iguais.</div>
+                <input type="text" name="start" id="menStart" placeholder="Clique para escolher" required readonly style="cursor:pointer;" />
+                <div class="muted">Ao clicar, abre o mesmo calendário da aba Agendar manualmente.</div>
               </div>
 
               <div>
                 <label>Data final</label>
-                <input type="date" name="end" id="menEnd" readonly />
+                <input type="text" name="end" id="menEnd" readonly />
                 <div class="muted">Preenchida automaticamente com a última semana do plano.</div>
               </div>
 
@@ -1131,6 +1149,7 @@
                         const isReservado = (!isMensalista && st === "reservado");
                         const tagClass = isMensalista ? "mensalista" : (isConfirmado ? "confirmado" : "reservado");
                         const tagText = isMensalista ? "mensalista" : (isConfirmado ? "confirmado" : "reservado");
+                        const planId = isMensalista ? String(a.id || "").replace(/^m\-([^\-]+)\-.+$/, "$1") : "";
                       %>
 
                       <div
@@ -1139,6 +1158,11 @@
                         data-barber-id="<%= a.barber_id %>"
                         data-status="<%= st %>"
                         data-is-mensalista="<%= isMensalista ? '1' : '0' %>"
+                        data-plan-id="<%= planId %>"
+                        data-date="<%= a.data %>"
+                        data-horario="<%= a.horario %>"
+                        data-nome="<%- String(a.nome || '').replace(/\"/g, '&quot;') %>"
+                        data-barber-name="<%- String(a.barber_name || '').replace(/\"/g, '&quot;') %>"
                       >
                         <div class="slotLeft">
                           <span class="timePill"><%= a.horario %></span>
@@ -1150,6 +1174,12 @@
 
                         <div class="slotRight">
                           <span class="tag <%= tagClass %>"><%= tagText %></span>
+
+                          <% if (isMensalista) { %>
+                            <button class="btn btnMini btnSwap" type="button" onclick="abrirTrocaMensalista(this)">
+                              Trocar horário
+                            </button>
+                          <% } %>
 
                           <% if (isReservado) { %>
                             <button class="btn btnMini btnConfirm" type="button" onclick="confirmarManual(<%= a.id %>)">
@@ -1195,10 +1225,59 @@
     </div>
   </div>
 
+  <div id="swapOverlay" class="overlay" aria-hidden="true">
+    <div class="cal calWide" role="dialog" aria-modal="true" aria-label="Trocar horário do mensalista">
+      <div class="cal-head">
+        <div class="cal-title">Trocar horário do mensalista</div>
+      </div>
+      <div class="cal-body">
+        <div class="swapInfo">
+          <div>Cliente: <span id="swapNome">—</span></div>
+          <div>Barbeiro: <span id="swapBarbeiro">—</span></div>
+          <div>Ocorrência atual: <span id="swapAtual">—</span></div>
+        </div>
+
+        <form method="POST" action="/admin/mensalistas/trocar-horario" id="swapMensalistaForm">
+          <input type="hidden" name="planId" id="swapPlanId" />
+          <input type="hidden" name="barberId" id="swapBarberId" />
+          <input type="hidden" name="originalDate" id="swapOriginalDate" />
+          <input type="hidden" name="originalHorario" id="swapOriginalHorario" />
+
+          <div class="cols">
+            <div>
+              <label>Nova data</label>
+              <input type="text" name="newDateDisplay" id="swapDateDisplay" placeholder="Clique para escolher" readonly style="cursor:pointer;" />
+              <input type="hidden" name="newDate" id="swapDate" />
+            </div>
+
+            <div>
+              <label>Novo horário</label>
+              <select name="newHorario" id="swapHorario" required disabled>
+                <option value="">Selecione a nova data</option>
+              </select>
+              <div class="muted" id="swapHorarioMsg"></div>
+            </div>
+
+            <div class="full">
+              <div class="muted">
+                O sistema deve validar se o barbeiro trabalha no novo dia e se o novo horário está livre.
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="cal-foot">
+        <button type="button" id="swapCancelBtn">Cancelar</button>
+        <button type="submit" form="swapMensalistaForm" class="primary">Salvar troca</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     function pad2(n){ return String(n).padStart(2, "0"); }
     function fmtYMD(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
     function fmtDMY(d){ return `${pad2(d.getDate())}-${pad2(d.getMonth()+1)}-${d.getFullYear()}`; }
+    function fmtDMYSlash(d){ return `${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${d.getFullYear()}`; }
 
     function addDays(d, days){ const x = new Date(d.getTime()); x.setDate(x.getDate()+days); return x; }
     function parseYMD(ymd){
@@ -1231,6 +1310,10 @@
       const dt = parseYMD(ymd);
       return dt ? String(dt.getDay()) : "";
     }
+    function ymdToSlash(ymd){
+      const d = parseYMD(ymd);
+      return d ? fmtDMYSlash(d) : "";
+    }
 
     const tabs = [
       { btn: "tabBtnBarbeiros", panel:"tabBarbeiros" },
@@ -1252,7 +1335,7 @@
       stopAutoRefresh();
       startAutoRefreshIfNeeded();
       if(btnId === "tabBtnMensalistas"){
-        if(menStart && !menStart.value) menStart.value = todayYMDMen();
+        if(menStart && !menStart.value) menStart.value = fmtDMYSlash(new Date());
         updateMensalistaDateFields();
       }
     }
@@ -1300,19 +1383,6 @@
     const agHint = document.getElementById("agHint");
     const agTotal = document.getElementById("agTotal");
 
-    function startOfWorkWeekMon(d){
-      const day = d.getDay();
-      const diffToMon = (day === 0) ? -6 : (1 - day);
-      const mon = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-      mon.setDate(mon.getDate() + diffToMon);
-      return mon;
-    }
-    function endOfWorkWeekSat(d){
-      const mon = startOfWorkWeekMon(d);
-      const sat = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate());
-      sat.setDate(mon.getDate() + 5);
-      return sat;
-    }
     function lastDayOfMonth(d){
       return new Date(d.getFullYear(), d.getMonth() + 1, 0);
     }
@@ -1641,24 +1711,61 @@
     const admCancelCal = document.getElementById("admCancelCal");
     const admOkCal = document.getElementById("admOkCal");
 
+    const swapOverlay = document.getElementById("swapOverlay");
+    const swapPlanId = document.getElementById("swapPlanId");
+    const swapBarberId = document.getElementById("swapBarberId");
+    const swapOriginalDate = document.getElementById("swapOriginalDate");
+    const swapOriginalHorario = document.getElementById("swapOriginalHorario");
+    const swapDateDisplay = document.getElementById("swapDateDisplay");
+    const swapDate = document.getElementById("swapDate");
+    const swapHorario = document.getElementById("swapHorario");
+    const swapHorarioMsg = document.getElementById("swapHorarioMsg");
+    const swapNome = document.getElementById("swapNome");
+    const swapBarbeiro = document.getElementById("swapBarbeiro");
+    const swapAtual = document.getElementById("swapAtual");
+    const swapCancelBtn = document.getElementById("swapCancelBtn");
+
     let calMonth = new Date();
     let selectedYMD = null;
+    let calTarget = "manual";
 
-    function openAdmCal(){
-      const ymd = dmyToYMD(admData.value);
-      if(ymd){
-        selectedYMD = ymd;
-        const d = parseYMD(ymd);
+    function openSharedCal(target){
+      calTarget = target || "manual";
+
+      let initialYMD = null;
+      if(calTarget === "mensalista"){
+        initialYMD = dmyToYMD(menStart?.value || "");
+      }else if(calTarget === "trocaMensalista"){
+        initialYMD = swapDate?.value || swapOriginalDate?.value || null;
+      }else{
+        initialYMD = dmyToYMD(admData?.value || "");
+      }
+
+      if(initialYMD){
+        selectedYMD = initialYMD;
+        const d = parseYMD(initialYMD);
         if(d) calMonth = new Date(d.getFullYear(), d.getMonth(), 1);
       }else{
         const now = new Date();
         calMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        selectedYMD = null;
+        selectedYMD = fmtYMD(new Date(now.getFullYear(), now.getMonth(), now.getDate()));
       }
+
+      if(calTarget === "trocaMensalista"){
+        swapOverlay.classList.remove("show");
+      }
+
       admOverlay.classList.add("show");
       renderCal();
     }
-    function closeAdmCal(){ admOverlay.classList.remove("show"); }
+
+    function closeAdmCal(){
+      admOverlay.classList.remove("show");
+      if(calTarget === "trocaMensalista"){
+        swapOverlay.classList.add("show");
+      }
+    }
+    function closeSwapOverlay(){ swapOverlay.classList.remove("show"); }
 
     function renderCal(){
       const y = calMonth.getFullYear();
@@ -1672,7 +1779,6 @@
 
       const today = new Date();
       const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const todayYMD = fmtYMD(todayStart);
 
       admDays.innerHTML = "";
 
@@ -1700,11 +1806,6 @@
         }
 
         if(selectedYMD === ymd) div.classList.add("selected");
-        if(!selectedYMD && ymd === todayYMD){
-          selectedYMD = todayYMD;
-          div.classList.add("selected");
-        }
-
         admDays.appendChild(div);
       }
     }
@@ -1715,12 +1816,29 @@
     admOkCal.addEventListener("click", ()=>{
       if(!selectedYMD) { alert("Selecione uma data."); return; }
       const d = parseYMD(selectedYMD);
-      admData.value = `${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${d.getFullYear()}`;
+
+      if(calTarget === "mensalista"){
+        menStart.value = fmtDMYSlash(d);
+        closeAdmCal();
+        updateMensalistaDateFields();
+        refreshMensalistaHorarios();
+        return;
+      }
+
+      if(calTarget === "trocaMensalista"){
+        swapDate.value = selectedYMD;
+        swapDateDisplay.value = fmtDMYSlash(d);
+        closeAdmCal();
+        refreshTrocaMensalistaHorarios();
+        return;
+      }
+
+      admData.value = fmtDMYSlash(d);
       closeAdmCal();
       refreshAdminHorarios();
     });
 
-    admData.addEventListener("click", openAdmCal);
+    admData.addEventListener("click", ()=>openSharedCal("manual"));
 
     async function refreshAdminHorarios(){
       admHorario.innerHTML = `<option value="">Selecione barbeiro e data</option>`;
@@ -1765,10 +1883,63 @@
     }
     admBarberId.addEventListener("change", refreshAdminHorarios);
 
-    function todayYMDMen(){
-      const t = new Date();
-      return fmtYMD(new Date(t.getFullYear(), t.getMonth(), t.getDate()));
+    async function refreshTrocaMensalistaHorarios(){
+      swapHorario.innerHTML = `<option value="">Selecione a nova data</option>`;
+      swapHorario.disabled = true;
+      if(swapHorarioMsg) swapHorarioMsg.textContent = "";
+
+      const barberId = swapBarberId?.value;
+      const ymd = swapDate?.value;
+      if(!barberId || !ymd) return;
+
+      if(swapHorarioMsg) swapHorarioMsg.textContent = "Carregando horários...";
+      try{
+        const r = await fetch(`/horarios?barberId=${encodeURIComponent(barberId)}&data=${encodeURIComponent(ymd)}`);
+        const slots = await r.json();
+
+        if(!Array.isArray(slots) || !slots.length){
+          swapHorario.innerHTML = `<option value="">Sem horários disponíveis</option>`;
+          swapHorario.disabled = true;
+          if(swapHorarioMsg) swapHorarioMsg.textContent = "Sem horários disponíveis.";
+          return;
+        }
+
+        swapHorario.innerHTML = `<option value="">Selecione</option>` + slots.map(h=>`<option value="${h}">${h}</option>`).join("");
+        swapHorario.disabled = false;
+        if(swapHorarioMsg) swapHorarioMsg.textContent = "";
+      }catch(e){
+        if(swapHorarioMsg) swapHorarioMsg.textContent = "Erro ao carregar horários.";
+      }
     }
+
+    window.abrirTrocaMensalista = function(btn){
+      const slot = btn?.closest(".agSlot");
+      if(!slot) return;
+
+      swapPlanId.value = slot.dataset.planId || "";
+      swapBarberId.value = slot.dataset.barberId || "";
+      swapOriginalDate.value = slot.dataset.date || "";
+      swapOriginalHorario.value = slot.dataset.horario || "";
+      swapDate.value = slot.dataset.date || "";
+      swapDateDisplay.value = ymdToSlash(slot.dataset.date || "");
+      swapHorario.innerHTML = `<option value="">Selecione a nova data</option>`;
+      swapHorario.disabled = true;
+      if(swapHorarioMsg) swapHorarioMsg.textContent = "";
+      swapNome.textContent = slot.dataset.nome || "—";
+      swapBarbeiro.textContent = slot.dataset.barberName || "—";
+      swapAtual.textContent = `${ymdToSlash(slot.dataset.date || "")} às ${slot.dataset.horario || ""}`;
+
+      swapOverlay.classList.add("show");
+      refreshTrocaMensalistaHorarios();
+    };
+
+    if(swapDateDisplay){
+      swapDateDisplay.addEventListener("click", ()=>openSharedCal("trocaMensalista"));
+    }
+    if(swapCancelBtn){
+      swapCancelBtn.addEventListener("click", closeSwapOverlay);
+    }
+
     const menForm = document.getElementById("mensalistaForm");
     const menPlanId = document.getElementById("menPlanId");
     const menBarberId = document.getElementById("menBarberId");
@@ -1785,9 +1956,10 @@
     const menEditName = document.getElementById("menEditName");
 
     function updateMensalistaDateFields(){
-      const start = menStart?.value || "";
-      if(menEnd) menEnd.value = start ? calcMensalistaEnd(start) : "";
-      if(menWeekdayHidden) menWeekdayHidden.value = start ? weekdayFromYMD(start) : "";
+      const startYMD = dmyToYMD(menStart?.value || "");
+      const endYMD = startYMD ? calcMensalistaEnd(startYMD) : "";
+      if(menEnd) menEnd.value = endYMD ? fmtDMYSlash(parseYMD(endYMD)) : "";
+      if(menWeekdayHidden) menWeekdayHidden.value = startYMD ? weekdayFromYMD(startYMD) : "";
     }
 
     async function refreshMensalistaHorarios(){
@@ -1796,14 +1968,14 @@
       if(menHorarioMsg) menHorarioMsg.textContent = "";
 
       const b = menBarberId?.value;
-      const start = menStart?.value;
-      if(!b || !start) return;
+      const startYMD = dmyToYMD(menStart?.value || "");
+      if(!b || !startYMD) return;
 
       updateMensalistaDateFields();
 
       if(menHorarioMsg) menHorarioMsg.textContent = "Carregando horários...";
       try{
-        const r = await fetch(`/horarios?barberId=${encodeURIComponent(b)}&data=${encodeURIComponent(start)}`);
+        const r = await fetch(`/horarios?barberId=${encodeURIComponent(b)}&data=${encodeURIComponent(startYMD)}`);
         const slots = await r.json();
 
         if(!Array.isArray(slots) || slots.length === 0){
@@ -1840,7 +2012,7 @@
       menForm.action = "/admin/mensalistas";
       menBarberId.value = "";
       menNome.value = "";
-      menStart.value = todayYMDMen();
+      menStart.value = fmtDMYSlash(new Date());
       updateMensalistaDateFields();
       menHorario.innerHTML = `<option value="">Selecione barbeiro e data inicial</option>`;
       menHorario.disabled = true;
@@ -1856,15 +2028,13 @@
       const barberId = tr.dataset.menBarberId;
       const nome = tr.dataset.menNome || "";
       const start = tr.dataset.menStart || "";
-      const end = tr.dataset.menEnd || "";
       const horario = tr.dataset.menHorario || "";
 
       menPlanId.value = id || "";
       menBarberId.value = barberId || "";
       menNome.value = nome;
-      menStart.value = start || todayYMDMen();
-      menEnd.value = end || calcMensalistaEnd(menStart.value);
-      if(menWeekdayHidden) menWeekdayHidden.value = weekdayFromYMD(menStart.value);
+      menStart.value = start ? fmtDMYSlash(parseYMD(start)) : fmtDMYSlash(new Date());
+      updateMensalistaDateFields();
 
       setMensalistaEditMode(true, nome);
 
@@ -1877,11 +2047,7 @@
 
     menCancelEdit.addEventListener("click", resetMensalistaForm);
     menBarberId.addEventListener("change", refreshMensalistaHorarios);
-    menStart.addEventListener("change", ()=>{
-      updateMensalistaDateFields();
-      refreshMensalistaHorarios();
-    });
-    menStart.addEventListener("input", updateMensalistaDateFields);
+    menStart.addEventListener("click", ()=>openSharedCal("mensalista"));
 
     const menBarberFilter = document.getElementById("menBarberFilter");
     const menTotal = document.getElementById("menTotal");
@@ -1917,7 +2083,7 @@
       }
       setAutoRefreshUI(loadAutoRefreshSetting());
 
-      if(menStart && !menStart.value) menStart.value = todayYMDMen();
+      if(menStart && !menStart.value) menStart.value = fmtDMYSlash(new Date());
       updateMensalistaDateFields();
 
       const tab = new URLSearchParams(window.location.search).get("tab");
