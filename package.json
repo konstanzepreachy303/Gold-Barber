@@ -1,9 +1,13 @@
 {
-  "name": "barbeiro-de-ouro",
+  "name": "gold-barber",
   "version": "1.0.0",
+  "description": "Sistema de agendamento para barbearia",
   "main": "app.js",
   "scripts": {
     "start": "node app.js"
+  },
+  "engines": {
+    "node": "20.x"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
