@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 // app.js
 const express = require("express");
 const bodyParser = require("body-parser");
@@ -27,6 +29,10 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
 app.use(express.static(path.join(__dirname, "public")));
+
+if (!process.env.SESSION_SECRET) {
+  console.warn("⚠️ SESSION_SECRET não definido no .env. Em produção, defina uma chave segura.");
+}
 
 app.use(
   session({
@@ -231,7 +237,7 @@ function buildSuccessViewPayload(ag, cancelUrl, extra = {}) {
   };
 }
 
-// -------------------- ✅ garante admin/admin 123 --------------------
+// -------------------- ✅ garante admin do .env sem forçar senha fixa --------------------
 async function ensureAdminDefault() {
   try {
     await dbRun(`
@@ -242,15 +248,41 @@ async function ensureAdminDefault() {
       );
     `);
 
-    const hash = await bcrypt.hash("123", 10);
+    const adminUsername = String(process.env.ADMIN_USERNAME || "").trim();
+    const adminPassword = String(process.env.ADMIN_PASSWORD || "").trim();
 
-    await dbRun(
-      `INSERT OR IGNORE INTO admin_users (username, password_hash) VALUES ('admin', ?)`,
-      [hash]
+    if (!adminUsername || !adminPassword) {
+      console.warn("⚠️ ADMIN_USERNAME / ADMIN_PASSWORD não definidos no .env.");
+      return;
+    }
+
+    const hash = await bcrypt.hash(adminPassword, 10);
+
+    // ✅ remove qualquer usuário diferente do .env
+    await dbRun(`DELETE FROM admin_users WHERE username != ?`, [adminUsername]);
+
+    const existingUser = await dbGet(
+      `SELECT id FROM admin_users WHERE username = ? LIMIT 1`,
+      [adminUsername]
     );
 
-    // ✅ força senha sempre ser 123
-    await dbRun(`UPDATE admin_users SET password_hash = ? WHERE username = 'admin'`, [hash]);
+    if (!existingUser) {
+      await dbRun(
+        `INSERT INTO admin_users (username, password_hash) VALUES (?, ?)`,
+        [adminUsername, hash]
+      );
+
+      console.log(`✅ Admin criado: ${adminUsername}`);
+    } else {
+      // ✅ atualiza senha para garantir que é a do .env
+      await dbRun(
+        `UPDATE admin_users SET password_hash = ? WHERE username = ?`,
+        [hash, adminUsername]
+      );
+
+      console.log(`🔄 Senha do admin sincronizada com .env`);
+    }
+
   } catch (e) {
     console.error("❌ ensureAdminDefault:", e);
   }
