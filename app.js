@@ -535,7 +535,10 @@ async function loadBarberConfig(barberId) {
     await dbRun(`INSERT OR IGNORE INTO barber_config (barber_id) VALUES (?)`, [barberId]);
   }
 
-  const cfg2 = cfg || (await dbGet(`SELECT * FROM barber_config WHERE barber_id = ?`, [barberId]));
+const cfg2 =
+  cfg ||
+  (await dbGet(`SELECT * FROM barber_config WHERE barber_id = ?`, [barberId])) ||
+  {};
 
   const offs = await dbAll(
     `SELECT ymd FROM barber_days_off WHERE barber_id = ? ORDER BY ymd`,
@@ -543,14 +546,14 @@ async function loadBarberConfig(barberId) {
   );
 
   const workDays = {
-    0: !!cfg2.wd0,
-    1: !!cfg2.wd1,
-    2: !!cfg2.wd2,
-    3: !!cfg2.wd3,
-    4: !!cfg2.wd4,
-    5: !!cfg2.wd5,
-    6: !!cfg2.wd6,
-  };
+  0: Number(cfg2.wd0 ?? 0) === 1,
+  1: Number(cfg2.wd1 ?? 1) === 1,
+  2: Number(cfg2.wd2 ?? 1) === 1,
+  3: Number(cfg2.wd3 ?? 1) === 1,
+  4: Number(cfg2.wd4 ?? 1) === 1,
+  5: Number(cfg2.wd5 ?? 1) === 1,
+  6: Number(cfg2.wd6 ?? 1) === 1,
+};
 
   const weekly = {
   0: {
@@ -605,16 +608,16 @@ async function loadBarberConfig(barberId) {
 };
 
   return {
-    barber_id: Number(barberId),
-    start: cfg2.start,
-    end: cfg2.end,
-    lunchStart: cfg2.lunchstart || "",
-    lunchEnd: cfg2.lunchend || "",
-    slotMinutes: Number(cfg2.slotminutes) || 60,
-    workDays,
-    weekly,
-    daysOffDates: offs.map((o) => o.ymd),
-  };
+  barber_id: Number(barberId),
+  start: cfg2.start || "09:00",
+  end: cfg2.end || "18:00",
+  lunchStart: cfg2.lunchstart || "",
+  lunchEnd: cfg2.lunchend || "",
+  slotMinutes: Number(cfg2.slot_minutes) || 60,
+  workDays,
+  weekly,
+  daysOffDates: offs.map((o) => o.ymd),
+};
 }
 async function generateSlotsForDateAndBarber(ymd, barberId) {
   if (!isValidYMD(ymd)) return [];
@@ -1673,7 +1676,7 @@ app.post("/admin/barbeiro/:id/config", requireAdmin, async (req, res) => {
     return res.status(400).send("❌ Barbeiro inválido.");
   }
 
-  const slotMinutes = Number(body.slotMinutes) || 60;
+  const slotMinutes = Number(body.slotMinutes) || 30;
   const daysOffDates = body.daysOffDates;
 
   await dbRun(`INSERT OR IGNORE INTO barber_config (barber_id) VALUES (?)`, [barberId]);
@@ -1681,7 +1684,7 @@ app.post("/admin/barbeiro/:id/config", requireAdmin, async (req, res) => {
 await dbRun(
   `UPDATE barber_config
    SET
-     slotminutes = ?,
+     slot_minutes = ?,
 
      wd0 = ?, start_0 = ?, end_0 = ?, lunchstart_0 = ?, lunchend_0 = ?,
      wd1 = ?, start_1 = ?, end_1 = ?, lunchstart_1 = ?, lunchend_1 = ?,

@@ -75,8 +75,9 @@ if (/barber_config/i.test(sql)) {
     .replace(/\blunchEnd_(\d)\b/g, 'lunchend_$1')
     .replace(/\blunchStart\b/g, 'lunchstart')
     .replace(/\blunchEnd\b/g, 'lunchend')
-    .replace(/\bslotMinutes\b/g, 'slotminutes')
-    .replace(/\bslotminutes\b/g, 'slotminutes');
+    .replace(/\bslotMinutes\b/g, 'slot_minutes')
+    .replace(/\bslotminutes\b/g, 'slot_minutes')
+    .replace(/\bslot_minutes\b/g, 'slot_minutes');
 }
 
   sql = sql.replace(/INSERT\s+OR\s+IGNORE\s+INTO/gi, 'INSERT INTO');
@@ -250,7 +251,7 @@ await pool.query(`
     "end" TEXT NOT NULL DEFAULT '18:00',
     lunchstart TEXT NOT NULL DEFAULT '',
     lunchend TEXT NOT NULL DEFAULT '',
-    slotminutes INTEGER NOT NULL DEFAULT 60,
+    slot_minutes INTEGER NOT NULL DEFAULT 60,
     wd0 INTEGER NOT NULL DEFAULT 0,
     wd1 INTEGER NOT NULL DEFAULT 1,
     wd2 INTEGER NOT NULL DEFAULT 1,
@@ -393,13 +394,16 @@ await ensureColumn('barber_config', 'end_6', `TEXT NOT NULL DEFAULT '18:00'`);
 await ensureColumn('barber_config', 'lunchstart_6', `TEXT NOT NULL DEFAULT ''`);
 await ensureColumn('barber_config', 'lunchend_6', `TEXT NOT NULL DEFAULT ''`);
 
-    await ensureColumn('services', 'price_cents', 'INTEGER NOT NULL DEFAULT 0');
-    await ensureColumn('services', 'created_at', 'TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP');
-    await ensureColumn('services', 'updated_at', 'TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP');
+// 👇 ADICIONE ESTA LINHA
+await ensureColumn('barber_config', 'slot_minutes', 'INTEGER NOT NULL DEFAULT 60');
 
-    await ensureColumn('agendamentos', 'service_id', 'INTEGER');
-    await ensureColumn('agendamentos', 'service_name', 'TEXT');
-    await ensureColumn('agendamentos', 'service_duration_minutes', 'INTEGER NOT NULL DEFAULT 30');
+await ensureColumn('services', 'price_cents', 'INTEGER NOT NULL DEFAULT 0');
+await ensureColumn('services', 'created_at', 'TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP');
+await ensureColumn('services', 'updated_at', 'TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP');
+
+await ensureColumn('agendamentos', 'service_id', 'INTEGER');
+await ensureColumn('agendamentos', 'service_name', 'TEXT');
+await ensureColumn('agendamentos', 'service_duration_minutes', 'INTEGER NOT NULL DEFAULT 30');
     await ensureColumn('agendamentos', 'service_slots_required', 'INTEGER NOT NULL DEFAULT 1');
     await ensureColumn('agendamentos', 'service_price_cents', 'INTEGER NOT NULL DEFAULT 0');
 
