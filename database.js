@@ -358,40 +358,40 @@ await pool.query(`
     `);
 
     // -------------------- novas colunas da barber_config por dia --------------------
-    await ensureColumn('barber_config', 'start_0', `TEXT NOT NULL DEFAULT '09:00'`);
+await ensureColumn('barber_config', 'start_0', `TEXT NOT NULL DEFAULT '09:00'`);
 await ensureColumn('barber_config', 'end_0', `TEXT NOT NULL DEFAULT '18:00'`);
 await ensureColumn('barber_config', 'lunchstart_0', `TEXT NOT NULL DEFAULT ''`);
 await ensureColumn('barber_config', 'lunchend_0', `TEXT NOT NULL DEFAULT ''`);
 
 await ensureColumn('barber_config', 'start_1', `TEXT NOT NULL DEFAULT '09:00'`);
 await ensureColumn('barber_config', 'end_1', `TEXT NOT NULL DEFAULT '18:00'`);
-await ensureColumn('barber_config', 'lunchstart_1, `TEXT NOT NULL DEFAULT ''`);
-await ensureColumn('barber_config', 'lunchend_1 `TEXT NOT NULL DEFAULT ''`);
+await ensureColumn('barber_config', 'lunchstart_1', `TEXT NOT NULL DEFAULT ''`);
+await ensureColumn('barber_config', 'lunchend_1', `TEXT NOT NULL DEFAULT ''`);
 
 await ensureColumn('barber_config', 'start_2', `TEXT NOT NULL DEFAULT '09:00'`);
 await ensureColumn('barber_config', 'end_2', `TEXT NOT NULL DEFAULT '18:00'`);
-await ensureColumn('barber_config', 'lunchstart_2, `TEXT NOT NULL DEFAULT ''`);
-await ensureColumn('barber_config', 'lunchend_2, `TEXT NOT NULL DEFAULT ''`);
+await ensureColumn('barber_config', 'lunchstart_2', `TEXT NOT NULL DEFAULT ''`);
+await ensureColumn('barber_config', 'lunchend_2', `TEXT NOT NULL DEFAULT ''`);
 
 await ensureColumn('barber_config', 'start_3', `TEXT NOT NULL DEFAULT '09:00'`);
 await ensureColumn('barber_config', 'end_3', `TEXT NOT NULL DEFAULT '18:00'`);
-await ensureColumn('barber_config', 'lunchstart_3, `TEXT NOT NULL DEFAULT ''`);
-await ensureColumn('barber_config', 'lunchend_3, `TEXT NOT NULL DEFAULT ''`);
+await ensureColumn('barber_config', 'lunchstart_3', `TEXT NOT NULL DEFAULT ''`);
+await ensureColumn('barber_config', 'lunchend_3', `TEXT NOT NULL DEFAULT ''`);
 
 await ensureColumn('barber_config', 'start_4', `TEXT NOT NULL DEFAULT '09:00'`);
 await ensureColumn('barber_config', 'end_4', `TEXT NOT NULL DEFAULT '18:00'`);
-await ensureColumn('barber_config', 'lunchstart_4, `TEXT NOT NULL DEFAULT ''`);
-await ensureColumn('barber_config', 'lunchend_4, `TEXT NOT NULL DEFAULT ''`);
+await ensureColumn('barber_config', 'lunchstart_4', `TEXT NOT NULL DEFAULT ''`);
+await ensureColumn('barber_config', 'lunchend_4', `TEXT NOT NULL DEFAULT ''`);
 
 await ensureColumn('barber_config', 'start_5', `TEXT NOT NULL DEFAULT '09:00'`);
 await ensureColumn('barber_config', 'end_5', `TEXT NOT NULL DEFAULT '18:00'`);
-await ensureColumn('barber_config', 'lunchstart_5, `TEXT NOT NULL DEFAULT ''`);
-await ensureColumn('barber_config', 'lunchend_5 `TEXT NOT NULL DEFAULT ''`);
+await ensureColumn('barber_config', 'lunchstart_5', `TEXT NOT NULL DEFAULT ''`);
+await ensureColumn('barber_config', 'lunchend_5', `TEXT NOT NULL DEFAULT ''`);
 
 await ensureColumn('barber_config', 'start_6', `TEXT NOT NULL DEFAULT '09:00'`);
 await ensureColumn('barber_config', 'end_6', `TEXT NOT NULL DEFAULT '18:00'`);
-await ensureColumn('barber_config', 'lunchstart_6, `TEXT NOT NULL DEFAULT ''`);
-await ensureColumn('barber_config', 'lunchend_6, `TEXT NOT NULL DEFAULT ''`);
+await ensureColumn('barber_config', 'lunchstart_6', `TEXT NOT NULL DEFAULT ''`);
+await ensureColumn('barber_config', 'lunchend_6', `TEXT NOT NULL DEFAULT ''`);
 
     await ensureColumn('services', 'price_cents', 'INTEGER NOT NULL DEFAULT 0');
     await ensureColumn('services', 'created_at', 'TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP');
