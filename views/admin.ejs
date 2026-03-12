@@ -1035,22 +1035,22 @@
             </div>
 
             <div>
-              <label>Almoço (início)</label>
-              <input
-                name="lunchStart_<%= day.key %>"
-                value="<%= cfgDay.lunchStart || selectedCfg.lunchStart || '' %>"
-                placeholder="12:00"
-              />
-            </div>
+  <label>Almoço (início)</label>
+  <input
+    name="lunchStart_<%= day.key %>"
+    value="<%= cfgDay.lunchStart || '' %>"
+    placeholder="12:00"
+  />
+</div>
 
-            <div>
-              <label>Almoço (fim)</label>
-              <input
-                name="lunchEnd_<%= day.key %>"
-                value="<%= cfgDay.lunchEnd || selectedCfg.lunchEnd || '' %>"
-                placeholder="13:00"
-              />
-            </div>
+<div>
+  <label>Almoço (fim)</label>
+  <input
+    name="lunchEnd_<%= day.key %>"
+    value="<%= cfgDay.lunchEnd || '' %>"
+    placeholder="13:00"
+  />
+</div>
           </div>
         </div>
       <% }) %>
