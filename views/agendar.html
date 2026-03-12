@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Agendar Horário | Gold Barber</title>
+
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #0b0b0b;
+      color: #f5f5f5;
+      padding: 20px;
+    }
+    .container {
+      max-width: 760px;
+      margin: 0 auto;
+      background: #121212;
+      border: 1px solid #222;
+      border-radius: 16px;
+      padding: 18px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border: 1px solid #1f1f1f;
+      border-radius: 14px;
+      background: #0f0f0f;
+      margin-bottom: 14px;
+    }
+    .brand img {
+      width: 56px;
+      height: 56px;
+      object-fit: contain;
+      border-radius: 12px;
+      background: #0b0b0b;
+      border: 1px solid #232323;
+      padding: 6px;
+    }
+    .brand .brandText {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      line-height: 1.2;
+    }
+    .brand .brandText strong {
+      font-size: 14px;
+      font-weight: 900;
+      color: #fff;
+      letter-spacing: .2px;
+    }
+    .brand .brandText span {
+      font-size: 12px;
+      font-weight: 800;
+      color: #bdbdbd;
+    }
+
+    h1 { margin: 0 0 8px; font-size: 22px; }
+    p { margin: 0 0 14px; color: #bdbdbd; }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .full { grid-column: 1 / -1; }
+
+    label {
+      font-size: 14px;
+      color: #fff;
+      font-weight: 800;
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 14px;
+      border-radius: 14px;
+      border: 2px solid #3a3a3a;
+      background: #0f0f0f;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+      outline: none;
+    }
+
+    input:focus, select:focus {
+      border-color: #c9a227;
+      box-shadow: 0 0 0 3px rgba(201,162,39,.25);
+    }
+
+    select:disabled, input:disabled { opacity: .55; cursor: not-allowed; }
+
+    .hint { font-size: 13px; color: #d7d7d7; margin-top: 8px; font-weight: 700; }
+
+    .card {
+      margin-top: 16px;
+      background: #0f0f0f;
+      border: 1px solid #222;
+      border-radius: 16px;
+      padding: 14px;
+    }
+    .subinfo { font-size: 12px; color: #bdbdbd; margin-top: 6px; }
+
+    .horarios { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+
+    .hora {
+      border: 2px solid #2a2a2a;
+      background: #121212;
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 800;
+    }
+    .hora:hover { border-color: #555; }
+    .hora.selected {
+      border-color: #c9a227;
+      box-shadow: 0 0 0 2px rgba(201, 162, 39, 0.25);
+    }
+
+    button.confirmar {
+      margin-top: 14px;
+      width: 100%;
+      padding: 14px;
+      border-radius: 14px;
+      border: none;
+      background: #c9a227;
+      color: #111;
+      font-weight: 900;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    button.confirmar:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .msg {
+      margin-top: 10px;
+      padding: 12px;
+      border-radius: 12px;
+      background: #0c0c0c;
+      border: 1px solid #333;
+      display: none;
+      font-size: 13px;
+      color: #ddd;
+      white-space: pre-line;
+    }
+    .msg.show { display: block; }
+    .msg.error { border-color: #7a2b2b; color: #ffbaba; }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.65);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      z-index: 999;
+    }
+    .overlay.show { display: flex; }
+
+    .cal {
+      width: 360px;
+      max-width: 100%;
+      background: #111;
+      border: 1px solid #2a2a2a;
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 14px 40px rgba(0,0,0,.55);
+    }
+    .cal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 12px;
+      background: #0d0d0d;
+      border-bottom: 1px solid #222;
+    }
+    .cal-title { font-weight: 900; color: #fff; font-size: 14px; }
+    .cal-nav { display: flex; gap: 8px; }
+    .cal-nav button {
+      border: 1px solid #2a2a2a;
+      background: #151515;
+      color: #fff;
+      border-radius: 10px;
+      padding: 8px 10px;
+      cursor: pointer;
+      font-weight: 900;
+    }
+
+    .cal-body { padding: 12px; }
+    .dow {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      margin-bottom: 8px;
+      font-size: 11px;
+      color: #bdbdbd;
+      text-align: center;
+      font-weight: 800;
+    }
+    .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+    .day {
+      border: 1px solid #2a2a2a;
+      background: #141414;
+      color: #fff;
+      border-radius: 12px;
+      padding: 10px 0;
+      text-align: center;
+      cursor: pointer;
+      font-weight: 900;
+      user-select: none;
+    }
+    .day:hover { border-color: #555; }
+    .day.disabled { opacity: .25; cursor: not-allowed; }
+    .day.muted { opacity: .35; cursor: default; }
+    .day.selected {
+      border-color: #c9a227;
+      box-shadow: 0 0 0 2px rgba(201, 162, 39, 0.25);
+    }
+
+    .cal-foot {
+      display: flex;
+      gap: 10px;
+      padding: 12px;
+      border-top: 1px solid #222;
+      background: #0d0d0d;
+    }
+    .cal-foot button {
+      flex: 1;
+      border-radius: 12px;
+      padding: 12px;
+      cursor: pointer;
+      font-weight: 900;
+      border: 1px solid #2a2a2a;
+      background: #151515;
+      color: #fff;
+    }
+    .cal-foot button.primary { background: #c9a227; color: #111; border: none; }
+
+    .footer-creditos {
+      margin-top: 30px;
+      text-align: center;
+      font-size: 13px;
+      color: #9a9a9a;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 640px) {
+      .grid { grid-template-columns: 1fr; }
+      .brand img { width: 52px; height: 52px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+
+    <div class="brand">
+      <img src="/img/logo.png" alt="Logo da barbearia" />
+      <div class="brandText">
+        <strong>Gold Barber</strong>
+        <span>Agendamento online</span>
+      </div>
+    </div>
+
+    <h1>💈 Agendar Horário</h1>
+    <p>Escolha o barbeiro, o serviço, a data e o horário disponível.</p>
+
+    <form id="formAgendar" method="POST" action="/agendar">
+      <div class="grid">
+        <div class="full">
+          <label>Nome</label>
+          <input id="nome" name="nome" required minlength="2" placeholder="Seu nome" />
+        </div>
+
+        <div class="full">
+          <label>💇‍♂️ Barbeiro</label>
+          <select id="barberSelect" required>
+            <option value="">Carregando barbeiros...</option>
+          </select>
+          <div class="hint">Escolha o barbeiro para carregar os serviços e os horários dele.</div>
+        </div>
+
+        <input id="barberId" type="hidden" name="barberId" />
+
+        <div class="full">
+          <label>🧰 Serviços</label>
+          <select id="serviceSelect" required disabled>
+            <option value="">Escolha o barbeiro primeiro</option>
+          </select>
+          <div id="serviceHint" class="hint">Selecione o barbeiro para liberar os serviços.</div>
+        </div>
+
+        <input id="serviceId" type="hidden" name="serviceId" />
+
+        <div class="full">
+          <label>📅 Data do agendamento</label>
+          <input id="dataVisual" type="text" placeholder="Escolha o barbeiro e o serviço primeiro" readonly disabled />
+          <div id="dataHuman" class="hint"></div>
+        </div>
+
+        <input id="dataReal" type="hidden" name="data" />
+        <input id="horarioReal" type="hidden" name="horario" />
+      </div>
+
+      <div class="card">
+        <strong>Horários disponíveis</strong>
+        <div id="subinfo" class="subinfo">Escolha um barbeiro e um serviço para liberar a data.</div>
+        <div id="horarios" class="horarios"></div>
+
+        <button id="btnConfirmar" class="confirmar" type="submit" disabled>
+          Confirmar Agendamento
+        </button>
+
+        <div id="msg" class="msg"></div>
+      </div>
+    </form>
+  </div>
+
+  <div id="overlay" class="overlay" aria-hidden="true">
+    <div class="cal" role="dialog" aria-modal="true" aria-label="Selecionar data">
+      <div class="cal-head">
+        <div class="cal-title" id="calTitle">Mês</div>
+        <div class="cal-nav">
+          <button type="button" id="prevMonth">◀</button>
+          <button type="button" id="nextMonth">▶</button>
+        </div>
+      </div>
+
+      <div class="cal-body">
+        <div class="dow">
+          <div>DOM</div><div>SEG</div><div>TER</div><div>QUA</div><div>QUI</div><div>SEX</div><div>SÁB</div>
+        </div>
+        <div id="days" class="days"></div>
+      </div>
+
+      <div class="cal-foot">
+        <button type="button" id="cancelCal">Cancelar</button>
+        <button type="button" class="primary" id="okCal">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer-creditos">
+    © 2026 GoldBarber — Todos os direitos reservados<br>
+    Desenvolvido por: <strong>Gabriel Honorato</strong>
+  </footer>
+
+  <script>
+    const elBarberSelect = document.getElementById("barberSelect");
+    const elBarberId = document.getElementById("barberId");
+
+    const elServiceSelect = document.getElementById("serviceSelect");
+    const elServiceId = document.getElementById("serviceId");
+    const elServiceHint = document.getElementById("serviceHint");
+
+    const elDataVisual = document.getElementById("dataVisual");
+    const elDataReal = document.getElementById("dataReal");
+    const elDataHuman = document.getElementById("dataHuman");
+    const elHorarios = document.getElementById("horarios");
+    const elSubinfo = document.getElementById("subinfo");
+    const elHorarioReal = document.getElementById("horarioReal");
+    const elBtnConfirmar = document.getElementById("btnConfirmar");
+    const elMsg = document.getElementById("msg");
+
+    const elOverlay = document.getElementById("overlay");
+    const elDays = document.getElementById("days");
+    const elTitle = document.getElementById("calTitle");
+    const btnPrev = document.getElementById("prevMonth");
+    const btnNext = document.getElementById("nextMonth");
+    const btnCancel = document.getElementById("cancelCal");
+    const btnOk = document.getElementById("okCal");
+
+    const today = new Date();
+    const minDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    let viewYear = minDate.getFullYear();
+    let viewMonth = minDate.getMonth();
+    let tempSelected = null;
+
+    function pad2(n){ return String(n).padStart(2, "0"); }
+    function toYMD(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+
+    function ymdToHuman(ymd){
+      const [y,m,d] = ymd.split("-").map(Number);
+      const dt = new Date(y, m-1, d);
+      const dias = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+      return `${dias[dt.getDay()]} - ${pad2(d)}/${pad2(m)}/${y}`;
+    }
+
+    function formatMoneyBR(value){
+      const number = Number(value || 0);
+      return number.toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL"
+      });
+    }
+
+    function getServicePriceNumber(service){
+      if (service == null || typeof service !== "object") return 0;
+
+      if (service.price_cents != null && service.price_cents !== "") {
+        return Number(service.price_cents) / 100;
+      }
+      if (service.valor_cents != null && service.valor_cents !== "") {
+        return Number(service.valor_cents) / 100;
+      }
+      if (service.price != null && service.price !== "") {
+        return Number(service.price);
+      }
+      if (service.valor != null && service.valor !== "") {
+        return Number(service.valor);
+      }
+
+      return 0;
+    }
+
+    function showMsg(text, isError=false){
+      elMsg.textContent = text;
+      elMsg.className = "msg show" + (isError ? " error" : "");
+    }
+
+    function clearMsg(){
+      elMsg.textContent = "";
+      elMsg.className = "msg";
+    }
+
+    function resetDataEHorarios(text){
+      elSubinfo.textContent = text || "";
+      elHorarios.innerHTML = "";
+      elHorarioReal.value = "";
+      elBtnConfirmar.disabled = true;
+      elDataHuman.textContent = "";
+    }
+
+    function resetDataSelection() {
+      elDataReal.value = "";
+      elDataVisual.value = "";
+      tempSelected = null;
+      elDataHuman.textContent = "";
+    }
+
+    function resetServiceSelection() {
+      elServiceId.value = "";
+      elServiceSelect.innerHTML = `<option value="">Escolha o barbeiro primeiro</option>`;
+      elServiceSelect.disabled = true;
+      elServiceHint.textContent = "Selecione o barbeiro para liberar os serviços.";
+    }
+
+    async function carregarBarbeiros(){
+      try{
+        const res = await fetch("/barbeiros");
+        const list = await res.json();
+        elBarberSelect.innerHTML = `<option value="">Selecione...</option>` +
+          (Array.isArray(list) ? list.map(b => `<option value="${b.id}">${b.name}</option>`).join("") : "");
+      }catch(e){
+        elBarberSelect.innerHTML = `<option value="">Erro ao carregar</option>`;
+      }
+    }
+
+    async function carregarServicos() {
+      try {
+        elServiceSelect.disabled = true;
+        elServiceSelect.innerHTML = `<option value="">Carregando serviços...</option>`;
+        elServiceHint.textContent = "Carregando serviços...";
+
+        const res = await fetch("/servicos");
+        const list = await res.json();
+
+        if (!Array.isArray(list) || list.length === 0) {
+          elServiceSelect.innerHTML = `<option value="">Nenhum serviço disponível</option>`;
+          elServiceSelect.disabled = true;
+          elServiceHint.textContent = "Nenhum serviço ativo encontrado.";
+          return;
+        }
+
+        elServiceSelect.innerHTML =
+          `<option value="">Selecione...</option>` +
+          list.map((s) => {
+            const duration = Number(s.duration_minutes || 30);
+            const slots = Number(s.slots_required || Math.ceil(duration / 30) || 1);
+            const priceNumber = getServicePriceNumber(s);
+            const priceFormatted = formatMoneyBR(priceNumber);
+            const label = `${s.name} - ${priceFormatted}`;
+
+            return `
+              <option
+                value="${s.id}"
+                data-duration="${duration}"
+                data-slots="${slots}"
+                data-price="${priceNumber}"
+                data-price-formatted="${priceFormatted}"
+                data-name="${String(s.name || "").replace(/"/g, "&quot;")}"
+              >
+                ${label}
+              </option>
+            `;
+          }).join("");
+
+        elServiceSelect.disabled = false;
+        elServiceHint.textContent = "Escolha o serviço para liberar a seleção de data.";
+      } catch (e) {
+        elServiceSelect.innerHTML = `<option value="">Erro ao carregar</option>`;
+        elServiceSelect.disabled = true;
+        elServiceHint.textContent = "Erro ao carregar serviços.";
+      }
+    }
+
+    function openCal(){
+      renderCalendar();
+      elOverlay.classList.add("show");
+      elOverlay.setAttribute("aria-hidden", "false");
+    }
+
+    function closeCal(){
+      elOverlay.classList.remove("show");
+      elOverlay.setAttribute("aria-hidden", "true");
+    }
+
+    function renderCalendar(){
+      const first = new Date(viewYear, viewMonth, 1);
+      const last = new Date(viewYear, viewMonth + 1, 0);
+      const startDow = first.getDay();
+
+      const monthNames = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+      elTitle.textContent = `${monthNames[viewMonth]} ${viewYear}`;
+
+      const cells = [];
+
+      for(let i=0;i<startDow;i++){
+        cells.push({ type: "muted", label: "" });
+      }
+
+      for(let d=1; d<=last.getDate(); d++){
+        const dt = new Date(viewYear, viewMonth, d);
+        const ymd = toYMD(dt);
+        const disabled = dt < minDate;
+
+        cells.push({
+          type: "day",
+          label: String(d),
+          ymd,
+          disabled
+        });
+      }
+
+      elDays.innerHTML = "";
+      cells.forEach(c => {
+        const div = document.createElement("div");
+        div.className = "day";
+
+        if (c.type === "muted") {
+          div.className = "day muted";
+          div.textContent = "";
+          elDays.appendChild(div);
+          return;
+        }
+
+        div.textContent = c.label;
+
+        if (c.disabled) div.classList.add("disabled");
+
+        if (tempSelected && c.ymd === toYMD(tempSelected)) {
+          div.classList.add("selected");
+        }
+
+        div.addEventListener("click", () => {
+          if (c.disabled) return;
+          tempSelected = new Date(c.ymd + "T00:00:00");
+          document.querySelectorAll(".day").forEach(x => x.classList.remove("selected"));
+          div.classList.add("selected");
+        });
+
+        elDays.appendChild(div);
+      });
+    }
+
+    btnPrev.addEventListener("click", () => {
+      viewMonth--;
+      if(viewMonth < 0){ viewMonth = 11; viewYear--; }
+      renderCalendar();
+    });
+
+    btnNext.addEventListener("click", () => {
+      viewMonth++;
+      if(viewMonth > 11){ viewMonth = 0; viewYear++; }
+      renderCalendar();
+    });
+
+    btnCancel.addEventListener("click", closeCal);
+    elOverlay.addEventListener("click", (e) => { if (e.target === elOverlay) closeCal(); });
+
+    btnOk.addEventListener("click", async () => {
+      if (!tempSelected) return showMsg("Selecione uma data.", true);
+
+      const ymd = toYMD(tempSelected);
+      elDataReal.value = ymd;
+      elDataVisual.value = ymdToHuman(ymd);
+      elDataHuman.textContent = `Data selecionada: ${ymdToHuman(ymd)}`;
+      closeCal();
+      await carregarHorarios();
+    });
+
+    elDataVisual.addEventListener("click", () => {
+      if (elDataVisual.disabled) return;
+      openCal();
+    });
+
+    async function carregarHorarios(){
+      clearMsg();
+      elHorarios.innerHTML = "";
+      elHorarioReal.value = "";
+      elBtnConfirmar.disabled = true;
+
+      const barberId = elBarberId.value;
+      const serviceId = elServiceId.value;
+      const data = elDataReal.value;
+
+      if (!barberId) return resetDataEHorarios("Escolha um barbeiro para liberar o serviço.");
+      if (!serviceId) return resetDataEHorarios("Escolha um serviço para liberar a data.");
+      if (!data) return resetDataEHorarios("Escolha uma data para carregar os horários.");
+
+      const selectedOption = elServiceSelect.options[elServiceSelect.selectedIndex];
+      const serviceName = selectedOption?.dataset?.name || selectedOption?.textContent || "serviço";
+
+      elSubinfo.textContent = `Buscando horários para ${serviceName} em ${ymdToHuman(data)}...`;
+
+      try{
+        const res = await fetch(`/horarios?data=${encodeURIComponent(data)}&barberId=${encodeURIComponent(barberId)}&serviceId=${encodeURIComponent(serviceId)}`);
+        if(!res.ok) throw new Error("Falha ao buscar horários.");
+        const horarios = await res.json();
+
+        if(!Array.isArray(horarios) || horarios.length === 0){
+          elSubinfo.textContent = "Nenhum horário disponível nessa data para esse serviço.";
+          return;
+        }
+
+        elSubinfo.textContent = "Selecione um horário:";
+        horarios.forEach(h => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "hora";
+          btn.textContent = h;
+
+          btn.addEventListener("click", () => {
+            document.querySelectorAll(".hora").forEach(x => x.classList.remove("selected"));
+            btn.classList.add("selected");
+            elHorarioReal.value = h;
+            elBtnConfirmar.disabled = false;
+          });
+
+          elHorarios.appendChild(btn);
+        });
+
+      }catch(e){
+        elSubinfo.textContent = "Erro ao buscar horários.";
+        showMsg("Erro: " + (e?.message || "Erro desconhecido"), true);
+      }
+    }
+
+    elBarberSelect.addEventListener("change", async () => {
+      const v = elBarberSelect.value;
+      elBarberId.value = v;
+
+      resetServiceSelection();
+      resetDataSelection();
+
+      elDataVisual.disabled = true;
+      elDataVisual.placeholder = "Escolha o barbeiro e o serviço primeiro";
+      resetDataEHorarios("Escolha um barbeiro e um serviço para liberar a data.");
+
+      if (!v) {
+        return;
+      }
+
+      await carregarServicos();
+    });
+
+    elServiceSelect.addEventListener("change", () => {
+      const v = elServiceSelect.value;
+      elServiceId.value = v;
+
+      resetDataSelection();
+      resetDataEHorarios("Escolha uma data para carregar os horários.");
+
+      if (!v) {
+        elDataVisual.disabled = true;
+        elDataVisual.placeholder = "Escolha o barbeiro e o serviço primeiro";
+        elServiceHint.textContent = "Escolha um serviço para liberar a seleção de data.";
+        return;
+      }
+
+      const selectedOption = elServiceSelect.options[elServiceSelect.selectedIndex];
+      const duration = selectedOption?.dataset?.duration || "";
+      const priceFormatted = selectedOption?.dataset?.priceFormatted || "R$ 0,00";
+      const serviceName = selectedOption?.dataset?.name || selectedOption?.textContent || "Serviço";
+
+      elDataVisual.disabled = false;
+      elDataVisual.placeholder = "Clique para escolher a data";
+      elServiceHint.textContent =
+        `Serviço selecionado: ${serviceName} • ${priceFormatted}${duration ? ` • duração ${duration} min` : ""}`;
+    });
+
+    document.getElementById("formAgendar").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      clearMsg();
+
+      if (!elBarberId.value) return showMsg("Selecione um barbeiro.", true);
+      if (!elServiceId.value) return showMsg("Selecione um serviço.", true);
+      if (!elDataReal.value) return showMsg("Selecione uma data.", true);
+      if (!elHorarioReal.value) return showMsg("Selecione um horário.", true);
+
+      const form = e.target;
+      const fd = new FormData(form);
+
+      const body = new URLSearchParams();
+      for (const [k, v] of fd.entries()) body.append(k, v);
+
+      try{
+        const res = await fetch("/agendar", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+          body: body.toString()
+        });
+
+        const text = await res.text();
+
+        if (res.ok && (text.includes("<!DOCTYPE") || text.includes("<html"))) {
+          document.open();
+          document.write(text);
+          document.close();
+          return;
+        }
+
+        if (!res.ok) throw new Error(text || "Erro ao agendar.");
+        showMsg(text || "Agendamento realizado!");
+      }catch(err){
+        showMsg("Erro: " + (err?.message || "Erro ao agendar."), true);
+      }
+    });
+
+    window.addEventListener("DOMContentLoaded", () => {
+      elDataVisual.disabled = true;
+      elDataVisual.placeholder = "Escolha o barbeiro e o serviço primeiro";
+      resetServiceSelection();
+      carregarBarbeiros();
+    });
+  </script>
+</body>
+</html>

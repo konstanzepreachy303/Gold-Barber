@@ -1,0 +1,482 @@
+/* public/admin.css */
+:root{
+  --bg: #070707;
+  --panel: rgba(18,18,18,.92);
+  --panel2: rgba(14,14,14,.92);
+  --border: rgba(255,255,255,.10);
+  --border2: rgba(255,255,255,.14);
+  --text: #f4f4f4;
+  --muted: rgba(255,255,255,.70);
+
+  --gold: #c9a227;
+  --gold2: #e6c55a;
+
+  --danger: #b00020;
+  --ok: #19c37d;
+
+  --shadow: 0 18px 55px rgba(0,0,0,.65);
+  --radius: 16px;
+  --radiusSm: 12px;
+}
+
+*{ box-sizing:border-box; }
+html, body{ height:100%; }
+
+body{
+  margin:0;
+  font-family: Arial, sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(1000px 520px at 20% 20%, rgba(201,162,39,.18), transparent 60%),
+    radial-gradient(900px 560px at 80% 30%, rgba(201,162,39,.12), transparent 55%),
+    linear-gradient(180deg, #050505, #0b0b0b 45%, #050505);
+}
+
+/* ===== Topbar ===== */
+header{
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(10,10,10,.78);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  padding: 14px 16px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 12px;
+}
+
+header strong{
+  font-size: 15px;
+  letter-spacing: .2px;
+}
+
+main{
+  max-width: 1180px;
+  margin: 18px auto 34px;
+  padding: 0 16px;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+/* ===== Cards ===== */
+.card{
+  background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  box-shadow: var(--shadow);
+}
+
+h2{
+  margin:0 0 10px 0;
+  font-size: 16px;
+  letter-spacing:.2px;
+}
+
+h3{
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  letter-spacing:.2px;
+  color: rgba(255,255,255,.92);
+}
+
+hr{
+  border:0;
+  border-top: 1px solid rgba(255,255,255,.10);
+}
+
+/* ===== Text helpers ===== */
+.muted{ color: var(--muted); font-size: 12px; font-weight: 800; }
+.bad{ color: #ff6a7a; font-weight: 1000; }
+
+/* ===== Layout helpers ===== */
+.row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+.cols{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.full{ grid-column: 1/-1; }
+
+@media (max-width: 900px){
+  .cols{ grid-template-columns: 1fr; }
+}
+
+/* ===== Inputs ===== */
+label{
+  font-weight: 950;
+  display:block;
+  margin-top:10px;
+  margin-bottom:6px;
+  font-size: 12px;
+  color: rgba(255,255,255,.90);
+}
+
+input, select{
+  width: 100%;
+  padding: 11px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.28);
+  color: var(--text);
+  outline: none;
+  font-weight: 850;
+}
+
+select{ cursor:pointer; }
+
+input:focus, select:focus{
+  border-color: rgba(201,162,39,.65);
+  box-shadow: 0 0 0 2px rgba(201,162,39,.18);
+}
+
+input[type="checkbox"]{
+  width:auto;
+  padding:0;
+  accent-color: var(--gold);
+}
+
+/* ===== Pills & badges ===== */
+.pill{
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(0,0,0,.28);
+  border: 1px solid rgba(255,255,255,.12);
+  font-size: 12px;
+  font-weight: 950;
+  color: rgba(255,255,255,.88);
+}
+
+/* ===== Buttons ===== */
+.btn{
+  padding: 11px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.14);
+  cursor:pointer;
+  background: rgba(0,0,0,.25);
+  color: rgba(255,255,255,.92);
+  font-weight: 1000;
+  letter-spacing: .2px;
+  transition: transform .05s ease, filter .15s ease, border-color .15s ease;
+}
+.btn:hover{ filter: brightness(1.04); border-color: rgba(255,255,255,.22); }
+.btn:active{ transform: translateY(1px); }
+
+.btnPrimary{
+  background: linear-gradient(180deg, var(--gold2), var(--gold));
+  border: none;
+  color: #111;
+  box-shadow: 0 10px 25px rgba(201,162,39,.20);
+}
+
+.btnWarn{
+  background: linear-gradient(180deg, rgba(230,197,90,.95), rgba(201,162,39,.95));
+  color: #111;
+  border: none;
+}
+
+.btnDanger{
+  background: rgba(176,0,32,.95);
+  color:#fff;
+  border: none;
+  box-shadow: 0 10px 22px rgba(176,0,32,.18);
+}
+
+/* ===== Tabs ===== */
+.tabs{
+  max-width: 1180px;
+  margin: 14px auto 0;
+  padding: 0 16px;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+
+.tabBtn{
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.25);
+  color: rgba(255,255,255,.88);
+  border-radius: 999px;
+  padding: 10px 14px;
+  cursor:pointer;
+  font-weight: 1000;
+  letter-spacing:.2px;
+}
+.tabBtn:hover{ border-color: rgba(255,255,255,.22); }
+.tabBtn.active{
+  background: linear-gradient(180deg, var(--gold2), var(--gold));
+  color: #111;
+  border-color: rgba(0,0,0,.0);
+}
+
+.tabPanel{ display:none; }
+.tabPanel.active{ display:block; }
+
+/* ===== Tables ===== */
+table{
+  width:100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  overflow:hidden;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.10);
+}
+
+thead th{
+  text-align:left;
+  font-size: 12px;
+  letter-spacing:.2px;
+  color: rgba(255,255,255,.78);
+  background: rgba(0,0,0,.35);
+  padding: 12px 10px;
+  border-bottom: 1px solid rgba(255,255,255,.10);
+}
+
+tbody td{
+  padding: 12px 10px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  color: rgba(255,255,255,.90);
+}
+
+tbody tr:hover{
+  background: rgba(255,255,255,.03);
+}
+
+/* ===== Agenda (Agendamentos) ===== */
+.agendaWrap{ display:grid; grid-template-columns: 1fr; gap: 12px; }
+
+.dayCard{
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 16px;
+  overflow:hidden;
+  background: rgba(0,0,0,.22);
+}
+
+.dayHeader{
+  padding: 12px 14px;
+  background: rgba(0,0,0,.35);
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  color: #fff;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.dayHeader strong{ font-size: 15px; }
+
+.countBadge{
+  background: linear-gradient(180deg, var(--gold2), var(--gold));
+  color:#111;
+  font-weight: 1000;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.slotList{
+  padding: 10px 12px 12px;
+  display:grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.slotItem{
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 14px;
+  padding: 10px 12px;
+  display:flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: rgba(0,0,0,.20);
+}
+
+.slotLeft{ display:flex; gap: 10px; align-items:center; flex-wrap:wrap; }
+
+.timePill{
+  background: rgba(0,0,0,.42);
+  border: 1px solid rgba(255,255,255,.12);
+  color:#fff;
+  font-weight: 1000;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  min-width: 78px;
+  text-align:center;
+}
+
+.info{
+  display:flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 950;
+  color: rgba(255,255,255,.92);
+}
+.info small{ font-weight: 850; color: rgba(255,255,255,.65); }
+
+.slotRight{
+  display:flex;
+  gap: 8px;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:flex-end;
+}
+
+.tag{
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.25);
+  color: rgba(255,255,255,.90);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.tag.confirmado{
+  border-color: rgba(25,195,125,.55);
+  box-shadow: 0 0 0 2px rgba(25,195,125,.12);
+}
+.tag.reservado{
+  border-color: rgba(201,162,39,.60);
+  box-shadow: 0 0 0 2px rgba(201,162,39,.16);
+}
+.tag.mensalista{
+  border-color: rgba(255,255,255,.18);
+  box-shadow: 0 0 0 2px rgba(0,0,0,.18);
+}
+
+/* ===== Month picker (mês inteiro) ===== */
+.monthPickerBox{
+  display:flex;
+  gap: 8px;
+  align-items:center;
+  flex-wrap: nowrap;
+}
+.monthPickerBox .muted{ color: rgba(255,255,255,.60); }
+
+.monthPickerBox select{
+  background: rgba(0,0,0,.30);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 12px;
+  padding: 11px 12px;
+  font-weight: 950;
+  min-width: 150px;
+}
+.monthPickerBox select:focus{
+  outline:none;
+  box-shadow: 0 0 0 2px rgba(201,162,39,.22);
+}
+
+/* ===== Calendar overlay (manual) ===== */
+.overlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.65);
+  display: none;
+  align-items: center;
+  justify-content:center;
+  padding: 18px;
+  z-index: 999;
+}
+.overlay.show{ display:flex; }
+
+.cal{
+  width: 380px;
+  max-width: 100%;
+  background: rgba(10,10,10,.95);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  color: #fff;
+}
+
+.cal-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding: 12px 12px;
+  background: rgba(0,0,0,.35);
+  border-bottom: 1px solid rgba(255,255,255,.10);
+}
+
+.cal-title{ font-weight: 1000; color:#fff; font-size: 14px; }
+.cal-nav{ display:flex; gap: 8px; }
+
+.cal-nav button{
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.25);
+  color:#fff;
+  border-radius: 12px;
+  padding: 8px 10px;
+  cursor:pointer;
+  font-weight: 1000;
+}
+.cal-nav button:hover{ border-color: rgba(255,255,255,.22); }
+
+.cal-body{ padding: 12px; }
+
+.dow{
+  display:grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 11px;
+  color: rgba(255,255,255,.70);
+  text-align:center;
+  font-weight: 900;
+}
+
+.days{ display:grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+
+.day{
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.25);
+  color:#fff;
+  border-radius: 12px;
+  padding: 10px 0;
+  text-align:center;
+  cursor:pointer;
+  font-weight: 1000;
+  user-select:none;
+}
+
+.day.muted{ opacity:.35; cursor: default; }
+.day.disabled{ opacity:.25; cursor:not-allowed; }
+.day.selected{
+  border-color: rgba(201,162,39,.80);
+  box-shadow: 0 0 0 2px rgba(201,162,39,.20);
+}
+
+.cal-foot{
+  display:flex;
+  gap: 10px;
+  padding: 12px;
+  border-top: 1px solid rgba(255,255,255,.10);
+  background: rgba(0,0,0,.35);
+}
+
+.cal-foot button{
+  flex: 1;
+  border-radius: 12px;
+  padding: 12px;
+  cursor:pointer;
+  font-weight: 1000;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.25);
+  color:#fff;
+}
+.cal-foot button.primary{
+  background: linear-gradient(180deg, var(--gold2), var(--gold));
+  color:#111;
+  border:none;
+}

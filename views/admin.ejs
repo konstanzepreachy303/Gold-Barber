@@ -1,0 +1,2339 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Painel Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    :root{
+      --bg0:#070707;
+      --bg1:#0c0c0c;
+      --card:#0f0f0f;
+      --card2:#121212;
+      --line:#262626;
+      --line2:#1f1f1f;
+
+      --txt:#f5f5f5;
+      --muted:#b9b9b9;
+
+      --gold:#c9a227;
+      --gold2:#e0bf4a;
+
+      --green:#19c37d;
+      --red:#ff3b4d;
+
+      --shadow: 0 18px 50px rgba(0,0,0,.55);
+      --radius:16px;
+    }
+
+    *{ box-sizing:border-box; }
+    html, body{ height:100%; }
+    body{
+      margin:0;
+      font-family: Arial, sans-serif;
+      color:var(--txt);
+      background:
+        radial-gradient(1200px 700px at 20% -10%, rgba(201,162,39,.12), transparent 60%),
+        radial-gradient(900px 500px at 90% 0%, rgba(25,195,125,.08), transparent 55%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+    }
+
+    header{
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(10,10,10,.78);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(201,162,39,.18);
+      padding: 14px 16px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+    header strong{
+      font-size: 15px;
+      letter-spacing:.4px;
+    }
+
+    main{
+      max-width:1100px;
+      margin:18px auto;
+      padding:0 16px;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:16px;
+    }
+
+    .card{
+      background: linear-gradient(180deg, rgba(18,18,18,.96), rgba(13,13,13,.96));
+      border: 1px solid rgba(201,162,39,.14);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    h2{
+      margin:0 0 10px 0;
+      font-size: 18px;
+      letter-spacing:.2px;
+    }
+    h3{
+      margin:0 0 10px 0;
+      font-size: 15px;
+      color: var(--gold2);
+      letter-spacing:.2px;
+    }
+
+    .muted{
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.35;
+    }
+    .bad{
+      color: #ff6b78;
+      font-weight: 900;
+    }
+
+    .row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+
+    .pill{
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.10);
+      font-size: 12px;
+      font-weight: 900;
+      color: var(--txt);
+    }
+
+    .tag{
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      color: var(--txt);
+      border-radius:999px;
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .tag.confirmado{
+      border-color: rgba(25,195,125,.55);
+      box-shadow: 0 0 0 2px rgba(25,195,125,.12);
+    }
+    .tag.reservado{
+      border-color: rgba(201,162,39,.65);
+      box-shadow: 0 0 0 2px rgba(201,162,39,.14);
+    }
+    .tag.mensalista{
+      border-color: rgba(255,255,255,.18);
+      box-shadow: 0 0 0 2px rgba(255,255,255,.08);
+    }
+
+    label{
+      font-weight: 900;
+      display:block;
+      margin-top: 10px;
+      margin-bottom: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing:.2px;
+    }
+    input, select{
+      width: 100%;
+      padding: 11px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: var(--txt);
+      outline: none;
+      font-weight: 900;
+    }
+    input::placeholder{ color: rgba(245,245,245,.45); font-weight: 800; }
+    input:focus, select:focus{
+      border-color: rgba(201,162,39,.7);
+      box-shadow: 0 0 0 3px rgba(201,162,39,.14);
+    }
+    select option{
+      background: #0e0e0e;
+      color: var(--txt);
+    }
+
+    input[type="checkbox"]{
+      width:auto;
+      accent-color: var(--gold);
+      transform: translateY(1px);
+    }
+
+    .btn{
+      padding: 11px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.14);
+      cursor: pointer;
+      background: rgba(255,255,255,.06);
+      color: var(--txt);
+      font-weight: 900;
+      transition: transform .05s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
+      white-space: nowrap;
+    }
+    .btn:hover{
+      border-color: rgba(201,162,39,.45);
+      box-shadow: 0 10px 25px rgba(0,0,0,.28);
+      transform: translateY(-1px);
+    }
+    .btn:active{ transform: translateY(0px); }
+
+    .btnPrimary{
+      background: linear-gradient(180deg, var(--gold2), var(--gold));
+      color: #111;
+      border: none;
+    }
+    .btnPrimary:hover{
+      box-shadow: 0 12px 30px rgba(201,162,39,.22);
+      transform: translateY(-1px);
+    }
+
+    .btnWarn{
+      background: linear-gradient(180deg, rgba(201,162,39,.95), rgba(201,162,39,.8));
+      color: #111;
+      border: none;
+    }
+
+    .btnDanger{
+      background: linear-gradient(180deg, rgba(255,59,77,.95), rgba(176,0,32,.92));
+      color:#fff;
+      border: none;
+    }
+
+    .cols{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .full{ grid-column: 1 / -1; }
+
+    @media (max-width: 800px){
+      .cols{ grid-template-columns: 1fr; }
+    }
+
+    .tabs{
+      max-width:1100px;
+      margin: 14px auto 0;
+      padding: 0 16px;
+      display:flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items:center;
+    }
+    .tabBtn{
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: var(--txt);
+      border-radius: 999px;
+      padding: 10px 14px;
+      cursor:pointer;
+      font-weight: 900;
+      transition: background .15s ease, border-color .15s ease, transform .05s ease;
+    }
+    .tabBtn:hover{
+      border-color: rgba(201,162,39,.45);
+      transform: translateY(-1px);
+    }
+    .tabBtn.active{
+      background: linear-gradient(180deg, rgba(201,162,39,.95), rgba(201,162,39,.75));
+      color:#111;
+      border: none;
+    }
+    .tabPanel{ display:none; }
+    .tabPanel.active{ display:block; }
+
+    table{
+      width:100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      overflow:hidden;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.03);
+    }
+    th, td{
+      padding: 12px 10px;
+      text-align:left;
+      vertical-align: middle;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    thead th{
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      color: rgba(245,245,245,.75);
+      background: rgba(255,255,255,.04);
+    }
+    tbody tr:hover{
+      background: rgba(201,162,39,.06);
+    }
+
+    .agendaWrap{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    .dayCard{
+      border: 1px solid rgba(201,162,39,.14);
+      border-radius: 16px;
+      overflow:hidden;
+      background: rgba(255,255,255,.03);
+    }
+    .dayHeader{
+      padding: 12px 14px;
+      background: linear-gradient(180deg, rgba(15,15,15,.95), rgba(10,10,10,.95));
+      border-bottom: 1px solid rgba(201,162,39,.12);
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .dayHeader strong{
+      font-size: 14px;
+      letter-spacing:.4px;
+      color: var(--gold2);
+    }
+    .countBadge{
+      background: rgba(201,162,39,.16);
+      border: 1px solid rgba(201,162,39,.28);
+      color: var(--gold2);
+      font-weight: 900;
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+    }
+    .slotList{
+      padding: 10px 12px 12px;
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+    .slotItem{
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 14px;
+      padding: 10px 12px;
+      display:flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      flex-wrap: wrap;
+      background: rgba(255,255,255,.03);
+    }
+    .slotLeft{
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      flex-wrap:wrap;
+      min-width: 240px;
+    }
+    .timePill{
+      background: rgba(201,162,39,.18);
+      border: 1px solid rgba(201,162,39,.30);
+      color: var(--gold2);
+      font-weight: 900;
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      min-width: 78px;
+      text-align:center;
+    }
+    .info{
+      display:flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 13px;
+      font-weight: 900;
+      color: var(--txt);
+    }
+    .info small{
+      font-weight: 900;
+      color: rgba(245,245,245,.65);
+    }
+    .slotRight{
+      display:flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items:center;
+      justify-content:flex-end;
+    }
+
+    .monthPickerBox{
+      display:flex;
+      gap: 8px;
+      align-items:center;
+      flex-wrap: nowrap;
+    }
+    .monthPickerBox select{
+      background: rgba(255,255,255,.06);
+      color: var(--txt);
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 12px;
+      padding: 11px 12px;
+      font-weight: 900;
+      min-width: 150px;
+    }
+    .monthPickerBox select:focus{
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(201,162,39,.14);
+      border-color: rgba(201,162,39,.7);
+    }
+
+    .overlay{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.70);
+      display: none;
+      align-items:center;
+      justify-content:center;
+      padding: 18px;
+      z-index: 999;
+    }
+    .overlay.show{ display:flex; }
+
+    #admOverlay{
+      z-index: 3000;
+    }
+    #swapOverlay{
+      z-index: 2000;
+    }
+
+    .cal{
+      width: 380px;
+      max-width: 100%;
+      background: linear-gradient(180deg, rgba(16,16,16,.98), rgba(10,10,10,.98));
+      border: 1px solid rgba(201,162,39,.18);
+      border-radius: 18px;
+      overflow:hidden;
+      box-shadow: 0 18px 55px rgba(0,0,0,.65);
+      color: var(--txt);
+    }
+    .calWide{
+      width: 480px;
+    }
+    .cal-head{
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      padding: 12px 12px;
+      background: rgba(255,255,255,.03);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .cal-title{
+      font-weight: 900;
+      color: var(--gold2);
+      font-size: 14px;
+      letter-spacing:.3px;
+    }
+    .cal-nav{ display:flex; gap: 8px; }
+    .cal-nav button{
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: var(--txt);
+      border-radius: 12px;
+      padding: 8px 10px;
+      cursor:pointer;
+      font-weight: 900;
+    }
+    .cal-body{ padding: 12px; }
+    .dow{
+      display:grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      margin-bottom: 8px;
+      font-size: 11px;
+      color: rgba(245,245,245,.65);
+      text-align:center;
+      font-weight: 900;
+    }
+    .days{
+      display:grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+    }
+    .day{
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+      color: var(--txt);
+      border-radius: 12px;
+      padding: 10px 0;
+      text-align:center;
+      cursor:pointer;
+      font-weight: 900;
+      user-select:none;
+    }
+    .day.muted{ opacity:.28; cursor: default; }
+    .day.disabled{ opacity:.22; cursor: not-allowed; }
+    .day.selected{
+      border-color: rgba(201,162,39,.8);
+      box-shadow: 0 0 0 3px rgba(201,162,39,.14);
+      background: rgba(201,162,39,.10);
+    }
+    .cal-foot{
+      display:flex;
+      gap: 10px;
+      padding: 12px;
+      border-top: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.03);
+    }
+    .cal-foot button{
+      flex: 1;
+      border-radius: 12px;
+      padding: 12px;
+      cursor:pointer;
+      font-weight: 900;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: var(--txt);
+    }
+    .cal-foot button.primary{
+      background: linear-gradient(180deg, var(--gold2), var(--gold));
+      color:#111;
+      border: none;
+    }
+
+    form{ margin:0; }
+    hr{ border:0; border-top: 1px solid rgba(255,255,255,.08); margin: 18px 0; }
+
+    .tag{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 6px 10px;
+      border-radius:999px;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .2px;
+      line-height: 1;
+    }
+
+    .tag::before{
+      content:"";
+      width:8px;
+      height:8px;
+      border-radius:999px;
+      box-shadow: 0 0 0 2px rgba(0,0,0,.35);
+    }
+
+    .tag.confirmado{
+      background: rgba(25,195,125,.10);
+      border-color: rgba(25,195,125,.55);
+      box-shadow: 0 0 0 2px rgba(25,195,125,.10);
+    }
+    .tag.confirmado::before{ background: var(--green); }
+
+    .tag.reservado{
+      background: rgba(201,162,39,.10);
+      border-color: rgba(201,162,39,.65);
+      box-shadow: 0 0 0 2px rgba(201,162,39,.12);
+    }
+    .tag.reservado::before{ background: var(--gold2); }
+
+    .tag.mensalista{
+      background: rgba(255,255,255,.06);
+      border-color: rgba(255,255,255,.18);
+      box-shadow: 0 0 0 2px rgba(255,255,255,.06);
+    }
+    .tag.mensalista::before{ background: rgba(245,245,245,.75); }
+
+    .btnMini{
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      line-height: 1;
+    }
+
+    .btnConfirm{
+      background: linear-gradient(180deg, rgba(201,162,39,.95), rgba(201,162,39,.80));
+      color: #111;
+      border: none;
+    }
+    .btnConfirm:hover{
+      box-shadow: 0 12px 30px rgba(201,162,39,.18);
+      transform: translateY(-1px);
+    }
+
+    .btnCancel{
+      background: rgba(255,59,77,.06);
+      border: 1px solid rgba(255,59,77,.35);
+      color: #ffd7db;
+    }
+    .btnCancel:hover{
+      border-color: rgba(255,59,77,.60);
+      box-shadow: 0 10px 24px rgba(0,0,0,.25);
+    }
+
+    .btnSwap{
+      background: rgba(255,59,77,.06);
+      border: 1px solid rgba(255,59,77,.35);
+      color: #ffd7db;
+    }
+    .btnSwap:hover{
+      border-color: rgba(255,59,77,.60);
+      box-shadow: 0 10px 24px rgba(0,0,0,.25);
+    }
+
+    .swapInfo{
+      display:grid;
+      gap:8px;
+      margin-bottom: 10px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.03);
+      font-size: 13px;
+      font-weight: 900;
+    }
+  </style>
+</head>
+
+<body>
+  <%
+    function ymdToDmy(ymd) {
+      if (!ymd || typeof ymd !== "string") return "";
+      const m = ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!m) return ymd;
+      return `${m[3]}-${m[2]}-${m[1]}`;
+    }
+
+    function ymdToDmyWithWeekday(ymd) {
+      if (!ymd || typeof ymd !== "string") return "";
+      const m = ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!m) return ymd;
+
+      const year = Number(m[1]);
+      const month = Number(m[2]);
+      const day = Number(m[3]);
+
+      const dt = new Date(year, month - 1, day);
+
+      const weekdays = [
+        "Domingo",
+        "Segunda-feira",
+        "Terça-feira",
+        "Quarta-feira",
+        "Quinta-feira",
+        "Sexta-feira",
+        "Sábado"
+      ];
+
+      return `${m[3]}/${m[2]}/${m[1]} - ${weekdays[dt.getDay()]}`;
+    }
+
+    function weekdayLabel(n){
+      const map = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
+      return map[Number(n)] ?? String(n);
+    }
+
+    function onlyDigits(value){
+      return String(value || "").replace(/\D/g, "");
+    }
+
+    function formatPhoneDisplay(value){
+      const digits = onlyDigits(value);
+      if(!digits) return "";
+      if(digits.length === 13 && digits.startsWith("55")){
+        return `${digits.slice(0,2)} ${digits.slice(2,4)} ${digits.slice(4,9)}-${digits.slice(9)}`;
+      }
+      if(digits.length === 11){
+        return `${digits.slice(0,2)} ${digits.slice(2,7)}-${digits.slice(7)}`;
+      }
+      return digits;
+    }
+
+    function formatCentsBRL(cents){
+      const value = Number(cents || 0) / 100;
+      return value.toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL"
+      });
+    }
+
+    const agendaBase = (agendamentos || []).filter(a => a.status === "aprovado" || a.status === "reservado");
+    const agendaAll = agendaBase.concat(mensalistaConfirmados || []);
+
+    const agendaByDate = {};
+    agendaAll.forEach(a => {
+      const key = a.data || "";
+      if (!agendaByDate[key]) agendaByDate[key] = [];
+      agendaByDate[key].push(a);
+    });
+
+    const agendaDates = Object.keys(agendaByDate).sort((a,b) => String(a).localeCompare(String(b)));
+    agendaDates.forEach(d => agendaByDate[d].sort((x,y) => String(x.horario).localeCompare(String(y.horario))));
+
+    const expMin = (typeof reservaExpiraMinutos !== "undefined" && reservaExpiraMinutos !== null)
+      ? Number(reservaExpiraMinutos)
+      : 30;
+
+    const agRefreshSec = (typeof agendamentosRefreshSegundos !== "undefined" && agendamentosRefreshSegundos !== null)
+      ? Number(agendamentosRefreshSegundos)
+      : 30;
+
+    const servicesList = Array.isArray(services) ? services : [];
+
+    const selectedCfgBarberId = Number(selectedConfigBarberId || 0);
+    const selectedCfgBarberObj = selectedConfigBarber || null;
+    const selectedCfg = selectedCfgBarberId && barberConfigs ? barberConfigs[selectedCfgBarberId] : null;
+    const selectedCfgDaysOff = selectedCfg ? (selectedCfg.daysOffDates || []).map(ymdToDmy).join(", ") : "";
+  %>
+
+  <header>
+    <div class="row" style="gap:12px;">
+      <div>
+        <strong>Painel Admin</strong>
+        <div class="muted" style="margin-top:2px;">Gestão de barbeiros, mensalistas e agenda</div>
+      </div>
+      <span class="pill">logado: <%= adminUser?.username %></span>
+    </div>
+
+    <form method="POST" action="/admin/logout">
+      <button class="btn btnPrimary" type="submit">Sair</button>
+    </form>
+  </header>
+
+  <div class="tabs">
+    <button class="tabBtn active" id="tabBtnBarbeiros" type="button">Configuração</button>
+    <button class="tabBtn" id="tabBtnConfig" type="button">Config por barbeiros</button>
+    <button class="tabBtn" id="tabBtnMensalistas" type="button">Plano mensalista</button>
+    <button class="tabBtn" id="tabBtnManual" type="button">Agendar manualmente</button>
+    <button class="tabBtn" id="tabBtnAgendamentos" type="button">Agendamentos</button>
+  </div>
+
+  <main>
+    <div class="tabPanel active" id="tabBarbeiros">
+      <div class="grid">
+
+        <div class="card">
+          <h2>Configuração</h2>
+          <div class="muted">
+            O tempo abaixo controla em quantos minutos um agendamento <strong>reservado</strong> expira
+            (se o cliente não confirmar no WhatsApp). Depois disso, ele é removido do banco.
+          </div>
+
+          <form method="POST" action="/admin/config/reserva" style="margin-top:12px;">
+  <div class="cols">
+    <div>
+      <label>Tempo para expirar reserva (minutos)</label>
+      <input type="number" name="reservaExpiraMinutos" min="1" max="720" value="<%= expMin %>" required />
+      <div class="muted">Padrão: 30. Máximo: 720 (12h).</div>
+    </div>
+
+    <div>
+      <label>Atualização automática da aba Agendamentos (minutos)</label>
+      <input
+      type="number"
+      name="agendamentosRefreshMinutos"
+      min="1"
+      max="60"
+      value="<%= Math.ceil(agRefreshSec / 60) %>"
+      required
+      />
+    <div class="muted">Ex.: 1 = 1 minuto, 10 = 10 minutos.</div>
+    </div>
+
+    <div class="full" style="display:flex; align-items:flex-end;">
+      <button class="btn btnPrimary" type="submit" style="width:100%;">Salvar</button>
+    </div>
+  </div>
+</form>
+        </div>
+
+        <div class="card">
+          <h2>Serviços</h2>
+          <div class="muted">
+            Cadastre os serviços usados na agenda. O sistema calcula automaticamente a disponibilidade
+            considerando blocos consecutivos de 30 minutos para cada serviço.
+          </div>
+
+          <form method="POST" action="/admin/servicos/create" style="margin-top:12px;">
+            <div class="cols">
+              <div>
+                <label>Nome do serviço</label>
+                <input name="name" placeholder="Ex: Cabelo + Barba" required />
+              </div>
+
+              <div>
+                <label>Duração (minutos)</label>
+                <input name="durationMinutes" type="number" min="30" step="30" value="30" required />
+              </div>
+
+              <div>
+                <label>Blocos de 30 min</label>
+                <input name="slotsRequired" type="number" min="1" value="1" required />
+                <div class="muted">Ex.: 30 min = 1 bloco, 60 min = 2 blocos.</div>
+              </div>
+
+              <div>
+                <label>Valor do serviço</label>
+                <input name="price" placeholder="Ex: 35,00" />
+                <div class="muted">Aceita 35, 35.00, 35,00, R$ 35,00.</div>
+              </div>
+
+              <div class="full" style="display:flex; align-items:flex-end;">
+                <button class="btn btnPrimary" type="submit" style="width:100%;">Criar serviço</button>
+              </div>
+            </div>
+          </form>
+
+          <div style="margin-top:12px; overflow:auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:60px;">ID</th>
+                  <th>Serviço</th>
+                  <th style="width:140px;">Duração</th>
+                  <th style="width:120px;">Blocos</th>
+                  <th style="width:140px;">Valor</th>
+                  <th style="width:110px;">Status</th>
+                  <th style="width:260px;">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (!servicesList.length) { %>
+                  <tr>
+                    <td colspan="7" class="muted">Nenhum serviço cadastrado.</td>
+                  </tr>
+                <% } %>
+
+                <% servicesList.forEach(s => { %>
+                  <tr>
+                    <td><%= s.id %></td>
+                    <td>
+                      <input
+                        form="serviceForm_<%= s.id %>"
+                        name="name"
+                        value="<%= s.name %>"
+                        style="width:100%; max-width:100%;"
+                        required
+                      />
+                    </td>
+                    <td>
+                      <input
+                        form="serviceForm_<%= s.id %>"
+                        name="durationMinutes"
+                        type="number"
+                        min="30"
+                        step="30"
+                        value="<%= s.duration_minutes %>"
+                        required
+                      />
+                    </td>
+                    <td>
+                      <input
+                        form="serviceForm_<%= s.id %>"
+                        name="slotsRequired"
+                        type="number"
+                        min="1"
+                        value="<%= s.slots_required %>"
+                        required
+                      />
+                    </td>
+                    <td>
+                      <input
+                        form="serviceForm_<%= s.id %>"
+                        name="price"
+                        value="<%= Number(s.price_cents || 0) ? formatCentsBRL(s.price_cents).replace('R$', '').trim() : '' %>"
+                        placeholder="Ex: 35,00"
+                      />
+                    </td>
+                    <td>
+                      <span class="pill" style="border-color:rgba(255,255,255,.14);">
+                        <%= Number(s.is_active) ? "Ativo" : "Inativo" %>
+                      </span>
+                    </td>
+                    <td style="display:flex; gap:8px; flex-wrap:wrap;">
+                      <form id="serviceForm_<%= s.id %>" method="POST" action="/admin/servicos/<%= s.id %>/update" style="display:inline;">
+                        <button class="btn" type="submit">Salvar</button>
+                      </form>
+
+                      <form method="POST" action="/admin/servicos/<%= s.id %>/toggle" style="display:inline;">
+                        <button class="btn" type="submit"><%= Number(s.is_active) ? "Desativar" : "Ativar" %></button>
+                      </form>
+
+                      <form method="POST" action="/admin/servicos/<%= s.id %>/delete"
+                            onsubmit="return confirm('Excluir o serviço <%= s.name %>?');">
+                        <button class="btn btnDanger" type="submit">Excluir</button>
+                      </form>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Criar novo barbeiro</h2>
+          <form method="POST" action="/admin/barbeiros/create" style="margin-top:10px;">
+            <div class="cols">
+              <div>
+                <label>Nome do barbeiro</label>
+                <input name="name" placeholder="Ex: João" required />
+              </div>
+              <div>
+                <label>Telefone de direcionamento</label>
+                <input name="redirectPhone" placeholder="Ex: 5512988565206" />
+              </div>
+              <div class="full">
+                <button class="btn btnPrimary" type="submit" style="width:100%;">Criar barbeiro</button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <h2>Barbeiros</h2>
+          <div class="muted">⚠️ Excluir barbeiro apaga também os agendamentos e configs dele.</div>
+
+          <div style="margin-top:12px; overflow:auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:60px;">ID</th>
+                  <th>Nome / Telefone de direcionamento</th>
+                  <th style="width:110px;">Status</th>
+                  <th style="width:260px;">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% barbers.forEach(b => { %>
+                  <tr>
+                    <td><%= b.id %></td>
+                    <td>
+                      <form method="POST" action="/admin/barbeiros/<%= b.id %>/nome" style="display:grid; gap:8px; max-width:420px;">
+                        <input name="name" value="<%= b.name %>" style="width:100%; max-width:100%;" />
+                        <input
+                          name="redirectPhone"
+                          value="<%= b.redirect_phone || '' %>"
+                          placeholder="Telefone de direcionamento"
+                          style="width:100%; max-width:100%;"
+                        />
+                        <div class="muted">
+                          <%= b.redirect_phone ? `Telefone atual: ${formatPhoneDisplay(b.redirect_phone)}` : "Telefone atual: não definido" %>
+                        </div>
+                        <div>
+                          <button class="btn" type="submit">Salvar</button>
+                        </div>
+                      </form>
+                    </td>
+                    <td>
+                      <span class="pill" style="border-color:rgba(255,255,255,.14);">
+                        <%= b.is_active ? "Ativo" : "Inativo" %>
+                      </span>
+                    </td>
+                    <td style="display:flex; gap:8px; flex-wrap:wrap;">
+                      <form method="POST" action="/admin/barbeiros/<%= b.id %>/toggle" style="display:inline;">
+                        <button class="btn" type="submit"><%= b.is_active ? "Desativar" : "Ativar" %></button>
+                      </form>
+
+                      <form method="POST" action="/admin/barbeiros/<%= b.id %>/delete"
+                            onsubmit="return confirm('Excluir o barbeiro <%= b.name %>?\\n\\nIsso vai apagar TODOS os agendamentos e configs dele.');">
+                        <button class="btn btnDanger" type="submit">Excluir</button>
+                      </form>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="tabPanel" id="tabConfig">
+      <div class="grid">
+        <div class="card">
+          <h2>Configuração por barbeiro</h2>
+          <div class="muted">Primeiro selecione o barbeiro. Depois ajuste horários, almoço, duração do slot e folgas somente dele.</div>
+
+          <div class="cols" style="margin-top:14px;">
+            <div class="full">
+              <label>Escolha o barbeiro</label>
+              <select id="configBarberSelect">
+                <option value="">Selecione</option>
+                <% barbers.forEach(b => { %>
+                  <option value="<%= b.id %>" <%= Number(b.id) === Number(selectedCfgBarberId) ? "selected" : "" %>><%= b.name %></option>
+                <% }) %>
+              </select>
+            </div>
+          </div>
+
+          <% if (!selectedCfgBarberObj || !selectedCfg) { %>
+            <div class="muted" style="margin-top:14px;">Selecione um barbeiro para carregar a configuração.</div>
+
+<% } else { %>
+  <hr>
+  <h3><%= selectedCfgBarberObj.name %></h3>
+
+<form method="POST" action="/admin/barbeiro/<%= selectedCfgBarberObj.id %>/config" style="margin-top:10px;">
+    <div class="cols">
+
+      <%
+        const dayNames = [
+          { key: 0, short: "Dom", label: "Domingo" },
+          { key: 1, short: "Seg", label: "Segunda" },
+          { key: 2, short: "Ter", label: "Terça" },
+          { key: 3, short: "Qua", label: "Quarta" },
+          { key: 4, short: "Qui", label: "Quinta" },
+          { key: 5, short: "Sex", label: "Sexta" },
+          { key: 6, short: "Sáb", label: "Sábado" }
+        ];
+
+        const weekly = selectedCfg.weekly || {};
+      %>
+
+      <% dayNames.forEach(day => {
+        const cfgDay = weekly[day.key] || {};
+      %>
+        <div class="full" style="margin-top:8px; border:1px solid rgba(255,255,255,.10); border-radius:14px; padding:14px; background:rgba(255,255,255,.03);">
+          <div class="row" style="justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <strong style="color:var(--gold2); font-size:14px;"><%= day.label %></strong>
+
+            <label style="margin:0; display:flex; gap:8px; align-items:center;">
+              <input
+                type="checkbox"
+                name="wd<%= day.key %>"
+                <%= (cfgDay.enabled || selectedCfg.workDays?.[day.key]) ? "checked" : "" %>
+              />
+              Trabalha neste dia
+            </label>
+          </div>
+
+          <div class="cols">
+            <div>
+              <label>Início</label>
+              <input
+                name="start_<%= day.key %>"
+                value="<%= cfgDay.start || selectedCfg.start || '' %>"
+                placeholder="09:00"
+              />
+            </div>
+
+            <div>
+              <label>Fim</label>
+              <input
+                name="end_<%= day.key %>"
+                value="<%= cfgDay.end || selectedCfg.end || '' %>"
+                placeholder="18:00"
+              />
+            </div>
+
+            <div>
+              <label>Almoço (início)</label>
+              <input
+                name="lunchStart_<%= day.key %>"
+                value="<%= cfgDay.lunchStart || selectedCfg.lunchStart || '' %>"
+                placeholder="12:00"
+              />
+            </div>
+
+            <div>
+              <label>Almoço (fim)</label>
+              <input
+                name="lunchEnd_<%= day.key %>"
+                value="<%= cfgDay.lunchEnd || selectedCfg.lunchEnd || '' %>"
+                placeholder="13:00"
+              />
+            </div>
+          </div>
+        </div>
+      <% }) %>
+
+      <div class="full">
+        <label>Folgas (DD/MM/AAAA, separadas por vírgula/espaco)</label>
+        <input name="daysOffDates" value="<%= selectedCfgDaysOff %>" placeholder="10/02/2026, 11/02/2026" />
+        <div class="muted">Dica: você também pode digitar com hífen, ex.: 10-02-2026.</div>
+      </div>
+
+      <div class="full">
+        <button class="btn btnPrimary" type="submit" style="width:100%;">
+          Salvar config do <%= selectedCfgBarberObj.name %>
+        </button>
+      </div>
+    </div>
+  </form>
+<% } %>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="tabPanel" id="tabMensalistas">
+      <div class="grid">
+        <div class="card">
+          <h2>Plano mensalista</h2>
+          <div class="muted">
+            O barbeiro seleciona uma <strong>data inicial</strong> e o sistema replica automaticamente o mesmo horário por mais 3 semanas.
+            A <strong>data final</strong> é preenchida automaticamente com a última ocorrência.
+          </div>
+
+          <div id="menEditPill" class="pill" style="display:none; margin-top:10px; background: rgba(201,162,39,.10); border:1px solid rgba(201,162,39,.20); color: var(--gold2);">
+            Editando mensalista: <strong id="menEditName" style="color:#fff;"></strong>
+          </div>
+
+          <form method="POST" action="/admin/mensalistas" id="mensalistaForm" style="margin-top:12px;">
+            <input type="hidden" id="menPlanId" value="" />
+            <input type="hidden" name="weekday" id="menWeekdayHidden" />
+
+            <div class="cols">
+              <div>
+                <label>Barbeiro</label>
+                <select name="barberId" id="menBarberId" required>
+                  <option value="">Selecione</option>
+                  <% barbers.forEach(b => { %>
+                    <option value="<%= b.id %>"><%= b.name %></option>
+                  <% }) %>
+                </select>
+              </div>
+
+              <div>
+                <label>Nome do mensalista</label>
+                <input name="nome" id="menNome" placeholder="Ex: Gabriel" required />
+              </div>
+
+              <div>
+                <label>Data inicial</label>
+                <input type="text" name="start" id="menStart" placeholder="Clique para escolher" required readonly style="cursor:pointer;" />
+                <div class="muted">Ao clicar, abre o calendário. Na aba mensalista, também é permitido escolher datas retroativas.</div>
+              </div>
+
+              <div>
+                <label>Data final</label>
+                <input type="text" name="end" id="menEnd" readonly />
+                <div class="muted">Preenchida automaticamente com a última semana do plano.</div>
+              </div>
+
+              <div>
+                <label>Horário</label>
+                <select name="horario" id="menHorario" required disabled>
+                  <option value="">Selecione barbeiro e data inicial</option>
+                </select>
+                <div class="muted" id="menHorarioMsg"></div>
+              </div>
+
+              <div class="full" style="display:flex; gap:10px; flex-wrap:wrap;">
+                <button class="btn btnPrimary" type="submit" id="menSubmitBtn" style="flex:1;">Salvar plano mensalista</button>
+                <button class="btn" type="button" id="menCancelEdit" style="display:none;">Cancelar edição</button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="row" style="justify-content:space-between; align-items:flex-end;">
+            <div>
+              <h2 style="margin:0 0 6px 0;">Mensalistas cadastrados</h2>
+              <div class="muted">Filtre para encontrar mais rápido.</div>
+            </div>
+
+            <div class="row" style="align-items:flex-end;">
+              <div style="min-width:220px;">
+                <label style="margin-top:0;">Barbeiro</label>
+                <select id="menBarberFilter">
+                  <option value="">Todos</option>
+                  <% barbers.forEach(b => { %>
+                    <option value="<%= b.id %>"><%= b.name %></option>
+                  <% }) %>
+                </select>
+              </div>
+
+              <div class="pill" style="align-self:center;">
+                Total: <span id="menTotal">0</span>
+              </div>
+            </div>
+          </div>
+
+          <% if (!(mensalistas || []).length) { %>
+            <div class="muted" style="margin-top:10px;">Nenhum plano mensalista cadastrado ainda.</div>
+          <% } else { %>
+            <div style="margin-top:12px; overflow:auto;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Barbeiro</th>
+                    <th>Nome</th>
+                    <th>Data inicial</th>
+                    <th>Data final</th>
+                    <th>Horário</th>
+                    <th style="width:210px;">Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="menListBody">
+                  <% mensalistas.forEach(m => { %>
+                    <tr
+                      class="menRow"
+                      data-men-id="<%= m.id %>"
+                      data-men-barber-id="<%= m.barber_id %>"
+                      data-men-nome="<%- String(m.nome || '').replace(/\"/g, '&quot;') %>"
+                      data-men-start="<%= m.start_ymd %>"
+                      data-men-end="<%= m.end_ymd || '' %>"
+                      data-men-weekday="<%= m.weekday %>"
+                      data-men-horario="<%= m.horario %>"
+                    >
+                      <td><%= m.barber_name || m.barber_id %></td>
+                      <td><%= m.nome %></td>
+                      <td><%= ymdToDmy(m.start_ymd) %></td>
+                      <td><%= ymdToDmy(m.end_ymd || '') %></td>
+                      <td><%= m.horario %></td>
+                      <td style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button class="btn" type="button" onclick="startEditMensalista(this)">Editar</button>
+                        <form method="POST" action="/admin/mensalistas/<%= m.id %>/delete" onsubmit="return confirm('Remover este plano mensalista?');">
+                          <button class="btn" type="submit">Remover</button>
+                        </form>
+                      </td>
+                    </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <div class="tabPanel" id="tabManual">
+      <div class="grid">
+        <div class="card">
+          <h2>Agendar manualmente</h2>
+          <div class="muted">✅ Todo agendamento manual é salvo automaticamente como <strong>aprovado</strong>.</div>
+
+          <form method="POST" action="/admin/agendar" id="adminAgendarForm" style="margin-top:10px;">
+            <div class="cols">
+              <div>
+                <label>Barbeiro</label>
+                <select name="barberId" id="admBarberId" required>
+                  <option value="">Selecione</option>
+                  <% barbers.forEach(b => { %>
+                    <option value="<%= b.id %>"><%= b.name %></option>
+                  <% }) %>
+                </select>
+              </div>
+
+              <div>
+                <label>Serviço</label>
+                <select name="serviceId" id="admServiceId" required>
+                  <option value="">Selecione</option>
+                  <% servicesList.filter(s => Number(s.is_active)).forEach(s => { %>
+                    <option value="<%= s.id %>">
+                     <%= s.name %> (<%= s.duration_minutes %> min<%= Number(s.price_cents || 0) > 0 ? ` / ${formatCentsBRL(s.price_cents)}` : "" %>)
+                    </option>
+                  <% }) %>
+                </select>
+              </div>
+
+              <div>
+                <label>Data (DD/MM/AAAA)</label>
+                <input name="data" id="admData" placeholder="Clique para escolher" required readonly style="cursor:pointer;" />
+              </div>
+
+              <div>
+                <label>Horário</label>
+                <select name="horario" id="admHorario" required disabled>
+                  <option value="">Selecione barbeiro, serviço e data</option>
+                </select>
+                <div id="admHorarioMsg" class="muted"></div>
+              </div>
+
+              <div class="full">
+                <label>Nome do cliente</label>
+                <input name="nome" id="admNome" placeholder="Nome do cliente" required />
+              </div>
+
+              <div class="full">
+                <button class="btn btnPrimary" type="submit" style="width:100%;">Salvar agendamento</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="tabPanel" id="tabAgendamentos">
+      <div class="grid">
+        <div class="card">
+          <div class="row" style="justify-content:space-between;">
+            <div>
+              <h2 style="margin:0;">Agendamentos</h2>
+              <div class="muted">
+                Filtre por barbeiro, período e tipo (reservado/confirmado/mensalista).
+              </div>
+            </div>
+
+            <div class="row" style="align-items:flex-end;">
+              <div style="min-width:220px;">
+                <label style="margin-top:0;">Barbeiro</label>
+                <select id="agBarberFilter">
+                  <option value="">Selecione</option>
+                  <% barbers.forEach(b => { %>
+                    <option value="<%= b.id %>"><%= b.name %></option>
+                  <% }) %>
+                </select>
+              </div>
+
+              <div style="min-width:240px;">
+                <label style="margin-top:0;">Período</label>
+                <select id="agPeriodo">
+                  <option value="hoje">Hoje</option>
+                  <option value="semana">Semana (hoje → Sáb)</option>
+                  <option value="mes">Mês (hoje → fim do mês)</option>
+                  <option value="mes_inteiro">Mês inteiro (selecionar)</option>
+                </select>
+              </div>
+
+              <div id="agMesWrap" style="display:none; min-width:320px;">
+                <label style="margin-top:0;">Mês / Ano</label>
+                <div class="monthPickerBox">
+                  <select id="agMesMonth" aria-label="Mês">
+                    <option value="">Mês</option>
+                    <option value="01">Janeiro</option>
+                    <option value="02">Fevereiro</option>
+                    <option value="03">Março</option>
+                    <option value="04">Abril</option>
+                    <option value="05">Maio</option>
+                    <option value="06">Junho</option>
+                    <option value="07">Julho</option>
+                    <option value="08">Agosto</option>
+                    <option value="09">Setembro</option>
+                    <option value="10">Outubro</option>
+                    <option value="11">Novembro</option>
+                    <option value="12">Dezembro</option>
+                  </select>
+
+                  <select id="agMesYear" aria-label="Ano">
+                    <option value="">Ano</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style="min-width:220px;">
+                <label style="margin-top:0;">Tipo</label>
+                <select id="agTipo">
+                  <option value="todos">Todos</option>
+                  <option value="reservado">Reservado</option>
+                  <option value="confirmado">Confirmado</option>
+                  <option value="mensalista">Mensalista</option>
+                </select>
+              </div>
+
+              <div class="pill" style="align-self:center;">
+                Total: <span id="agTotal">0</span>
+              </div>
+
+              <button class="btn" type="button" id="agRefreshBtn" title="Recarregar agendamentos (sem precisar dar F5)">
+                Atualizar
+              </button>
+
+              <div class="muted" style="align-self:center;">
+                Última atualização: <span id="agLastUpdate">—</span>
+              </div>
+
+              <div class="muted" style="align-self:center;">
+                Próxima em: <span id="agNextRefresh">—</span>
+              </div>
+            </div>
+          </div>
+
+          <div id="agHint" class="bad" style="display:none; margin-top:10px;">
+            Selecione um barbeiro para listar os agendamentos.
+          </div>
+
+          <div class="muted" id="agPeriodoLabel" style="margin-top:10px;">—</div>
+
+          <div class="row" style="margin-top:10px; gap:8px;">
+            <span class="tag confirmado">confirmado</span>
+            <span class="tag reservado">reservado</span>
+            <span class="tag mensalista">mensalista</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <% if (!agendaAll.length) { %>
+            <div class="muted">Nenhum agendamento ainda.</div>
+          <% } else { %>
+            <div class="agendaWrap" id="agAgenda">
+              <% agendaDates.forEach(dateKey => {
+                   const items = agendaByDate[dateKey] || [];
+              %>
+                <div class="dayCard agDayCard" data-date="<%= dateKey %>">
+                  <div class="dayHeader">
+                    <strong><%= ymdToDmyWithWeekday(dateKey) %></strong>
+                    <span class="countBadge"><span class="agDayCount"><%= items.length %></span> horário(s)</span>
+                  </div>
+
+                  <div class="slotList">
+                    <% items.forEach(a => { %>
+                      <%
+                        const isMensalista = !!a.is_mensalista;
+                        const st = isMensalista ? "mensalista" : (a.status || "");
+                        const isConfirmado = (!isMensalista && st === "aprovado");
+                        const isReservado = (!isMensalista && st === "reservado");
+                        const tagClass = isMensalista ? "mensalista" : (isConfirmado ? "confirmado" : "reservado");
+                        const tagText = isMensalista ? "mensalista" : (isConfirmado ? "confirmado" : "reservado");
+                        const planId = isMensalista ? String(a.id || "").replace(/^m\-([^\-]+)\-.+$/, "$1") : "";
+                        const serviceLabel = a.service_name || "";
+                        const servicePriceLabel = Number(a.service_price_cents || 0) > 0 ? formatCentsBRL(a.service_price_cents) : "";
+                      %>
+
+                      <div
+                        class="slotItem agSlot"
+                        data-id="<%= a.id %>"
+                        data-barber-id="<%= a.barber_id %>"
+                        data-status="<%= st %>"
+                        data-is-mensalista="<%= isMensalista ? '1' : '0' %>"
+                        data-plan-id="<%= planId %>"
+                        data-date="<%= a.data %>"
+                        data-horario="<%= a.horario %>"
+                        data-nome="<%- String(a.nome || '').replace(/\"/g, '&quot;') %>"
+                        data-barber-name="<%- String(a.barber_name || '').replace(/\"/g, '&quot;') %>"
+                      >
+                        <div class="slotLeft">
+                          <span class="timePill"><%= a.horario %></span>
+                          <div class="info">
+                            <div><%= a.nome %></div>
+                            <small>Barbeiro: <%= a.barber_name || "" %></small>
+                            <% if (serviceLabel) { %>
+                              <small>Serviço: <%= serviceLabel %><%= servicePriceLabel ? ` • ${servicePriceLabel}` : "" %></small>
+                            <% } %>
+                          </div>
+                        </div>
+
+                        <div class="slotRight">
+                          <span class="tag <%= tagClass %>"><%= tagText %></span>
+
+                          <% if (isMensalista) { %>
+                            <button class="btn btnMini btnSwap" type="button" onclick="abrirTrocaMensalista(this)">
+                              Trocar horário
+                            </button>
+                          <% } %>
+
+                          <% if (isReservado) { %>
+                            <button class="btn btnMini btnConfirm" type="button" onclick="confirmarManual(<%= a.id %>)">
+                              Confirmar
+                            </button>
+                          <% } %>
+
+                          <% if (!isMensalista) { %>
+                            <button class="btn btnMini btnCancel" type="button" onclick="cancelarAg(<%= a.id %>)">Cancelar</button>
+                          <% } %>
+                        </div>
+                      </div>
+                    <% }) %>
+                  </div>
+                </div>
+              <% }) %>
+            </div>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="admOverlay" class="overlay" aria-hidden="true">
+    <div class="cal" role="dialog" aria-modal="true" aria-label="Selecionar data">
+      <div class="cal-head">
+        <div class="cal-title" id="admCalTitle">Mês</div>
+        <div class="cal-nav">
+          <button type="button" id="admPrevMonth">◀</button>
+          <button type="button" id="admNextMonth">▶</button>
+        </div>
+      </div>
+      <div class="cal-body">
+        <div class="dow">
+          <div>DOM</div><div>SEG</div><div>TER</div><div>QUA</div><div>QUI</div><div>SEX</div><div>SÁB</div>
+        </div>
+        <div id="admDays" class="days"></div>
+      </div>
+      <div class="cal-foot">
+        <button type="button" id="admCancelCal">Cancelar</button>
+        <button type="button" class="primary" id="admOkCal">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="swapOverlay" class="overlay" aria-hidden="true">
+    <div class="cal calWide" role="dialog" aria-modal="true" aria-label="Trocar horário do mensalista">
+      <div class="cal-head">
+        <div class="cal-title">Trocar horário do mensalista</div>
+      </div>
+      <div class="cal-body">
+        <div class="swapInfo">
+          <div>Cliente: <span id="swapNome">—</span></div>
+          <div>Barbeiro: <span id="swapBarbeiro">—</span></div>
+          <div>Ocorrência atual: <span id="swapAtual">—</span></div>
+        </div>
+
+        <form method="POST" action="/admin/mensalistas/trocar-horario" id="swapMensalistaForm">
+          <input type="hidden" name="planId" id="swapPlanId" />
+          <input type="hidden" name="barberId" id="swapBarberId" />
+          <input type="hidden" name="originalDate" id="swapOriginalDate" />
+          <input type="hidden" name="originalHorario" id="swapOriginalHorario" />
+
+          <div class="cols">
+            <div>
+              <label>Nova data</label>
+              <input type="text" name="newDateDisplay" id="swapDateDisplay" placeholder="Clique para escolher" readonly style="cursor:pointer;" />
+              <input type="hidden" name="newDate" id="swapDate" />
+            </div>
+
+            <div>
+              <label>Novo horário</label>
+              <select name="newHorario" id="swapHorario" required disabled>
+                <option value="">Selecione a nova data</option>
+              </select>
+              <div class="muted" id="swapHorarioMsg"></div>
+            </div>
+
+            <div class="full">
+              <div class="muted">
+                O sistema deve validar se o barbeiro trabalha no novo dia e se o novo horário está livre.
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="cal-foot">
+        <button type="button" id="swapCancelBtn">Cancelar</button>
+        <button type="submit" form="swapMensalistaForm" class="primary">Salvar troca</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function pad2(n){ return String(n).padStart(2, "0"); }
+    function fmtYMD(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+    function fmtDMY(d){ return `${pad2(d.getDate())}-${pad2(d.getMonth()+1)}-${d.getFullYear()}`; }
+    function fmtDMYSlash(d){ return `${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${d.getFullYear()}`; }
+
+    function addDays(d, days){ const x = new Date(d.getTime()); x.setDate(x.getDate()+days); return x; }
+    function parseYMD(ymd){
+      if(!ymd) return null;
+      const m = String(ymd).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if(!m) return null;
+      return new Date(Number(m[1]), Number(m[2])-1, Number(m[3]));
+    }
+    function dmyToYMD(dmy){
+      if(!dmy) return null;
+      const m = String(dmy).match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})$/);
+      if(!m) return null;
+      return `${m[3]}-${m[2]}-${m[1]}`;
+    }
+    function minutesNow(){
+      const n = new Date();
+      return n.getHours() * 60 + n.getMinutes();
+    }
+    function timeToMinutes(hhmm){
+      const m = String(hhmm || "").match(/^(\d{2}):(\d{2})$/);
+      if(!m) return null;
+      return Number(m[1]) * 60 + Number(m[2]);
+    }
+    function calcMensalistaEnd(startYMD){
+      const dt = parseYMD(startYMD);
+      if(!dt) return "";
+      return fmtYMD(addDays(dt, 21));
+    }
+    function weekdayFromYMD(ymd){
+      const dt = parseYMD(ymd);
+      return dt ? String(dt.getDay()) : "";
+    }
+    function ymdToSlash(ymd){
+      const d = parseYMD(ymd);
+      return d ? fmtDMYSlash(d) : "";
+    }
+
+    const tabs = [
+      { btn: "tabBtnBarbeiros", panel:"tabBarbeiros" },
+      { btn: "tabBtnConfig", panel:"tabConfig" },
+      { btn: "tabBtnMensalistas", panel:"tabMensalistas" },
+      { btn: "tabBtnManual", panel:"tabManual" },
+      { btn: "tabBtnAgendamentos", panel:"tabAgendamentos" },
+    ];
+
+    function activateTab(btnId){
+      tabs.forEach(t=>{
+        const b = document.getElementById(t.btn);
+        const p = document.getElementById(t.panel);
+        const active = (t.btn === btnId);
+        b.classList.toggle("active", active);
+        p.classList.toggle("active", active);
+      });
+      if(btnId === "tabBtnAgendamentos") applyAgendamentos();
+      stopAutoRefresh();
+      startAutoRefreshIfNeeded();
+      if(btnId === "tabBtnMensalistas"){
+        if(menStart && !menStart.value) menStart.value = fmtDMYSlash(new Date());
+        updateMensalistaDateFields();
+      }
+    }
+    tabs.forEach(t=>{
+      document.getElementById(t.btn).addEventListener("click", ()=>activateTab(t.btn));
+    });
+
+    async function updateStatus(id, status){
+      const r = await fetch("/admin/status", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ id, status })
+      });
+      const j = await r.json();
+      if(!j.ok) throw new Error("fail");
+    }
+
+    window.confirmarManual = async function(id){
+      if(!confirm("Confirmar manualmente este agendamento?")) return;
+      try{
+        await updateStatus(id, "aprovado");
+        const el = document.querySelector(`.agSlot[data-id="${id}"]`);
+        if(el) el.dataset.status = "aprovado";
+        applyAgendamentos();
+      }catch(e){ alert("Erro ao confirmar."); }
+    };
+
+    window.cancelarAg = async function(id){
+      if(!confirm("Cancelar este agendamento?")) return;
+      try{
+        await updateStatus(id, "cancelado");
+        const el = document.querySelector(`.agSlot[data-id="${id}"]`);
+        if(el) el.dataset.status = "cancelado";
+        applyAgendamentos();
+      }catch(e){ alert("Erro ao cancelar."); }
+    };
+
+    const agBarberFilter = document.getElementById("agBarberFilter");
+    const agPeriodo = document.getElementById("agPeriodo");
+    const agTipo = document.getElementById("agTipo");
+    const agMesWrap = document.getElementById("agMesWrap");
+    const agMesMonth = document.getElementById("agMesMonth");
+    const agMesYear = document.getElementById("agMesYear");
+    const agPeriodoLabel = document.getElementById("agPeriodoLabel");
+    const agHint = document.getElementById("agHint");
+    const agTotal = document.getElementById("agTotal");
+
+    function lastDayOfMonth(d){
+      return new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    }
+
+    function buildMonthYearOptions(){
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const startY = currentYear - 2;
+      const endY = currentYear + 3;
+
+      agMesYear.innerHTML =
+        `<option value="">Ano</option>` +
+        Array.from({length: (endY-startY+1)}, (_,i)=>{
+          const y = startY + i;
+          return `<option value="${y}">${y}</option>`;
+        }).join("");
+    }
+
+    function rangeForPeriodo(){
+      const now = new Date();
+      const p = agPeriodo.value;
+
+      if (p === "hoje"){
+        const ymd = fmtYMD(now);
+        return { start: ymd, end: ymd, label: `Hoje (${fmtDMY(now)})`, incomplete:false };
+      }
+      if (p === "semana"){
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const dow = todayStart.getDay();
+        const daysToSat = (6 - dow + 7) % 7;
+        const sat = addDays(todayStart, daysToSat);
+        return {
+          start: fmtYMD(todayStart),
+          end: fmtYMD(sat),
+          label: `Semana (hoje → Sáb): ${fmtDMY(todayStart)} → ${fmtDMY(sat)}`,
+          incomplete:false
+        };
+      }
+      if (p === "mes"){
+        const end = lastDayOfMonth(now);
+        return {
+          start: fmtYMD(now),
+          end: fmtYMD(end),
+          label: `Mês (hoje → fim): ${fmtDMY(now)} → ${fmtDMY(end)}`,
+          incomplete:false
+        };
+      }
+
+      const mm = agMesMonth.value;
+      const yy = agMesYear.value;
+      if (!mm || !yy){
+        return {
+          start: "",
+          end: "",
+          label: "Mês inteiro: selecione o mês e o ano.",
+          incomplete:true
+        };
+      }
+
+      const yearNum = Number(yy);
+      const monthNum = Number(mm);
+      const first = new Date(yearNum, monthNum - 1, 1);
+      const last = new Date(yearNum, monthNum, 0);
+
+      return {
+        start: fmtYMD(first),
+        end: fmtYMD(last),
+        label: `Mês inteiro: ${fmtDMY(first)} → ${fmtDMY(last)}`,
+        incomplete:false
+      };
+    }
+
+    function tipoMatches(slotEl){
+      const isMensalista = slotEl.dataset.isMensalista === "1";
+      const st = slotEl.dataset.status || "";
+
+      const t = agTipo.value;
+      if (t === "todos") return true;
+      if (t === "mensalista") return isMensalista;
+      if (t === "confirmado") return !isMensalista && st === "aprovado";
+      if (t === "reservado") return !isMensalista && st === "reservado";
+      return true;
+    }
+
+    function applyAgendamentos(){
+      const bId = agBarberFilter.value;
+      agHint.style.display = bId ? "none" : "";
+
+      if (agPeriodo.value === "mes_inteiro"){
+        agMesWrap.style.display = "";
+      } else {
+        agMesWrap.style.display = "none";
+      }
+
+      const { start, end, label, incomplete } = rangeForPeriodo();
+      if (agPeriodoLabel) agPeriodoLabel.textContent = label;
+
+      let totalShown = 0;
+
+      document.querySelectorAll(".agDayCard").forEach(card=>{
+        const dateKey = card.dataset.date;
+
+        let inRange = !!bId;
+
+        if (inRange && agPeriodo.value === "mes_inteiro" && incomplete){
+          inRange = false;
+        }
+
+        if (inRange && start && dateKey < start) inRange = false;
+        if (inRange && end && dateKey > end) inRange = false;
+
+        let dayCount = 0;
+
+        card.querySelectorAll(".agSlot").forEach(slot=>{
+          const sb = slot.dataset.barberId;
+          const st = slot.dataset.status || "";
+
+          if(st === "cancelado"){
+            slot.style.display = "none";
+            return;
+          }
+
+          let ok = true;
+          if(!inRange) ok = false;
+          if(ok && sb !== bId) ok = false;
+          if (!tipoMatches(slot)) ok = false;
+
+          slot.style.display = ok ? "" : "none";
+          if(ok){ dayCount++; totalShown++; }
+
+          const isMen = slot.dataset.isMensalista === "1";
+          const tag = slot.querySelector(".tag");
+          const btnConfirm = slot.querySelector(".btnConfirm");
+
+          if(tag){
+            if(isMen){
+              tag.className = "tag mensalista";
+              tag.textContent = "mensalista";
+              if(btnConfirm) btnConfirm.style.display = "none";
+            }else if(st === "aprovado"){
+              tag.className = "tag confirmado";
+              tag.textContent = "confirmado";
+              if(btnConfirm) btnConfirm.style.display = "none";
+            }else{
+              tag.className = "tag reservado";
+              tag.textContent = "reservado";
+              if(btnConfirm) btnConfirm.style.display = "";
+            }
+          }
+        });
+
+        const badge = card.querySelector(".agDayCount");
+        if(badge) badge.textContent = String(dayCount);
+        card.style.display = (dayCount > 0) ? "" : "none";
+      });
+
+      agTotal.textContent = String(totalShown);
+      saveAgFilters();
+      updateAgLastUpdate();
+    }
+
+    function handlePeriodoChange(){
+      if (agPeriodo.value === "mes_inteiro"){
+        agMesWrap.style.display = "";
+        if (!agMesMonth.value) agMesMonth.value = "";
+        if (!agMesYear.value) agMesYear.value = "";
+        applyAgendamentos();
+        return;
+      }
+      agMesWrap.style.display = "none";
+      applyAgendamentos();
+    }
+
+    ["change","input"].forEach(evt=>{
+      agBarberFilter.addEventListener(evt, applyAgendamentos);
+      agTipo.addEventListener(evt, applyAgendamentos);
+      agMesMonth.addEventListener(evt, applyAgendamentos);
+      agMesYear.addEventListener(evt, applyAgendamentos);
+    });
+    agPeriodo.addEventListener("change", handlePeriodoChange);
+
+    (function initAgendamentoFiltro(){
+      buildMonthYearOptions();
+
+      try{
+        const raw = localStorage.getItem("ag_filters_v1");
+        if(raw){
+          const f = JSON.parse(raw);
+          if(f && typeof f === "object"){
+            if(typeof f.barber === "string") agBarberFilter.value = f.barber;
+            if(typeof f.periodo === "string") agPeriodo.value = f.periodo;
+            if(typeof f.tipo === "string") agTipo.value = f.tipo;
+            if(typeof f.mm === "string") agMesMonth.value = f.mm;
+            if(typeof f.yy === "string") agMesYear.value = f.yy;
+          }
+        }else{
+          if (agPeriodo) agPeriodo.value = "hoje";
+          if (agTipo) agTipo.value = "todos";
+          if (agMesMonth) agMesMonth.value = "";
+          if (agMesYear) agMesYear.value = "";
+        }
+      }catch(e){
+        if (agPeriodo) agPeriodo.value = "hoje";
+        if (agTipo) agTipo.value = "todos";
+        if (agMesMonth) agMesMonth.value = "";
+        if (agMesYear) agMesYear.value = "";
+      }
+
+      if (agPeriodo.value === "mes_inteiro") agMesWrap.style.display = "";
+      else agMesWrap.style.display = "none";
+
+      applyAgendamentos();
+      updateAgLastUpdate();
+    })();
+
+    function updateAgLastUpdate(){
+      const el = document.getElementById("agLastUpdate");
+      if(!el) return;
+      const d = new Date();
+      el.textContent = `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+    }
+
+    function saveAgFilters(){
+      try{
+        const payload = {
+          barber: agBarberFilter.value || "",
+          periodo: agPeriodo.value || "hoje",
+          tipo: agTipo.value || "todos",
+          mm: agMesMonth.value || "",
+          yy: agMesYear.value || ""
+        };
+        localStorage.setItem("ag_filters_v1", JSON.stringify(payload));
+      }catch(e){}
+    }
+
+    const AG_AUTO_INTERVAL_SEC = <%= agRefreshSec %>;
+
+let agAutoTimer = null;
+let agAutoRemaining = AG_AUTO_INTERVAL_SEC;
+
+function setAutoRefreshUI(isOn){
+  const next = document.getElementById("agNextRefresh");
+  if(next) next.textContent = isOn ? `${agAutoRemaining}s` : "—";
+}
+
+function stopAutoRefresh(){
+  if(agAutoTimer){
+    clearInterval(agAutoTimer);
+    agAutoTimer = null;
+  }
+  agAutoRemaining = AG_AUTO_INTERVAL_SEC;
+  setAutoRefreshUI(false);
+}
+
+function startAutoRefreshIfNeeded(){
+  const agTab = document.getElementById("tabAgendamentos");
+  const isAgActive = agTab && agTab.classList.contains("active");
+
+  if(!isAgActive){
+    stopAutoRefresh();
+    return;
+  }
+
+  if(agAutoTimer) return;
+
+  agAutoRemaining = AG_AUTO_INTERVAL_SEC;
+  setAutoRefreshUI(true);
+
+  agAutoTimer = setInterval(()=>{
+    const agTabNow = document.getElementById("tabAgendamentos");
+    const stillActive = agTabNow && agTabNow.classList.contains("active");
+
+    if(!stillActive){
+      stopAutoRefresh();
+      return;
+    }
+
+    agAutoRemaining -= 1;
+    const next = document.getElementById("agNextRefresh");
+    if(next) next.textContent = `${agAutoRemaining}s`;
+
+    if(agAutoRemaining <= 0){
+      saveAgFilters();
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", "agendamentos");
+      url.searchParams.set("_t", String(Date.now()));
+      window.location.href = url.toString();
+    }
+  }, 1000);
+}
+
+    const agRefreshBtn = document.getElementById("agRefreshBtn");
+    if(agRefreshBtn){
+      agRefreshBtn.addEventListener("click", ()=>{
+        saveAgFilters();
+        const url = new URL(window.location.href);
+        url.searchParams.set("tab", "agendamentos");
+        url.searchParams.set("_t", String(Date.now()));
+        window.location.href = url.toString();
+      });
+    }
+
+    const admOverlay = document.getElementById("admOverlay");
+    const admData = document.getElementById("admData");
+    const admBarberId = document.getElementById("admBarberId");
+    const admServiceId = document.getElementById("admServiceId");
+    const admHorario = document.getElementById("admHorario");
+    const admHorarioMsg = document.getElementById("admHorarioMsg");
+
+    const admCalTitle = document.getElementById("admCalTitle");
+    const admDays = document.getElementById("admDays");
+    const admPrevMonth = document.getElementById("admPrevMonth");
+    const admNextMonth = document.getElementById("admNextMonth");
+    const admCancelCal = document.getElementById("admCancelCal");
+    const admOkCal = document.getElementById("admOkCal");
+
+    const swapOverlay = document.getElementById("swapOverlay");
+    const swapPlanId = document.getElementById("swapPlanId");
+    const swapBarberId = document.getElementById("swapBarberId");
+    const swapOriginalDate = document.getElementById("swapOriginalDate");
+    const swapOriginalHorario = document.getElementById("swapOriginalHorario");
+    const swapDateDisplay = document.getElementById("swapDateDisplay");
+    const swapDate = document.getElementById("swapDate");
+    const swapHorario = document.getElementById("swapHorario");
+    const swapHorarioMsg = document.getElementById("swapHorarioMsg");
+    const swapNome = document.getElementById("swapNome");
+    const swapBarbeiro = document.getElementById("swapBarbeiro");
+    const swapAtual = document.getElementById("swapAtual");
+    const swapCancelBtn = document.getElementById("swapCancelBtn");
+
+    let calMonth = new Date();
+    let selectedYMD = null;
+    let calTarget = "manual";
+
+    function openSharedCal(target){
+      calTarget = target || "manual";
+
+      let initialYMD = null;
+      if(calTarget === "mensalista"){
+        initialYMD = dmyToYMD(menStart?.value || "");
+      }else if(calTarget === "trocaMensalista"){
+        initialYMD = swapDate?.value || swapOriginalDate?.value || null;
+      }else{
+        initialYMD = dmyToYMD(admData?.value || "");
+      }
+
+      if(initialYMD){
+        selectedYMD = initialYMD;
+        const d = parseYMD(initialYMD);
+        if(d) calMonth = new Date(d.getFullYear(), d.getMonth(), 1);
+      }else{
+        const now = new Date();
+        calMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        selectedYMD = fmtYMD(new Date(now.getFullYear(), now.getMonth(), now.getDate()));
+      }
+
+      if(calTarget === "trocaMensalista"){
+        swapOverlay.classList.remove("show");
+      }
+
+      admOverlay.classList.add("show");
+      renderCal();
+    }
+
+    function closeAdmCal(){
+      admOverlay.classList.remove("show");
+      if(calTarget === "trocaMensalista"){
+        swapOverlay.classList.add("show");
+      }
+    }
+    function closeSwapOverlay(){ swapOverlay.classList.remove("show"); }
+
+    function renderCal(){
+      const y = calMonth.getFullYear();
+      const m = calMonth.getMonth();
+      const monthNames = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+      admCalTitle.textContent = `${monthNames[m]} ${y}`;
+
+      const first = new Date(y, m, 1);
+      const startDow = first.getDay();
+      const daysInMonth = new Date(y, m+1, 0).getDate();
+
+      const today = new Date();
+      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+      admDays.innerHTML = "";
+
+      for(let i=0;i<startDow;i++){
+        const div = document.createElement("div");
+        div.className = "day muted";
+        div.textContent = "";
+        admDays.appendChild(div);
+      }
+
+      for(let d=1; d<=daysInMonth; d++){
+        const dt = new Date(y, m, d);
+        const ymd = fmtYMD(dt);
+        const div = document.createElement("div");
+        div.className = "day";
+        div.textContent = String(d);
+
+        const allowPastDates = calTarget === "mensalista";
+
+        if(!allowPastDates && dt < todayStart){
+          div.classList.add("disabled");
+        }else{
+          div.addEventListener("click", ()=>{
+            selectedYMD = ymd;
+            renderCal();
+          });
+        }
+
+        if(selectedYMD === ymd) div.classList.add("selected");
+        admDays.appendChild(div);
+      }
+    }
+
+    admPrevMonth.addEventListener("click", ()=>{ calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth()-1, 1); renderCal(); });
+    admNextMonth.addEventListener("click", ()=>{ calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth()+1, 1); renderCal(); });
+    admCancelCal.addEventListener("click", closeAdmCal);
+    admOkCal.addEventListener("click", ()=>{
+      if(!selectedYMD) { alert("Selecione uma data."); return; }
+      const d = parseYMD(selectedYMD);
+
+      if(calTarget === "mensalista"){
+        menStart.value = fmtDMYSlash(d);
+        closeAdmCal();
+        updateMensalistaDateFields();
+        refreshMensalistaHorarios();
+        return;
+      }
+
+      if(calTarget === "trocaMensalista"){
+        swapDate.value = selectedYMD;
+        swapDateDisplay.value = fmtDMYSlash(d);
+        closeAdmCal();
+        refreshTrocaMensalistaHorarios();
+        return;
+      }
+
+      admData.value = fmtDMYSlash(d);
+      closeAdmCal();
+      refreshAdminHorarios();
+    });
+
+    admData.addEventListener("click", ()=>openSharedCal("manual"));
+
+    async function refreshAdminHorarios(){
+      admHorario.innerHTML = `<option value="">Selecione barbeiro, serviço e data</option>`;
+      admHorario.disabled = true;
+      admHorarioMsg.textContent = "";
+
+      const b = admBarberId.value;
+      const s = admServiceId.value;
+      const dmy = admData.value;
+      if(!b || !s || !dmy) return;
+
+      const ymd = dmyToYMD(dmy);
+      if(!ymd) return;
+
+      try{
+        const r = await fetch(`/horarios?barberId=${encodeURIComponent(b)}&serviceId=${encodeURIComponent(s)}&data=${encodeURIComponent(ymd)}`);
+        const slots = await r.json();
+
+        let finalSlots = Array.isArray(slots) ? slots.slice() : [];
+
+        const today = new Date();
+        const todayYMD = fmtYMD(new Date(today.getFullYear(), today.getMonth(), today.getDate()));
+        if(ymd === todayYMD){
+          const nowMin = minutesNow();
+          finalSlots = finalSlots.filter(h=>{
+            const slotMin = timeToMinutes(h);
+            return slotMin != null && (slotMin - nowMin) >= 10;
+          });
+        }
+
+        if(!finalSlots.length){
+          admHorario.innerHTML = `<option value="">Sem horários disponíveis</option>`;
+          admHorario.disabled = true;
+          admHorarioMsg.textContent = "Sem horários disponíveis.";
+          return;
+        }
+
+        admHorario.innerHTML = `<option value="">Selecione</option>` + finalSlots.map(h=>`<option value="${h}">${h}</option>`).join("");
+        admHorario.disabled = false;
+      }catch(e){
+        admHorarioMsg.textContent = "Erro ao carregar horários.";
+      }
+    }
+    admBarberId.addEventListener("change", refreshAdminHorarios);
+    if (admServiceId) admServiceId.addEventListener("change", refreshAdminHorarios);
+
+    async function refreshTrocaMensalistaHorarios(){
+      swapHorario.innerHTML = `<option value="">Selecione a nova data</option>`;
+      swapHorario.disabled = true;
+      if(swapHorarioMsg) swapHorarioMsg.textContent = "";
+
+      const barberId = swapBarberId?.value;
+      const ymd = swapDate?.value;
+      if(!barberId || !ymd) return;
+
+      if(swapHorarioMsg) swapHorarioMsg.textContent = "Carregando horários...";
+      try{
+        const r = await fetch(`/horarios?barberId=${encodeURIComponent(barberId)}&data=${encodeURIComponent(ymd)}`);
+        const slots = await r.json();
+
+        if(!Array.isArray(slots) || !slots.length){
+          swapHorario.innerHTML = `<option value="">Sem horários disponíveis</option>`;
+          swapHorario.disabled = true;
+          if(swapHorarioMsg) swapHorarioMsg.textContent = "Sem horários disponíveis.";
+          return;
+        }
+
+        swapHorario.innerHTML = `<option value="">Selecione</option>` + slots.map(h=>`<option value="${h}">${h}</option>`).join("");
+        swapHorario.disabled = false;
+        if(swapHorarioMsg) swapHorarioMsg.textContent = "";
+      }catch(e){
+        if(swapHorarioMsg) swapHorarioMsg.textContent = "Erro ao carregar horários.";
+      }
+    }
+
+    window.abrirTrocaMensalista = function(btn){
+      const slot = btn?.closest(".agSlot");
+      if(!slot) return;
+
+      swapPlanId.value = slot.dataset.planId || "";
+      swapBarberId.value = slot.dataset.barberId || "";
+      swapOriginalDate.value = slot.dataset.date || "";
+      swapOriginalHorario.value = slot.dataset.horario || "";
+      swapDate.value = slot.dataset.date || "";
+      swapDateDisplay.value = ymdToSlash(slot.dataset.date || "");
+      swapHorario.innerHTML = `<option value="">Selecione a nova data</option>`;
+      swapHorario.disabled = true;
+      if(swapHorarioMsg) swapHorarioMsg.textContent = "";
+      swapNome.textContent = slot.dataset.nome || "—";
+      swapBarbeiro.textContent = slot.dataset.barberName || "—";
+      swapAtual.textContent = `${ymdToSlash(slot.dataset.date || "")} às ${slot.dataset.horario || ""}`;
+
+      swapOverlay.classList.add("show");
+      refreshTrocaMensalistaHorarios();
+    };
+
+    if(swapDateDisplay){
+      swapDateDisplay.addEventListener("click", ()=>openSharedCal("trocaMensalista"));
+    }
+    if(swapCancelBtn){
+      swapCancelBtn.addEventListener("click", closeSwapOverlay);
+    }
+
+    const menForm = document.getElementById("mensalistaForm");
+    const menPlanId = document.getElementById("menPlanId");
+    const menBarberId = document.getElementById("menBarberId");
+    const menNome = document.getElementById("menNome");
+    const menWeekdayHidden = document.getElementById("menWeekdayHidden");
+    const menHorario = document.getElementById("menHorario");
+    const menHorarioMsg = document.getElementById("menHorarioMsg");
+    const menStart = document.getElementById("menStart");
+    const menEnd = document.getElementById("menEnd");
+    const menSubmitBtn = document.getElementById("menSubmitBtn");
+    const menCancelEdit = document.getElementById("menCancelEdit");
+
+    const menEditPill = document.getElementById("menEditPill");
+    const menEditName = document.getElementById("menEditName");
+
+    function updateMensalistaDateFields(){
+      const startYMD = dmyToYMD(menStart?.value || "");
+      const endYMD = startYMD ? calcMensalistaEnd(startYMD) : "";
+      if(menEnd) menEnd.value = endYMD ? fmtDMYSlash(parseYMD(endYMD)) : "";
+      if(menWeekdayHidden) menWeekdayHidden.value = startYMD ? weekdayFromYMD(startYMD) : "";
+    }
+
+    async function refreshMensalistaHorarios(){
+      menHorario.innerHTML = `<option value="">Selecione barbeiro e data inicial</option>`;
+      menHorario.disabled = true;
+      if(menHorarioMsg) menHorarioMsg.textContent = "";
+
+      const b = menBarberId?.value;
+      const startYMD = dmyToYMD(menStart?.value || "");
+      if(!b || !startYMD) return;
+
+      updateMensalistaDateFields();
+
+      if(menHorarioMsg) menHorarioMsg.textContent = "Carregando horários...";
+      try{
+        const r = await fetch(`/horarios?barberId=${encodeURIComponent(b)}&data=${encodeURIComponent(startYMD)}`);
+        const slots = await r.json();
+
+        if(!Array.isArray(slots) || slots.length === 0){
+          menHorario.innerHTML = `<option value="">Sem horários disponíveis</option>`;
+          menHorario.disabled = true;
+          if(menHorarioMsg) menHorarioMsg.textContent = "Sem horários.";
+          return;
+        }
+
+        menHorario.innerHTML = `<option value="">Selecione</option>` + slots.map(h => `<option value="${h}">${h}</option>`).join("");
+        menHorario.disabled = false;
+        if(menHorarioMsg) menHorarioMsg.textContent = "";
+      }catch(e){
+        if(menHorarioMsg) menHorarioMsg.textContent = "Erro ao carregar horários.";
+      }
+    }
+
+    function setMensalistaEditMode(on, nomeLabel){
+      if(on){
+        menCancelEdit.style.display = "";
+        menSubmitBtn.textContent = "Salvar edição";
+        menEditPill.style.display = "";
+        menEditName.textContent = nomeLabel || "";
+      }else{
+        menCancelEdit.style.display = "none";
+        menSubmitBtn.textContent = "Salvar plano mensalista";
+        menEditPill.style.display = "none";
+        menEditName.textContent = "";
+      }
+    }
+
+    function resetMensalistaForm(){
+      if(menPlanId) menPlanId.value = "";
+      menForm.action = "/admin/mensalistas";
+      menBarberId.value = "";
+      menNome.value = "";
+      menStart.value = fmtDMYSlash(new Date());
+      updateMensalistaDateFields();
+      menHorario.innerHTML = `<option value="">Selecione barbeiro e data inicial</option>`;
+      menHorario.disabled = true;
+      if(menHorarioMsg) menHorarioMsg.textContent = "";
+      setMensalistaEditMode(false);
+    }
+
+    window.startEditMensalista = async function(btn){
+      const tr = btn?.closest("tr");
+      if(!tr) return;
+
+      const id = tr.dataset.menId;
+      const barberId = tr.dataset.menBarberId;
+      const nome = tr.dataset.menNome || "";
+      const start = tr.dataset.menStart || "";
+      const horario = tr.dataset.menHorario || "";
+
+      menPlanId.value = id || "";
+      menBarberId.value = barberId || "";
+      menNome.value = nome;
+      menStart.value = start ? fmtDMYSlash(parseYMD(start)) : fmtDMYSlash(new Date());
+      updateMensalistaDateFields();
+
+      setMensalistaEditMode(true, nome);
+
+      await refreshMensalistaHorarios();
+      menHorario.value = horario;
+
+      menForm.action = `/admin/mensalistas/${encodeURIComponent(id)}/update`;
+      menForm.scrollIntoView({ behavior:"smooth", block:"start" });
+    };
+
+    menCancelEdit.addEventListener("click", resetMensalistaForm);
+    menBarberId.addEventListener("change", refreshMensalistaHorarios);
+    menStart.addEventListener("click", ()=>openSharedCal("mensalista"));
+
+    const menBarberFilter = document.getElementById("menBarberFilter");
+    const menTotal = document.getElementById("menTotal");
+
+    function applyMenBarberFilter(){
+      const v = menBarberFilter ? menBarberFilter.value : "";
+      let shown = 0;
+
+      document.querySelectorAll(".menRow").forEach(tr=>{
+        const bid = tr.dataset.menBarberId || "";
+        const ok = (!v) || (bid === v);
+        tr.style.display = ok ? "" : "none";
+        if(ok) shown++;
+      });
+
+      if(menTotal) menTotal.textContent = String(shown);
+    }
+
+    if(menBarberFilter){
+      menBarberFilter.addEventListener("change", applyMenBarberFilter);
+      setTimeout(applyMenBarberFilter, 0);
+    }
+
+    const configBarberSelect = document.getElementById("configBarberSelect");
+    if(configBarberSelect){
+      configBarberSelect.addEventListener("change", ()=>{
+        const barberId = configBarberSelect.value || "";
+        const url = new URL(window.location.href);
+        url.searchParams.set("tab", "config");
+
+        if(barberId) url.searchParams.set("configBarberId", barberId);
+        else url.searchParams.delete("configBarberId");
+
+        window.location.href = url.toString();
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", ()=>{
+  setAutoRefreshUI(false);
+
+  if(menStart && !menStart.value) menStart.value = fmtDMYSlash(new Date());
+  updateMensalistaDateFields();
+
+  const tab = new URLSearchParams(window.location.search).get("tab");
+  if(tab === "configgeral") activateTab("tabBtnBarbeiros");
+  if(tab === "config") activateTab("tabBtnConfig");
+  if(tab === "mensalistas") activateTab("tabBtnMensalistas");
+  if(tab === "manual") activateTab("tabBtnManual");
+  if(tab === "agendamentos") activateTab("tabBtnAgendamentos");
+
+  startAutoRefreshIfNeeded();
+});
+
+  </script>
+</body>
+</html>

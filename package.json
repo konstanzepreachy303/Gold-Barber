@@ -1,0 +1,23 @@
+{
+  "name": "gold-barber",
+  "version": "1.0.0",
+  "description": "Sistema de agendamento para barbearia (PostgreSQL)",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "create-admin": "node scripts/create-admin.js"
+  },
+  "engines": {
+    "node": "20.x"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "body-parser": "^1.20.2",
+    "connect-pg-simple": "^10.0.0",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "express-session": "^1.18.1",
+    "pg": "^8.20.0"
+  }
+}
