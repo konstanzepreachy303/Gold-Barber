@@ -71,12 +71,12 @@ function translateSql(rawSql) {
 if (/barber_config/i.test(sql)) {
   sql = sql
     .replace(/\bend\b/g, '"end"')
-    .replace(/\blunchStart\b/g, '"lunchStart"')
-    .replace(/\blunchEnd\b/g, '"lunchEnd"')
-    .replace(/\bslotMinutes\b/g, '"slotMinutes"')
-    .replace(/\bslotminutes\b/g, '"slotMinutes"')
     .replace(/\blunchStart_(\d)\b/g, 'lunchstart_$1')
-    .replace(/\blunchEnd_(\d)\b/g, 'lunchend_$1');
+    .replace(/\blunchEnd_(\d)\b/g, 'lunchend_$1')
+    .replace(/\blunchStart\b/g, 'lunchstart')
+    .replace(/\blunchEnd\b/g, 'lunchend')
+    .replace(/\bslotMinutes\b/g, 'slotminutes')
+    .replace(/\bslotminutes\b/g, 'slotminutes');
 }
 
   sql = sql.replace(/INSERT\s+OR\s+IGNORE\s+INTO/gi, 'INSERT INTO');
@@ -243,23 +243,23 @@ async function init() {
       );
     `);
 
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS barber_config (
-        barber_id INTEGER PRIMARY KEY REFERENCES barbers(id) ON DELETE CASCADE,
-        start TEXT NOT NULL DEFAULT '09:00',
-        "end" TEXT NOT NULL DEFAULT '18:00',
-        "lunchStart" TEXT NOT NULL DEFAULT '12:00',
-        "lunchEnd" TEXT NOT NULL DEFAULT '13:00',
-        "slotMinutes" INTEGER NOT NULL DEFAULT 60,
-        wd0 INTEGER NOT NULL DEFAULT 0,
-        wd1 INTEGER NOT NULL DEFAULT 1,
-        wd2 INTEGER NOT NULL DEFAULT 1,
-        wd3 INTEGER NOT NULL DEFAULT 1,
-        wd4 INTEGER NOT NULL DEFAULT 1,
-        wd5 INTEGER NOT NULL DEFAULT 1,
-        wd6 INTEGER NOT NULL DEFAULT 1
-      );
-    `);
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS barber_config (
+    barber_id INTEGER PRIMARY KEY REFERENCES barbers(id) ON DELETE CASCADE,
+    start TEXT NOT NULL DEFAULT '09:00',
+    "end" TEXT NOT NULL DEFAULT '18:00',
+    lunchstart TEXT NOT NULL DEFAULT '',
+    lunchend TEXT NOT NULL DEFAULT '',
+    slotminutes INTEGER NOT NULL DEFAULT 60,
+    wd0 INTEGER NOT NULL DEFAULT 0,
+    wd1 INTEGER NOT NULL DEFAULT 1,
+    wd2 INTEGER NOT NULL DEFAULT 1,
+    wd3 INTEGER NOT NULL DEFAULT 1,
+    wd4 INTEGER NOT NULL DEFAULT 1,
+    wd5 INTEGER NOT NULL DEFAULT 1,
+    wd6 INTEGER NOT NULL DEFAULT 1
+  );
+`);
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS barber_days_off (
@@ -359,39 +359,39 @@ async function init() {
 
     // -------------------- novas colunas da barber_config por dia --------------------
     await ensureColumn('barber_config', 'start_0', `TEXT NOT NULL DEFAULT '09:00'`);
-    await ensureColumn('barber_config', 'end_0', `TEXT NOT NULL DEFAULT '18:00'`);
-    await ensureColumn('barber_config', 'lunchstart_0', `TEXT NOT NULL DEFAULT '12:00'`);
-await ensureColumn('barber_config', 'lunchend_0', `TEXT NOT NULL DEFAULT '13:00'`);
+await ensureColumn('barber_config', 'end_0', `TEXT NOT NULL DEFAULT '18:00'`);
+await ensureColumn('barber_config', 'lunchstart_0', `TEXT NOT NULL DEFAULT ''`);
+await ensureColumn('barber_config', 'lunchend_0', `TEXT NOT NULL DEFAULT ''`);
 
-    await ensureColumn('barber_config', 'start_1', `TEXT NOT NULL DEFAULT '09:00'`);
-    await ensureColumn('barber_config', 'end_1', `TEXT NOT NULL DEFAULT '18:00'`);
-    await ensureColumn('barber_config', 'lunchstart_1', `TEXT NOT NULL DEFAULT '12:00'`);
-await ensureColumn('barber_config', 'lunchend_1', `TEXT NOT NULL DEFAULT '13:00'`);
+await ensureColumn('barber_config', 'start_1', `TEXT NOT NULL DEFAULT '09:00'`);
+await ensureColumn('barber_config', 'end_1', `TEXT NOT NULL DEFAULT '18:00'`);
+await ensureColumn('barber_config', 'lunchstart_1, `TEXT NOT NULL DEFAULT ''`);
+await ensureColumn('barber_config', 'lunchend_1 `TEXT NOT NULL DEFAULT ''`);
 
-    await ensureColumn('barber_config', 'start_2', `TEXT NOT NULL DEFAULT '09:00'`);
-    await ensureColumn('barber_config', 'end_2', `TEXT NOT NULL DEFAULT '18:00'`);
-    await ensureColumn('barber_config', 'lunchstart_2', `TEXT NOT NULL DEFAULT '12:00'`);
-await ensureColumn('barber_config', 'lunchend_2', `TEXT NOT NULL DEFAULT '13:00'`);
+await ensureColumn('barber_config', 'start_2', `TEXT NOT NULL DEFAULT '09:00'`);
+await ensureColumn('barber_config', 'end_2', `TEXT NOT NULL DEFAULT '18:00'`);
+await ensureColumn('barber_config', 'lunchstart_2, `TEXT NOT NULL DEFAULT ''`);
+await ensureColumn('barber_config', 'lunchend_2, `TEXT NOT NULL DEFAULT ''`);
 
-    await ensureColumn('barber_config', 'start_3', `TEXT NOT NULL DEFAULT '09:00'`);
-    await ensureColumn('barber_config', 'end_3', `TEXT NOT NULL DEFAULT '18:00'`);
-    await ensureColumn('barber_config', 'lunchstart_3', `TEXT NOT NULL DEFAULT '12:00'`);
-await ensureColumn('barber_config', 'lunchend_3', `TEXT NOT NULL DEFAULT '13:00'`);
+await ensureColumn('barber_config', 'start_3', `TEXT NOT NULL DEFAULT '09:00'`);
+await ensureColumn('barber_config', 'end_3', `TEXT NOT NULL DEFAULT '18:00'`);
+await ensureColumn('barber_config', 'lunchstart_3, `TEXT NOT NULL DEFAULT ''`);
+await ensureColumn('barber_config', 'lunchend_3, `TEXT NOT NULL DEFAULT ''`);
 
-    await ensureColumn('barber_config', 'start_4', `TEXT NOT NULL DEFAULT '09:00'`);
-    await ensureColumn('barber_config', 'end_4', `TEXT NOT NULL DEFAULT '18:00'`);
-    await ensureColumn('barber_config', 'lunchstart_4', `TEXT NOT NULL DEFAULT '12:00'`);
-await ensureColumn('barber_config', 'lunchend_4', `TEXT NOT NULL DEFAULT '13:00'`);
+await ensureColumn('barber_config', 'start_4', `TEXT NOT NULL DEFAULT '09:00'`);
+await ensureColumn('barber_config', 'end_4', `TEXT NOT NULL DEFAULT '18:00'`);
+await ensureColumn('barber_config', 'lunchstart_4, `TEXT NOT NULL DEFAULT ''`);
+await ensureColumn('barber_config', 'lunchend_4, `TEXT NOT NULL DEFAULT ''`);
 
-    await ensureColumn('barber_config', 'start_5', `TEXT NOT NULL DEFAULT '09:00'`);
-    await ensureColumn('barber_config', 'end_5', `TEXT NOT NULL DEFAULT '18:00'`);
-    await ensureColumn('barber_config', 'lunchstart_5', `TEXT NOT NULL DEFAULT '12:00'`);
-await ensureColumn('barber_config', 'lunchend_5', `TEXT NOT NULL DEFAULT '13:00'`);
+await ensureColumn('barber_config', 'start_5', `TEXT NOT NULL DEFAULT '09:00'`);
+await ensureColumn('barber_config', 'end_5', `TEXT NOT NULL DEFAULT '18:00'`);
+await ensureColumn('barber_config', 'lunchstart_5, `TEXT NOT NULL DEFAULT ''`);
+await ensureColumn('barber_config', 'lunchend_5 `TEXT NOT NULL DEFAULT ''`);
 
-    await ensureColumn('barber_config', 'start_6', `TEXT NOT NULL DEFAULT '09:00'`);
-    await ensureColumn('barber_config', 'end_6', `TEXT NOT NULL DEFAULT '18:00'`);
-    await ensureColumn('barber_config', 'lunchstart_6', `TEXT NOT NULL DEFAULT '12:00'`);
-await ensureColumn('barber_config', 'lunchend_6', `TEXT NOT NULL DEFAULT '13:00'`);
+await ensureColumn('barber_config', 'start_6', `TEXT NOT NULL DEFAULT '09:00'`);
+await ensureColumn('barber_config', 'end_6', `TEXT NOT NULL DEFAULT '18:00'`);
+await ensureColumn('barber_config', 'lunchstart_6, `TEXT NOT NULL DEFAULT ''`);
+await ensureColumn('barber_config', 'lunchend_6, `TEXT NOT NULL DEFAULT ''`);
 
     await ensureColumn('services', 'price_cents', 'INTEGER NOT NULL DEFAULT 0');
     await ensureColumn('services', 'created_at', 'TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP');
@@ -528,44 +528,31 @@ await ensureColumn('barber_config', 'lunchend_6', `TEXT NOT NULL DEFAULT '13:00'
       }
     }
 
-    // Copia os horários antigos para os dias novos quando estiverem vazios
-  await pool.query(`
+// Copia os horários antigos para os dias novos quando estiverem vazios
+
+await pool.query(`
   UPDATE barber_config
-     SET
-       start_0 = COALESCE(NULLIF(start_0, ''), start),
-       end_0 = COALESCE(NULLIF(end_0, ''), "end"),
-       lunchstart_0 = COALESCE(NULLIF(lunchstart_0, ''), "lunchStart"),
-       lunchend_0 = COALESCE(NULLIF(lunchend_0, ''), "lunchEnd"),
+  SET
+    start_0 = COALESCE(NULLIF(start_0, ''), start),
+    end_0 = COALESCE(NULLIF(end_0, ''), "end"),
 
-       start_1 = COALESCE(NULLIF(start_1, ''), start),
-       end_1 = COALESCE(NULLIF(end_1, ''), "end"),
-       lunchstart_1 = COALESCE(NULLIF(lunchstart_1, ''), "lunchStart"),
-       lunchend_1 = COALESCE(NULLIF(lunchend_1, ''), "lunchEnd"),
+    start_1 = COALESCE(NULLIF(start_1, ''), start),
+    end_1 = COALESCE(NULLIF(end_1, ''), "end"),
 
-       start_2 = COALESCE(NULLIF(start_2, ''), start),
-       end_2 = COALESCE(NULLIF(end_2, ''), "end"),
-       lunchstart_2 = COALESCE(NULLIF(lunchstart_2, ''), "lunchStart"),
-       lunchend_2 = COALESCE(NULLIF(lunchend_2, ''), "lunchEnd"),
+    start_2 = COALESCE(NULLIF(start_2, ''), start),
+    end_2 = COALESCE(NULLIF(end_2, ''), "end"),
 
-       start_3 = COALESCE(NULLIF(start_3, ''), start),
-       end_3 = COALESCE(NULLIF(end_3, ''), "end"),
-       lunchstart_3 = COALESCE(NULLIF(lunchstart_3, ''), "lunchStart"),
-       lunchend_3 = COALESCE(NULLIF(lunchend_3, ''), "lunchEnd"),
+    start_3 = COALESCE(NULLIF(start_3, ''), start),
+    end_3 = COALESCE(NULLIF(end_3, ''), "end"),
 
-       start_4 = COALESCE(NULLIF(start_4, ''), start),
-       end_4 = COALESCE(NULLIF(end_4, ''), "end"),
-       lunchstart_4 = COALESCE(NULLIF(lunchstart_4, ''), "lunchStart"),
-       lunchend_4 = COALESCE(NULLIF(lunchend_4, ''), "lunchEnd"),
+    start_4 = COALESCE(NULLIF(start_4, ''), start),
+    end_4 = COALESCE(NULLIF(end_4, ''), "end"),
 
-       start_5 = COALESCE(NULLIF(start_5, ''), start),
-       end_5 = COALESCE(NULLIF(end_5, ''), "end"),
-       lunchstart_5 = COALESCE(NULLIF(lunchstart_5, ''), "lunchStart"),
-       lunchend_5 = COALESCE(NULLIF(lunchend_5, ''), "lunchEnd"),
+    start_5 = COALESCE(NULLIF(start_5, ''), start),
+    end_5 = COALESCE(NULLIF(end_5, ''), "end"),
 
-       start_6 = COALESCE(NULLIF(start_6, ''), start),
-       end_6 = COALESCE(NULLIF(end_6, ''), "end"),
-       lunchstart_6 = COALESCE(NULLIF(lunchstart_6, ''), "lunchStart"),
-       lunchend_6 = COALESCE(NULLIF(lunchend_6, ''), "lunchEnd")
+    start_6 = COALESCE(NULLIF(start_6, ''), start),
+    end_6 = COALESCE(NULLIF(end_6, ''), "end")
 `);
 
     await db.run(

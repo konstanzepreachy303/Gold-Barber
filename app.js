@@ -410,8 +410,9 @@ async function generateServiceBaseSlotsForDateAndBarber(ymd, barberId) {
 
   const startMin = toMinutes(dayCfg.start);
   const endMin = toMinutes(dayCfg.end);
-  const lunchStartMin = toMinutes(dayCfg.lunchStart);
-  const lunchEndMin = toMinutes(dayCfg.lunchEnd);
+const hasLunchBreak = !!dayCfg.lunchStart && !!dayCfg.lunchEnd;
+const lunchStartMin = hasLunchBreak ? toMinutes(dayCfg.lunchStart) : null;
+const lunchEndMin = hasLunchBreak ? toMinutes(dayCfg.lunchEnd) : null;
 
   if (endMin <= startMin) return [];
 
@@ -420,8 +421,12 @@ async function generateServiceBaseSlotsForDateAndBarber(ymd, barberId) {
     const slotStart = t;
     const slotEnd = t + 30;
 
-    const withinLunch = slotStart < lunchEndMin && slotEnd > lunchStartMin;
-    if (withinLunch) continue;
+    const withinLunch =
+  hasLunchBreak &&
+  slotStart < lunchEndMin &&
+  slotEnd > lunchStartMin;
+
+if (withinLunch) continue;
 
     result.push(fromMinutes(t));
   }
@@ -548,56 +553,56 @@ async function loadBarberConfig(barberId) {
   };
 
   const weekly = {
-    0: {
-      enabled: !!cfg2.wd0,
-      start: cfg2.start_0 || cfg2.start || "",
-      end: cfg2.end_0 || cfg2.end || "",
-      lunchStart: cfg2.lunchstart_0 || cfg2.lunchstart || "",
-      lunchEnd: cfg2.lunchend_0 || cfg2.lunchend || "",
-    },
-    1: {
-      enabled: !!cfg2.wd1,
-      start: cfg2.start_1 || cfg2.start || "",
-      end: cfg2.end_1 || cfg2.end || "",
-      lunchStart: cfg2.lunchstart_1 || cfg2.lunchstart || "",
-      lunchEnd: cfg2.lunchend_1 || cfg2.lunchend || "",
-    },
-    2: {
-      enabled: !!cfg2.wd2,
-      start: cfg2.start_2 || cfg2.start || "",
-      end: cfg2.end_2 || cfg2.end || "",
-      lunchStart: cfg2.lunchstart_2 || cfg2.lunchstart || "",
-      lunchEnd: cfg2.lunchend_2 || cfg2.lunchend || "",
-    },
-    3: {
-      enabled: !!cfg2.wd3,
-      start: cfg2.start_3 || cfg2.start || "",
-      end: cfg2.end_3 || cfg2.end || "",
-      lunchStart: cfg2.lunchstart_3 || cfg2.lunchstart || "",
-      lunchEnd: cfg2.lunchend_3 || cfg2.lunchend || "",
-    },
-    4: {
-      enabled: !!cfg2.wd4,
-      start: cfg2.start_4 || cfg2.start || "",
-      end: cfg2.end_4 || cfg2.end || "",
-      lunchStart: cfg2.lunchstart_4 || cfg2.lunchstart || "",
-      lunchEnd: cfg2.lunchend_4 || cfg2.lunchend || "",
-    },
-    5: {
-      enabled: !!cfg2.wd5,
-      start: cfg2.start_5 || cfg2.start || "",
-      end: cfg2.end_5 || cfg2.end || "",
-      lunchStart: cfg2.lunchstart_5 || cfg2.lunchstart || "",
-      lunchEnd: cfg2.lunchend_5 || cfg2.lunchend || "",
-    },
-    6: {
-      enabled: !!cfg2.wd6,
-      start: cfg2.start_6 || cfg2.start || "",
-      end: cfg2.end_6 || cfg2.end || "",
-      lunchStart: cfg2.lunchstart_6 || cfg2.lunchstart || "",
-      lunchEnd: cfg2.lunchend_6 || cfg2.lunchend || "",
-    },
-  };
+  0: {
+    enabled: !!cfg2.wd0,
+    start: cfg2.start_0 ?? cfg2.start ?? "",
+    end: cfg2.end_0 ?? cfg2.end ?? "",
+    lunchStart: cfg2.lunchstart_0 ?? "",
+    lunchEnd: cfg2.lunchend_0 ?? "",
+  },
+  1: {
+    enabled: !!cfg2.wd1,
+    start: cfg2.start_1 ?? cfg2.start ?? "",
+    end: cfg2.end_1 ?? cfg2.end ?? "",
+    lunchStart: cfg2.lunchstart_1 ?? "",
+    lunchEnd: cfg2.lunchend_1 ?? "",
+  },
+  2: {
+    enabled: !!cfg2.wd2,
+    start: cfg2.start_2 ?? cfg2.start ?? "",
+    end: cfg2.end_2 ?? cfg2.end ?? "",
+    lunchStart: cfg2.lunchstart_2 ?? "",
+    lunchEnd: cfg2.lunchend_2 ?? "",
+  },
+  3: {
+    enabled: !!cfg2.wd3,
+    start: cfg2.start_3 ?? cfg2.start ?? "",
+    end: cfg2.end_3 ?? cfg2.end ?? "",
+    lunchStart: cfg2.lunchstart_3 ?? "",
+    lunchEnd: cfg2.lunchend_3 ?? "",
+  },
+  4: {
+    enabled: !!cfg2.wd4,
+    start: cfg2.start_4 ?? cfg2.start ?? "",
+    end: cfg2.end_4 ?? cfg2.end ?? "",
+    lunchStart: cfg2.lunchstart_4 ?? "",
+    lunchEnd: cfg2.lunchend_4 ?? "",
+  },
+  5: {
+    enabled: !!cfg2.wd5,
+    start: cfg2.start_5 ?? cfg2.start ?? "",
+    end: cfg2.end_5 ?? cfg2.end ?? "",
+    lunchStart: cfg2.lunchstart_5 ?? "",
+    lunchEnd: cfg2.lunchend_5 ?? "",
+  },
+  6: {
+    enabled: !!cfg2.wd6,
+    start: cfg2.start_6 ?? cfg2.start ?? "",
+    end: cfg2.end_6 ?? cfg2.end ?? "",
+    lunchStart: cfg2.lunchstart_6 ?? "",
+    lunchEnd: cfg2.lunchend_6 ?? "",
+  },
+};
 
   return {
     barber_id: Number(barberId),
@@ -624,17 +629,23 @@ async function generateSlotsForDateAndBarber(ymd, barberId) {
 
   const startMin = toMinutes(dayCfg.start);
   const endMin = toMinutes(dayCfg.end);
-  const lunchStartMin = toMinutes(dayCfg.lunchStart);
-  const lunchEndMin = toMinutes(dayCfg.lunchEnd);
-  const slot = Number(config.slotMinutes) || 60;
+  const hasLunchBreak = !!dayCfg.lunchStart && !!dayCfg.lunchEnd;
+const lunchStartMin = hasLunchBreak ? toMinutes(dayCfg.lunchStart) : null;
+const lunchEndMin = hasLunchBreak ? toMinutes(dayCfg.lunchEnd) : null;
+const slot = Number(config.slotMinutes) || 60;
 
   if (endMin <= startMin) return [];
   if (slot <= 0 || slot > 240) return [];
 
   const result = [];
   for (let t = startMin; t + slot <= endMin; t += slot) {
-    const withinLunch = t < lunchEndMin && t + slot > lunchStartMin;
-    if (withinLunch) continue;
+    const withinLunch =
+  hasLunchBreak &&
+  t < lunchEndMin &&
+  t + slot > lunchStartMin;
+
+if (withinLunch) continue;
+
     result.push(fromMinutes(t));
   }
   return result;

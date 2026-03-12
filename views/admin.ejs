@@ -960,7 +960,11 @@
       <div class="grid">
         <div class="card">
           <h2>Configuração por barbeiro</h2>
-          <div class="muted">Primeiro selecione o barbeiro. Depois ajuste horários, almoço, duração do slot e folgas somente dele.</div>
+
+<div class="muted">
+  Primeiro selecione o barbeiro. Depois ajuste horários, almoço e folgas somente dele.
+  Deixe os campos de almoço em branco nos dias em que não houver pausa.
+</div>
 
           <div class="cols" style="margin-top:14px;">
             <div class="full">
@@ -1034,12 +1038,12 @@
               />
             </div>
 
-            <div>
+<div>
   <label>Almoço (início)</label>
   <input
     name="lunchStart_<%= day.key %>"
     value="<%= cfgDay.lunchStart || '' %>"
-    placeholder="12:00"
+    placeholder="Deixe em branco se não houver"
   />
 </div>
 
@@ -1048,9 +1052,10 @@
   <input
     name="lunchEnd_<%= day.key %>"
     value="<%= cfgDay.lunchEnd || '' %>"
-    placeholder="13:00"
+    placeholder="Deixe em branco se não houver"
   />
 </div>
+
           </div>
         </div>
       <% }) %>
