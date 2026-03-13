@@ -8,11 +8,22 @@ const session = require("express-session");
 const pgSession = require("connect-pg-simple")(session);
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
+const webpush = require("web-push");
 
 const db = require("./database");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+const VAPID_PUBLIC_KEY = String(process.env.VAPID_PUBLIC_KEY || "").trim();
+const VAPID_PRIVATE_KEY = String(process.env.VAPID_PRIVATE_KEY || "").trim();
+const VAPID_SUBJECT = String(process.env.VAPID_SUBJECT || "mailto:contato@goldbarber.local").trim();
+
+if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+} else {
+  console.warn("⚠️ VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY não definidos. Push notification ficará desativado.");
+}
 
 // ✅ WhatsApp oficial da barbearia (fallback / E.164 sem '+')
 const BARBERSHOP_WPP =
@@ -86,6 +97,110 @@ function dbRun(sql, params = []) {
   });
 }
 
+function isPushConfigured() {
+  return !!(VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY);
+}
+
+function normalizePushSubscription(raw) {
+  if (!raw || typeof raw !== "object") return null;
+
+  const endpoint = String(raw.endpoint || "").trim();
+  const p256dh = String(raw.keys?.p256dh || "").trim();
+  const auth = String(raw.keys?.auth || "").trim();
+
+  if (!endpoint || !p256dh || !auth) return null;
+
+  return {
+    endpoint,
+    keys: { p256dh, auth },
+  };
+}
+
+async function savePushSubscription({ adminUserId, subscription, userAgent }) {
+  const normalized = normalizePushSubscription(subscription);
+  if (!normalized) {
+    throw new Error("Subscription inválida.");
+  }
+
+  await dbRun(
+    `
+    INSERT INTO push_subscriptions (
+      admin_user_id,
+      endpoint,
+      p256dh,
+      auth,
+      user_agent
+    )
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT (endpoint)
+    DO UPDATE SET
+      admin_user_id = EXCLUDED.admin_user_id,
+      p256dh = EXCLUDED.p256dh,
+      auth = EXCLUDED.auth,
+      user_agent = EXCLUDED.user_agent,
+      updated_at = CURRENT_TIMESTAMP
+    `,
+    [
+      adminUserId || null,
+      normalized.endpoint,
+      normalized.keys.p256dh,
+      normalized.keys.auth,
+      userAgent || null,
+    ]
+  );
+
+  return normalized;
+}
+
+async function removePushSubscriptionByEndpoint(endpoint) {
+  const ep = String(endpoint || "").trim();
+  if (!ep) return;
+
+  await dbRun(`DELETE FROM push_subscriptions WHERE endpoint = ?`, [ep]);
+}
+
+async function getAllPushSubscriptions() {
+  return dbAll(
+    `
+    SELECT id, admin_user_id, endpoint, p256dh, auth, user_agent
+      FROM push_subscriptions
+     ORDER BY id
+    `
+  );
+}
+
+async function sendPushToAdmins(payload) {
+  if (!isPushConfigured()) {
+    console.warn("⚠️ Push não enviado: VAPID não configurado.");
+    return;
+  }
+
+  const rows = await getAllPushSubscriptions();
+  if (!rows.length) return;
+
+  for (const row of rows) {
+    const subscription = {
+      endpoint: row.endpoint,
+      keys: {
+        p256dh: row.p256dh,
+        auth: row.auth,
+      },
+    };
+
+    try {
+      await webpush.sendNotification(subscription, JSON.stringify(payload));
+    } catch (err) {
+      const statusCode = Number(err?.statusCode || 0);
+
+      console.error("❌ Erro ao enviar push:", statusCode || "", err?.message || err);
+
+      if (statusCode === 404 || statusCode === 410) {
+        await removePushSubscriptionByEndpoint(row.endpoint);
+      }
+    }
+  }
+}
+
 // -------------------- settings helpers --------------------
 async function getSetting(key, fallback) {
   const row = await dbGet(`SELECT value FROM app_settings WHERE key = ? LIMIT 1`, [key]);
@@ -131,7 +246,7 @@ function fromMinutes(min) {
 function formatDateToDMY(ymd) {
   if (!isValidYMD(ymd)) return ymd || "";
   const [y, m, d] = ymd.split("-");
-  return `${d}-${m}-${y}`;
+  return `${d}/${m}/${y}`;
 }
 
 /**
@@ -633,24 +748,26 @@ async function generateSlotsForDateAndBarber(ymd, barberId) {
   const startMin = toMinutes(dayCfg.start);
   const endMin = toMinutes(dayCfg.end);
   const hasLunchBreak = !!dayCfg.lunchStart && !!dayCfg.lunchEnd;
-const lunchStartMin = hasLunchBreak ? toMinutes(dayCfg.lunchStart) : null;
-const lunchEndMin = hasLunchBreak ? toMinutes(dayCfg.lunchEnd) : null;
-const slot = Number(config.slotMinutes) || 60;
+  const lunchStartMin = hasLunchBreak ? toMinutes(dayCfg.lunchStart) : null;
+  const lunchEndMin = hasLunchBreak ? toMinutes(dayCfg.lunchEnd) : null;
+  const slot = Number(config.slotMinutes) || 60;
 
   if (endMin <= startMin) return [];
   if (slot <= 0 || slot > 240) return [];
+  if (slot % 30 !== 0) return [];
 
   const result = [];
   for (let t = startMin; t + slot <= endMin; t += slot) {
     const withinLunch =
-  hasLunchBreak &&
-  t < lunchEndMin &&
-  t + slot > lunchStartMin;
+      hasLunchBreak &&
+      t < lunchEndMin &&
+      t + slot > lunchStartMin;
 
-if (withinLunch) continue;
+    if (withinLunch) continue;
 
     result.push(fromMinutes(t));
   }
+
   return result;
 }
 
@@ -990,7 +1107,7 @@ app.get("/confirmar", async (req, res) => {
       return res.status(400).send("❌ Link expirado. Faça um novo agendamento.");
     }
 
-    await dbRun(`UPDATE agendamentos SET status = 'aprovado' WHERE id = ?`, [
+        await dbRun(`UPDATE agendamentos SET status = 'aprovado' WHERE id = ?`, [
       row.agendamento_id,
     ]);
 
@@ -1003,6 +1120,23 @@ app.get("/confirmar", async (req, res) => {
 
     const agDepois = await getAgendamentoComBarbeiro(row.agendamento_id);
 
+        if (agDepois) {
+  try {
+    await sendPushToAdmins({
+      title: "Horário confirmado",
+      body:
+        `Cliente: ${agDepois.nome}\n` +
+        `Barbeiro: ${agDepois.barber_name}\n` +
+        `Serviço: ${agDepois.service_name || "Não informado"}\n` +
+        `Horario: ${formatDateToDMY(agDepois.data)} às ${agDepois.horario}`,
+      url: "/admin?tab=agendamentos",
+      tag: `agendamento-confirmado-${agDepois.id}`,
+    });
+  } catch (pushErr) {
+    console.error("❌ Erro ao enviar push de confirmação:", pushErr);
+  }
+}
+
     return res.render(
       "sucesso",
       buildSuccessViewPayload(agDepois, cancelUrl, {
@@ -1013,6 +1147,7 @@ app.get("/confirmar", async (req, res) => {
         hint: "Se mudar de ideia, você pode cancelar este horário pelo botão abaixo.",
       })
     );
+
   } catch (e) {
     console.error(e);
     return res.status(500).send("❌ Erro ao confirmar. Tente novamente.");
@@ -1108,7 +1243,7 @@ app.post("/cancelar/confirmar", async (req, res) => {
       return res.status(400).send("❌ Link de cancelamento expirado.");
     }
 
-    await dbRun(`UPDATE agendamentos SET status = 'cancelado' WHERE id = ?`, [
+        await dbRun(`UPDATE agendamentos SET status = 'cancelado' WHERE id = ?`, [
       row.agendamento_id,
     ]);
 
@@ -1121,6 +1256,23 @@ app.post("/cancelar/confirmar", async (req, res) => {
 
     const agDepois = await getAgendamentoComBarbeiro(row.agendamento_id);
 
+    if (agDepois) {
+  try {
+    await sendPushToAdmins({
+      title: "Horário cancelado",
+      body:
+        `Cliente: ${agDepois.nome}\n` +
+        `Barbeiro: ${agDepois.barber_name}\n` +
+        `Serviço: ${agDepois.service_name || "Não informado"}\n` +
+        `Horario: ${formatDateToDMY(agDepois.data)} às ${agDepois.horario}`,
+      url: "/admin?tab=agendamentos",
+      tag: `agendamento-cancelado-${agDepois.id}`,
+    });
+  } catch (pushErr) {
+    console.error("❌ Erro ao enviar push de cancelamento:", pushErr);
+  }
+}
+
     return res.render(
       "sucesso",
       buildSuccessViewPayload(agDepois, "", {
@@ -1131,6 +1283,7 @@ app.post("/cancelar/confirmar", async (req, res) => {
         hint: "Este link de cancelamento já foi consumido e não poderá ser reutilizado.",
       })
     );
+
   } catch (e) {
     console.error(e);
     return res.status(500).send("❌ Erro ao cancelar. Tente novamente.");
@@ -1331,6 +1484,63 @@ app.post("/admin/login", async (req, res) => {
 
 app.post("/admin/logout", (req, res) => {
   req.session.destroy(() => res.redirect("/admin/login"));
+});
+
+app.get("/admin/push/public-key", requireAdmin, async (req, res) => {
+  try {
+    if (!isPushConfigured()) {
+  return res.status(503).json({ ok: false, error: "push_not_configured" });
+}
+    return res.json({
+      ok: true,
+      publicKey: VAPID_PUBLIC_KEY,
+    });
+  } catch (e) {
+    console.error("❌ /admin/push/public-key:", e);
+    return res.status(500).json({ ok: false });
+  }
+});
+
+app.post("/admin/push/subscribe", requireAdmin, async (req, res) => {
+  try {
+    if (!isPushConfigured()) {
+      return res.status(503).json({ ok: false, error: "push_not_configured" });
+    }
+
+    const subscription = req.body || {};
+    const adminUserId = Number(req.session?.adminUser?.id || 0) || null;
+    const userAgent = String(req.headers["user-agent"] || "").trim();
+
+    const normalized = await savePushSubscription({
+      adminUserId,
+      subscription,
+      userAgent,
+    });
+
+    return res.json({
+      ok: true,
+      endpoint: normalized.endpoint,
+    });
+  } catch (e) {
+    console.error("❌ /admin/push/subscribe:", e);
+    return res.status(400).json({ ok: false, error: "invalid_subscription" });
+  }
+});
+
+app.post("/admin/push/unsubscribe", requireAdmin, async (req, res) => {
+  try {
+    const endpoint = String((req.body || {}).endpoint || "").trim();
+    if (!endpoint) {
+      return res.status(400).json({ ok: false, error: "missing_endpoint" });
+    }
+
+    await removePushSubscriptionByEndpoint(endpoint);
+
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error("❌ /admin/push/unsubscribe:", e);
+    return res.status(500).json({ ok: false });
+  }
 });
 
 // -------------------- ADMIN PANEL --------------------
@@ -1676,7 +1886,16 @@ app.post("/admin/barbeiro/:id/config", requireAdmin, async (req, res) => {
     return res.status(400).send("❌ Barbeiro inválido.");
   }
 
-  const slotMinutes = Number(body.slotMinutes) || 30;
+  const rawSlotMinutes = Number(body.slotMinutes);
+let slotMinutes =
+  Number.isFinite(rawSlotMinutes) && rawSlotMinutes >= 30
+    ? Math.floor(rawSlotMinutes)
+    : 30;
+
+if (slotMinutes % 30 !== 0) {
+  slotMinutes = 30;
+}
+
   const daysOffDates = body.daysOffDates;
 
   await dbRun(`INSERT OR IGNORE INTO barber_config (barber_id) VALUES (?)`, [barberId]);

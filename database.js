@@ -33,6 +33,7 @@ const INSERT_TABLES_WITH_ID = new Set([
   'admin_users',
   'mensalista_overrides',
   'services',
+  'push_subscriptions',
 ]);
 
 function normalizeWhitespace(sql) {
@@ -352,6 +353,19 @@ await pool.query(`
     `);
 
     await pool.query(`
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id SERIAL PRIMARY KEY,
+        admin_user_id INTEGER REFERENCES admin_users(id) ON DELETE CASCADE,
+        endpoint TEXT NOT NULL UNIQUE,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        user_agent TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS app_settings (
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL
@@ -393,10 +407,7 @@ await ensureColumn('barber_config', 'start_6', `TEXT NOT NULL DEFAULT '09:00'`);
 await ensureColumn('barber_config', 'end_6', `TEXT NOT NULL DEFAULT '18:00'`);
 await ensureColumn('barber_config', 'lunchstart_6', `TEXT NOT NULL DEFAULT ''`);
 await ensureColumn('barber_config', 'lunchend_6', `TEXT NOT NULL DEFAULT ''`);
-
-// 👇 ADICIONE ESTA LINHA
 await ensureColumn('barber_config', 'slot_minutes', 'INTEGER NOT NULL DEFAULT 60');
-
 await ensureColumn('services', 'price_cents', 'INTEGER NOT NULL DEFAULT 0');
 await ensureColumn('services', 'created_at', 'TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP');
 await ensureColumn('services', 'updated_at', 'TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP');
@@ -409,17 +420,24 @@ await ensureColumn('agendamentos', 'service_duration_minutes', 'INTEGER NOT NULL
 
     await ensureColumn('mensalista_overrides', 'created_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
     await ensureColumn('mensalista_overrides', 'updated_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
+    await ensureColumn('push_subscriptions', 'admin_user_id', 'INTEGER');
+    await ensureColumn('push_subscriptions', 'endpoint', 'TEXT NOT NULL DEFAULT \'\'');
+    await ensureColumn('push_subscriptions', 'p256dh', 'TEXT NOT NULL DEFAULT \'\'');
+    await ensureColumn('push_subscriptions', 'auth', 'TEXT NOT NULL DEFAULT \'\'');
+    await ensureColumn('push_subscriptions', 'user_agent', 'TEXT');
+    await ensureColumn('push_subscriptions', 'created_at', 'TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP');
+    await ensureColumn('push_subscriptions', 'updated_at', 'TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP');
 
     await ensureConstraint(
-      'fk_agendamentos_service_id',
-      `
-      ALTER TABLE agendamentos
-      ADD CONSTRAINT fk_agendamentos_service_id
-      FOREIGN KEY (service_id)
-      REFERENCES services(id)
-      ON DELETE SET NULL;
-      `
-    );
+  'fk_agendamentos_service_id',
+  `
+  ALTER TABLE agendamentos
+  ADD CONSTRAINT fk_agendamentos_service_id
+  FOREIGN KEY (service_id)
+  REFERENCES services(id)
+  ON DELETE SET NULL;
+  `
+);
 
     await ensureIndex(
       'idx_services_active',
@@ -454,6 +472,11 @@ await ensureColumn('agendamentos', 'service_duration_minutes', 'INTEGER NOT NULL
     await ensureIndex(
       'idx_mensalista_overrides_plan_original',
       `CREATE INDEX idx_mensalista_overrides_plan_original ON mensalista_overrides(plan_id, original_date);`
+    );
+
+    await ensureIndex(
+      'idx_push_subscriptions_admin_user_id',
+      `CREATE INDEX idx_push_subscriptions_admin_user_id ON push_subscriptions(admin_user_id);`
     );
 
     await pool.query(`
@@ -504,6 +527,32 @@ await ensureColumn('agendamentos', 'service_duration_minutes', 'INTEGER NOT NULL
           BEFORE UPDATE ON mensalista_overrides
           FOR EACH ROW
           EXECUTE FUNCTION set_mensalista_overrides_updated_at();
+        END IF;
+      END $$;
+    `);
+
+    await pool.query(`
+      CREATE OR REPLACE FUNCTION set_push_subscriptions_updated_at()
+      RETURNS TRIGGER AS $$
+      BEGIN
+        NEW.updated_at = CURRENT_TIMESTAMP;
+        RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql;
+    `);
+
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1
+          FROM pg_trigger
+          WHERE tgname = 'trg_push_subscriptions_updated_at'
+        ) THEN
+          CREATE TRIGGER trg_push_subscriptions_updated_at
+          BEFORE UPDATE ON push_subscriptions
+          FOR EACH ROW
+          EXECUTE FUNCTION set_push_subscriptions_updated_at();
         END IF;
       END $$;
     `);
@@ -560,9 +609,14 @@ await pool.query(`
 `);
 
     await db.run(
-      `INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING`,
-      ['reserva_expira_minutos', '30']
-    );
+  `INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING`,
+  ['reserva_expira_minutos', '30']
+);
+
+await db.run(
+  `INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING`,
+  ['agendamentos_refresh_segundos', '30']
+);
 
     console.log('✅ PostgreSQL conectado e schema inicializado.');
   } catch (error) {

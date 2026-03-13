@@ -598,6 +598,31 @@
       font-size: 13px;
       font-weight: 900;
     }
+    .notifBox{
+      margin-top: 12px;
+      padding: 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.03);
+      display: grid;
+      gap: 10px;
+    }
+
+    .notifStatus{
+      font-size: 13px;
+      font-weight: 900;
+      color: var(--txt);
+    }
+
+    .notifStatus.ok{ color: var(--green); }
+    .notifStatus.warn{ color: var(--gold2); }
+    .notifStatus.err{ color: #ff8a96; }
+
+    .notifActions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
   </style>
 </head>
 
@@ -725,7 +750,7 @@
             (se o cliente não confirmar no WhatsApp). Depois disso, ele é removido do banco.
           </div>
 
-          <form method="POST" action="/admin/config/reserva" style="margin-top:12px;">
+<form method="POST" action="/admin/config/reserva" style="margin-top:12px;">
   <div class="cols">
     <div>
       <label>Tempo para expirar reserva (minutos)</label>
@@ -751,6 +776,30 @@
     </div>
   </div>
 </form>
+
+<div class="notifBox">
+  <div>
+    <h3 style="margin-bottom:6px;">Notificações no celular / tablet</h3>
+    <div class="muted">
+      Ative para receber aviso quando um cliente confirmar ou cancelar um horário,
+      mesmo com o painel em segundo plano.
+    </div>
+  </div>
+
+  <div id="pushStatus" class="notifStatus warn">
+    Verificando suporte do dispositivo...
+  </div>
+
+  <div class="notifActions">
+    <button type="button" class="btn btnPrimary" id="btnAtivarPush">
+      Ativar notificações
+    </button>
+
+    <button type="button" class="btn" id="btnDesativarPush" style="display:none;">
+      Desativar neste aparelho
+    </button>
+  </div>
+</div>
         </div>
 
         <div class="card">
@@ -986,7 +1035,24 @@
   <h3><%= selectedCfgBarberObj.name %></h3>
 
 <form method="POST" action="/admin/barbeiro/<%= selectedCfgBarberObj.id %>/config" style="margin-top:10px;">
-    <div class="cols">
+  <div class="cols">
+
+    <div class="full">
+  <label>Intervalo entre horários exibidos (minutos)</label>
+  <input
+    type="number"
+    name="slotMinutes"
+    min="30"
+    step="30"
+    value="<%= Number(selectedCfg.slotMinutes || 30) %>"
+    required
+  />
+  <div class="muted">
+    O sistema usa blocos internos fixos de 30 minutos.
+    Aqui você define de quanto em quanto os horários serão exibidos para este barbeiro.
+    Use apenas múltiplos de 30, como 30, 60, 90 ou 120.
+  </div>
+</div>
 
       <%
         const dayNames = [
@@ -2339,6 +2405,207 @@ function startAutoRefreshIfNeeded(){
   startAutoRefreshIfNeeded();
 });
 
+    function urlBase64ToUint8Array(base64String) {
+      const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+      const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+      const rawData = window.atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+
+      for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+      }
+      return outputArray;
+    }
+
+    async function fetchPushPublicKey() {
+      const res = await fetch("/admin/push/public-key", {
+        method: "GET",
+        headers: { "Accept": "application/json" }
+      });
+
+      if (!res.ok) {
+        throw new Error("Não foi possível obter a chave pública do push.");
+      }
+
+      return res.json();
+    }
+
+    async function sendSubscriptionToServer(subscription) {
+      const res = await fetch("/admin/push/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(subscription)
+      });
+
+      if (!res.ok) {
+        throw new Error("Não foi possível salvar a inscrição do dispositivo.");
+      }
+
+      return res.json();
+    }
+
+    async function removeSubscriptionFromServer(endpoint) {
+      const res = await fetch("/admin/push/unsubscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint })
+      });
+
+      if (!res.ok) {
+        throw new Error("Não foi possível remover a inscrição do dispositivo.");
+      }
+
+      return res.json();
+    }
+
+    async function getServiceWorkerRegistrationReady() {
+      const reg = await navigator.serviceWorker.register("/sw.js");
+      await navigator.serviceWorker.ready;
+      return reg;
+    }
+
+    function setPushStatus(text, type) {
+      const el = document.getElementById("pushStatus");
+      if (!el) return;
+      el.textContent = text;
+      el.className = `notifStatus ${type || ""}`.trim();
+    }
+
+    function updatePushButtons(hasSubscription) {
+      const btnAtivar = document.getElementById("btnAtivarPush");
+      const btnDesativar = document.getElementById("btnDesativarPush");
+
+      if (!btnAtivar || !btnDesativar) return;
+
+      if (hasSubscription) {
+        btnAtivar.style.display = "none";
+        btnDesativar.style.display = "";
+      } else {
+        btnAtivar.style.display = "";
+        btnDesativar.style.display = "none";
+      }
+    }
+
+    async function syncPushUIState() {
+      const btnAtivar = document.getElementById("btnAtivarPush");
+      const btnDesativar = document.getElementById("btnDesativarPush");
+
+      if (!btnAtivar || !btnDesativar) return;
+
+      if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+        setPushStatus("Este navegador/dispositivo não suporta notificações push.", "err");
+        btnAtivar.disabled = true;
+        btnDesativar.disabled = true;
+        return;
+      }
+
+      try {
+        const reg = await getServiceWorkerRegistrationReady();
+        const sub = await reg.pushManager.getSubscription();
+
+        if (Notification.permission === "denied") {
+          setPushStatus("As notificações estão bloqueadas no navegador deste aparelho.", "err");
+          updatePushButtons(!!sub);
+          return;
+        }
+
+        if (sub) {
+          setPushStatus("Notificações ativas neste aparelho.", "ok");
+          updatePushButtons(true);
+        } else {
+          if (Notification.permission === "granted") {
+            setPushStatus("Permissão concedida, mas este aparelho ainda não foi inscrito.", "warn");
+          } else {
+            setPushStatus("Notificações ainda não ativadas neste aparelho.", "warn");
+          }
+          updatePushButtons(false);
+        }
+      } catch (err) {
+        console.error("❌ syncPushUIState:", err);
+        setPushStatus("Erro ao verificar o status das notificações.", "err");
+      }
+    }
+
+    async function ativarPushNoAparelho() {
+      try {
+        if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+          setPushStatus("Este navegador/dispositivo não suporta notificações push.", "err");
+          return;
+        }
+
+        const permission = await Notification.requestPermission();
+        if (permission !== "granted") {
+          setPushStatus("Permissão de notificações não concedida.", "err");
+          return;
+        }
+
+        const reg = await getServiceWorkerRegistrationReady();
+        let sub = await reg.pushManager.getSubscription();
+
+        if (!sub) {
+          const data = await fetchPushPublicKey();
+          const publicKey = data?.publicKey;
+
+          if (!publicKey) {
+            throw new Error("Chave pública VAPID não encontrada.");
+          }
+
+          sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(publicKey)
+          });
+        }
+
+        await sendSubscriptionToServer(sub);
+
+        setPushStatus("Notificações ativadas com sucesso neste aparelho.", "ok");
+        updatePushButtons(true);
+      } catch (err) {
+        console.error("❌ ativarPushNoAparelho:", err);
+        setPushStatus("Erro ao ativar as notificações neste aparelho.", "err");
+      }
+    }
+
+    async function desativarPushNoAparelho() {
+      try {
+        const reg = await getServiceWorkerRegistrationReady();
+        const sub = await reg.pushManager.getSubscription();
+
+        if (!sub) {
+          setPushStatus("Este aparelho já estava sem inscrição ativa.", "warn");
+          updatePushButtons(false);
+          return;
+        }
+
+        const endpoint = sub.endpoint;
+        await sub.unsubscribe();
+
+        if (endpoint) {
+          await removeSubscriptionFromServer(endpoint);
+        }
+
+        setPushStatus("Notificações desativadas neste aparelho.", "warn");
+        updatePushButtons(false);
+      } catch (err) {
+        console.error("❌ desativarPushNoAparelho:", err);
+        setPushStatus("Erro ao desativar as notificações neste aparelho.", "err");
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const btnAtivarPush = document.getElementById("btnAtivarPush");
+      const btnDesativarPush = document.getElementById("btnDesativarPush");
+
+      if (btnAtivarPush) {
+        btnAtivarPush.addEventListener("click", ativarPushNoAparelho);
+      }
+
+      if (btnDesativarPush) {
+        btnDesativarPush.addEventListener("click", desativarPushNoAparelho);
+      }
+
+      syncPushUIState();
+    });
   </script>
 </body>
 </html>
