@@ -2459,10 +2459,76 @@ function startAutoRefreshIfNeeded(){
     }
 
     async function getServiceWorkerRegistrationReady() {
-      const reg = await navigator.serviceWorker.register("/sw.js");
-      await navigator.serviceWorker.ready;
-      return reg;
+  const existing = await navigator.serviceWorker.getRegistration("/sw.js");
+  if (existing) {
+    await navigator.serviceWorker.ready;
+    return existing;
+  }
+
+  const reg = await navigator.serviceWorker.register("/sw.js");
+  await navigator.serviceWorker.ready;
+  return reg;
+}
+
+function isIos() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent || "");
+}
+
+function isInStandaloneMode() {
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+
+async function getPushSupportInfo() {
+  if (!window.isSecureContext) {
+    return {
+      ok: false,
+      reason: "Este site precisa estar em HTTPS para usar notificações."
+    };
+  }
+
+  if (!("serviceWorker" in navigator)) {
+    return {
+      ok: false,
+      reason: "Este navegador não suporta Service Worker."
+    };
+  }
+
+  if (!("Notification" in window)) {
+    return {
+      ok: false,
+      reason: "Este navegador não suporta notificações."
+    };
+  }
+
+  if (isIos() && !isInStandaloneMode()) {
+    return {
+      ok: false,
+      reason: "No iPhone, abra este painel pelo ícone da Tela de Início para ativar notificações."
+    };
+  }
+
+  try {
+    const reg = await getServiceWorkerRegistrationReady();
+
+    if (!reg || !reg.pushManager) {
+      return {
+        ok: false,
+        reason: "Push não está disponível neste modo de abertura do app."
+      };
     }
+
+    return {
+      ok: true,
+      reg
+    };
+  } catch (err) {
+    console.error("❌ getPushSupportInfo:", err);
+    return {
+      ok: false,
+      reason: "Não foi possível inicializar o Service Worker neste aparelho."
+    };
+  }
+}
 
     function setPushStatus(text, type) {
       const el = document.getElementById("pushStatus");
@@ -2486,111 +2552,128 @@ function startAutoRefreshIfNeeded(){
       }
     }
 
-    async function syncPushUIState() {
-      const btnAtivar = document.getElementById("btnAtivarPush");
-      const btnDesativar = document.getElementById("btnDesativarPush");
-
-      if (!btnAtivar || !btnDesativar) return;
-
-      if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
-        setPushStatus("Este navegador/dispositivo não suporta notificações push.", "err");
-        btnAtivar.disabled = true;
-        btnDesativar.disabled = true;
-        return;
-      }
-
-      try {
-        const reg = await getServiceWorkerRegistrationReady();
-        const sub = await reg.pushManager.getSubscription();
-
-        if (Notification.permission === "denied") {
-          setPushStatus("As notificações estão bloqueadas no navegador deste aparelho.", "err");
-          updatePushButtons(!!sub);
-          return;
-        }
-
-        if (sub) {
-          setPushStatus("Notificações ativas neste aparelho.", "ok");
-          updatePushButtons(true);
-        } else {
-          if (Notification.permission === "granted") {
-            setPushStatus("Permissão concedida, mas este aparelho ainda não foi inscrito.", "warn");
-          } else {
-            setPushStatus("Notificações ainda não ativadas neste aparelho.", "warn");
-          }
-          updatePushButtons(false);
-        }
-      } catch (err) {
-        console.error("❌ syncPushUIState:", err);
-        setPushStatus("Erro ao verificar o status das notificações.", "err");
-      }
-    }
-
     async function ativarPushNoAparelho() {
-      try {
-        if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
-          setPushStatus("Este navegador/dispositivo não suporta notificações push.", "err");
-          return;
-        }
+  try {
+    const support = await getPushSupportInfo();
 
-        const permission = await Notification.requestPermission();
-        if (permission !== "granted") {
-          setPushStatus("Permissão de notificações não concedida.", "err");
-          return;
-        }
-
-        const reg = await getServiceWorkerRegistrationReady();
-        let sub = await reg.pushManager.getSubscription();
-
-        if (!sub) {
-          const data = await fetchPushPublicKey();
-          const publicKey = data?.publicKey;
-
-          if (!publicKey) {
-            throw new Error("Chave pública VAPID não encontrada.");
-          }
-
-          sub = await reg.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(publicKey)
-          });
-        }
-
-        await sendSubscriptionToServer(sub);
-
-        setPushStatus("Notificações ativadas com sucesso neste aparelho.", "ok");
-        updatePushButtons(true);
-      } catch (err) {
-        console.error("❌ ativarPushNoAparelho:", err);
-        setPushStatus("Erro ao ativar as notificações neste aparelho.", "err");
-      }
+    if (!support.ok) {
+      setPushStatus(support.reason, "err");
+      return;
     }
+
+    const permission = await Notification.requestPermission();
+
+    if (permission !== "granted") {
+      setPushStatus("Permissão de notificações não concedida.", "err");
+      return;
+    }
+
+    const reg = support.reg;
+    let sub = await reg.pushManager.getSubscription();
+
+    if (!sub) {
+      const data = await fetchPushPublicKey();
+      const publicKey = data?.publicKey;
+
+      if (!publicKey) {
+        throw new Error("Chave pública VAPID não encontrada.");
+      }
+
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey)
+      });
+    }
+
+    await sendSubscriptionToServer(sub);
+
+    setPushStatus("Notificações ativadas com sucesso neste aparelho.", "ok");
+    updatePushButtons(true);
+  } catch (err) {
+    console.error("❌ ativarPushNoAparelho:", err);
+    setPushStatus("Erro ao ativar as notificações neste aparelho.", "err");
+  }
+}
+
+    async function syncPushUIState() {
+  const btnAtivar = document.getElementById("btnAtivarPush");
+  const btnDesativar = document.getElementById("btnDesativarPush");
+
+  if (!btnAtivar || !btnDesativar) return;
+
+  const support = await getPushSupportInfo();
+
+  if (!support.ok) {
+    setPushStatus(support.reason, "err");
+    btnAtivar.disabled = true;
+    btnDesativar.disabled = true;
+    updatePushButtons(false);
+    return;
+  }
+
+  btnAtivar.disabled = false;
+  btnDesativar.disabled = false;
+
+  try {
+    const reg = support.reg;
+    const sub = await reg.pushManager.getSubscription();
+
+    if (Notification.permission === "denied") {
+      setPushStatus("As notificações estão bloqueadas neste aparelho. Libere em Ajustes > Notificações.", "err");
+      updatePushButtons(!!sub);
+      return;
+    }
+
+    if (sub) {
+      setPushStatus("Notificações ativas neste aparelho.", "ok");
+      updatePushButtons(true);
+    } else {
+      if (Notification.permission === "granted") {
+        setPushStatus("Permissão concedida, mas este aparelho ainda não foi inscrito.", "warn");
+      } else {
+        setPushStatus("Notificações ainda não ativadas neste aparelho.", "warn");
+      }
+      updatePushButtons(false);
+    }
+  } catch (err) {
+    console.error("❌ syncPushUIState:", err);
+    setPushStatus("Erro ao verificar o status das notificações.", "err");
+  }
+}
 
     async function desativarPushNoAparelho() {
-      try {
-        const reg = await getServiceWorkerRegistrationReady();
-        const sub = await reg.pushManager.getSubscription();
+  try {
+    const support = await getPushSupportInfo();
 
-        if (!sub) {
-          setPushStatus("Este aparelho já estava sem inscrição ativa.", "warn");
-          updatePushButtons(false);
-          return;
-        }
-
-        const endpoint = sub.endpoint;
-        await sub.unsubscribe();
-
-        if (endpoint) {
-          await removeSubscriptionFromServer(endpoint);
-        }
-
-        setPushStatus("Notificações desativadas neste aparelho.", "warn");
-        updatePushButtons(false);
-      } catch (err) {
-        console.error("❌ desativarPushNoAparelho:", err);
-        setPushStatus("Erro ao desativar as notificações neste aparelho.", "err");
-      }
+    if (!support.ok) {
+      setPushStatus(support.reason, "err");
+      updatePushButtons(false);
+      return;
     }
+
+    const reg = support.reg;
+    const sub = await reg.pushManager.getSubscription();
+
+    if (!sub) {
+      setPushStatus("Este aparelho já estava sem inscrição ativa.", "warn");
+      updatePushButtons(false);
+      return;
+    }
+
+    const endpoint = sub.endpoint;
+    await sub.unsubscribe();
+
+    if (endpoint) {
+      await removeSubscriptionFromServer(endpoint);
+    }
+
+    setPushStatus("Notificações desativadas neste aparelho.", "warn");
+    updatePushButtons(false);
+  } catch (err) {
+    console.error("❌ desativarPushNoAparelho:", err);
+    setPushStatus("Erro ao desativar as notificações neste aparelho.", "err");
+  }
+}
 
     document.addEventListener("DOMContentLoaded", () => {
       const btnAtivarPush = document.getElementById("btnAtivarPush");
