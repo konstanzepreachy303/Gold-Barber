@@ -2690,42 +2690,6 @@ async function getPushSupportInfo() {
       syncPushUIState();
     });
 
-window.addEventListener("load", async () => {
-  try {
-    const info = {
-      isSecureContext: window.isSecureContext,
-      hasServiceWorker: "serviceWorker" in navigator,
-      hasNotification: "Notification" in window,
-      hasPushManagerInWindow: "PushManager" in window,
-      isStandalone:
-        window.matchMedia("(display-mode: standalone)").matches ||
-        window.navigator.standalone === true
-    };
-
-    let regOk = false;
-    let hasPushManagerInReg = false;
-
-    try {
-      const reg = await navigator.serviceWorker.getRegistration("/sw.js");
-      regOk = !!reg;
-      hasPushManagerInReg = !!(reg && reg.pushManager);
-    } catch (e) {}
-
-    alert(
-      "DEBUG PUSH\n\n" +
-      "HTTPS: " + info.isSecureContext + "\n" +
-      "serviceWorker: " + info.hasServiceWorker + "\n" +
-      "Notification: " + info.hasNotification + "\n" +
-      "PushManager(window): " + info.hasPushManagerInWindow + "\n" +
-      "Standalone: " + info.isStandalone + "\n" +
-      "SW registrado: " + regOk + "\n" +
-      "pushManager(reg): " + hasPushManagerInReg
-    );
-  } catch (err) {
-    alert("Erro no debug: " + (err?.message || err));
-  }
-});
-
   </script>
 </body>
 </html>
