@@ -18,7 +18,7 @@ self.addEventListener("push", (event) => {
     badge: "/img/icon-192.png",
     tag: data.tag || "goldbarber-notification",
     renotify: true,
-    requireInteraction: true, // mantém a notificação visível
+    requireInteraction: true,
     data: {
       url: data.url || "/admin"
     }
@@ -37,8 +37,12 @@ self.addEventListener("notificationclick", (event) => {
   event.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
-        if (client.url.includes(url) && "focus" in client) {
-          return client.focus();
+        if ("focus" in client) {
+          client.focus();
+          if (client.url !== url && "navigate" in client) {
+            return client.navigate(url);
+          }
+          return;
         }
       }
 
