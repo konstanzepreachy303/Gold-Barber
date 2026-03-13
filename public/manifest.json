@@ -2,6 +2,7 @@
   "name": "Gold Barber",
   "short_name": "GoldBarber",
   "start_url": "/admin",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0c0c0c",
   "theme_color": "#c9a227",
