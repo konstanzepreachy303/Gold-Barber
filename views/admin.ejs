@@ -550,6 +550,15 @@
     }
     .tag.mensalista::before{ background: rgba(245,245,245,.75); }
 
+    .tag.troca{
+     background: rgba(59,130,246,.10);
+     border-color: rgba(59,130,246,.45);
+     box-shadow: 0 0 0 2px rgba(59,130,246,.12);
+    }
+    .tag.troca::before{
+     background: #3b82f6;
+    }
+
     .btnMini{
       padding: 7px 10px;
       border-radius: 999px;
@@ -578,13 +587,13 @@
     }
 
     .btnSwap{
-      background: rgba(255,59,77,.06);
-      border: 1px solid rgba(255,59,77,.35);
-      color: #ffd7db;
+    background: rgba(59,130,246,.10);
+    border: 1px solid rgba(59,130,246,.45);
+    color: #dbeafe;
     }
     .btnSwap:hover{
-      border-color: rgba(255,59,77,.60);
-      box-shadow: 0 10px 24px rgba(0,0,0,.25);
+     border-color: rgba(59,130,246,.75);
+     box-shadow: 0 10px 24px rgba(0,0,0,.25);
     }
 
     .swapInfo{
@@ -781,8 +790,8 @@
   <div>
     <h3 style="margin-bottom:6px;">Notificações no celular / tablet</h3>
     <div class="muted">
-      Ative para receber aviso quando um cliente confirmar ou cancelar um horário,
-      mesmo com o painel em segundo plano.
+      Ative para receber aviso quando um cliente, confirmar ou cancelar um horário,
+mesmo com o painel em segundo plano.
     </div>
   </div>
 
@@ -1427,11 +1436,11 @@
           <div class="muted" id="agPeriodoLabel" style="margin-top:10px;">—</div>
 
           <div class="row" style="margin-top:10px; gap:8px;">
-            <span class="tag confirmado">confirmado</span>
-            <span class="tag reservado">reservado</span>
-            <span class="tag mensalista">mensalista</span>
-          </div>
-        </div>
+          <span class="tag confirmado">confirmado</span>
+	  <span class="tag reservado">reservado</span>
+	  <span class="tag mensalista">mensalista</span>
+	  <span class="tag troca">trocar serviço</span>
+	  </div>
 
         <div class="card">
           <% if (!agendaAll.length) { %>
@@ -1486,6 +1495,14 @@
 
                         <div class="slotRight">
                           <span class="tag <%= tagClass %>"><%= tagText %></span>
+			 
+			  <% if (!isMensalista) { %>
+<button class="btn btnMini btnSwap"
+type="button"
+onclick="abrirTrocaServico(this)">
+Trocar serviço
+</button>
+<% } %>
 
                           <% if (isMensalista) { %>
                             <button class="btn btnMini btnSwap" type="button" onclick="abrirTrocaMensalista(this)">
@@ -1516,74 +1533,113 @@
   </main>
 
   <div id="admOverlay" class="overlay" aria-hidden="true">
-    <div class="cal" role="dialog" aria-modal="true" aria-label="Selecionar data">
-      <div class="cal-head">
-        <div class="cal-title" id="admCalTitle">Mês</div>
-        <div class="cal-nav">
-          <button type="button" id="admPrevMonth">◀</button>
-          <button type="button" id="admNextMonth">▶</button>
-        </div>
-      </div>
-      <div class="cal-body">
-        <div class="dow">
-          <div>DOM</div><div>SEG</div><div>TER</div><div>QUA</div><div>QUI</div><div>SEX</div><div>SÁB</div>
-        </div>
-        <div id="admDays" class="days"></div>
-      </div>
-      <div class="cal-foot">
-        <button type="button" id="admCancelCal">Cancelar</button>
-        <button type="button" class="primary" id="admOkCal">Confirmar</button>
+  <div class="cal" role="dialog" aria-modal="true" aria-label="Selecionar data">
+    <div class="cal-head">
+      <div class="cal-title" id="admCalTitle">Mês</div>
+      <div class="cal-nav">
+        <button type="button" id="admPrevMonth">◀</button>
+        <button type="button" id="admNextMonth">▶</button>
       </div>
     </div>
-  </div>
-
-  <div id="swapOverlay" class="overlay" aria-hidden="true">
-    <div class="cal calWide" role="dialog" aria-modal="true" aria-label="Trocar horário do mensalista">
-      <div class="cal-head">
-        <div class="cal-title">Trocar horário do mensalista</div>
+    <div class="cal-body">
+      <div class="dow">
+        <div>DOM</div><div>SEG</div><div>TER</div><div>QUA</div><div>QUI</div><div>SEX</div><div>SÁB</div>
       </div>
-      <div class="cal-body">
-        <div class="swapInfo">
-          <div>Cliente: <span id="swapNome">—</span></div>
-          <div>Barbeiro: <span id="swapBarbeiro">—</span></div>
-          <div>Ocorrência atual: <span id="swapAtual">—</span></div>
-        </div>
+      <div id="admDays" class="days"></div>
+    </div>
+    <div class="cal-foot">
+      <button type="button" id="admCancelCal">Cancelar</button>
+      <button type="button" class="primary" id="admOkCal">Confirmar</button>
+    </div>
+  </div>
+</div>
 
-        <form method="POST" action="/admin/mensalistas/trocar-horario" id="swapMensalistaForm">
-          <input type="hidden" name="planId" id="swapPlanId" />
-          <input type="hidden" name="barberId" id="swapBarberId" />
-          <input type="hidden" name="originalDate" id="swapOriginalDate" />
-          <input type="hidden" name="originalHorario" id="swapOriginalHorario" />
+<div id="serviceOverlay" class="overlay" aria-hidden="true">
+  <div class="cal calWide" role="dialog" aria-modal="true" aria-label="Trocar serviço">
+    <div class="cal-head">
+      <div class="cal-title">Trocar serviço</div>
+    </div>
 
-          <div class="cols">
-            <div>
-              <label>Nova data</label>
-              <input type="text" name="newDateDisplay" id="swapDateDisplay" placeholder="Clique para escolher" readonly style="cursor:pointer;" />
-              <input type="hidden" name="newDate" id="swapDate" />
-            </div>
+    <div class="cal-body">
+      <div class="swapInfo">
+        <div>Cliente: <span id="svcNome">—</span></div>
+        <div>Barbeiro: <span id="svcBarbeiro">—</span></div>
+        <div>Horário: <span id="svcHorario">—</span></div>
+      </div>
 
-            <div>
-              <label>Novo horário</label>
-              <select name="newHorario" id="swapHorario" required disabled>
-                <option value="">Selecione a nova data</option>
-              </select>
-              <div class="muted" id="swapHorarioMsg"></div>
-            </div>
+      <form method="POST" action="/admin/agendamento/trocar-servico" id="svcForm">
+        <input type="hidden" name="agendamentoId" id="svcAgendamentoId">
 
-            <div class="full">
-              <div class="muted">
-                O sistema deve validar se o barbeiro trabalha no novo dia e se o novo horário está livre.
-              </div>
+        <label>Novo serviço</label>
+        <select name="serviceId" id="svcServiceId" required>
+  <% servicesList.filter(s => Number(s.is_active)).forEach(s => { %>
+    <option
+      value="<%= s.id %>"
+      data-service-name="<%= s.name %>"
+    >
+      <%= s.name %> (<%= s.duration_minutes %> min<%= Number(s.price_cents || 0) > 0 ? ` / ${formatCentsBRL(s.price_cents)}` : "" %>)
+    </option>
+  <% }) %>
+</select>
+      </form>
+    </div>
+
+    <div class="cal-foot">
+      <button type="button" id="svcCancelBtn">Cancelar</button>
+      <button type="submit" form="svcForm" class="primary" id="svcSubmitBtn">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div id="swapOverlay" class="overlay" aria-hidden="true">
+  <div class="cal calWide" role="dialog" aria-modal="true" aria-label="Trocar horário do mensalista">
+    <div class="cal-head">
+      <div class="cal-title">Trocar horário do mensalista</div>
+    </div>
+
+    <div class="cal-body">
+      <div class="swapInfo">
+        <div>Cliente: <span id="swapNome">—</span></div>
+        <div>Barbeiro: <span id="swapBarbeiro">—</span></div>
+        <div>Ocorrência atual: <span id="swapAtual">—</span></div>
+      </div>
+
+      <form method="POST" action="/admin/mensalistas/trocar-horario" id="swapMensalistaForm">
+        <input type="hidden" name="planId" id="swapPlanId" />
+        <input type="hidden" name="barberId" id="swapBarberId" />
+        <input type="hidden" name="originalDate" id="swapOriginalDate" />
+        <input type="hidden" name="originalHorario" id="swapOriginalHorario" />
+
+        <div class="cols">
+          <div>
+            <label>Nova data</label>
+            <input type="text" name="newDateDisplay" id="swapDateDisplay" placeholder="Clique para escolher" readonly style="cursor:pointer;" />
+            <input type="hidden" name="newDate" id="swapDate" />
+          </div>
+
+          <div>
+            <label>Novo horário</label>
+            <select name="newHorario" id="swapHorario" required disabled>
+              <option value="">Selecione a nova data</option>
+            </select>
+            <div class="muted" id="swapHorarioMsg"></div>
+          </div>
+
+          <div class="full">
+            <div class="muted">
+              O sistema deve validar se o barbeiro trabalha no novo dia e se o novo horário está livre.
             </div>
           </div>
-        </form>
-      </div>
-      <div class="cal-foot">
-        <button type="button" id="swapCancelBtn">Cancelar</button>
-        <button type="submit" form="swapMensalistaForm" class="primary">Salvar troca</button>
-      </div>
+        </div>
+      </form>
+    </div>
+
+    <div class="cal-foot">
+      <button type="button" id="swapCancelBtn">Cancelar</button>
+      <button type="submit" form="swapMensalistaForm" class="primary">Salvar troca</button>
     </div>
   </div>
+</div>
 
   <script>
     function pad2(n){ return String(n).padStart(2, "0"); }
@@ -1930,22 +1986,36 @@
       }catch(e){}
     }
 
-    const AG_AUTO_INTERVAL_SEC = <%= agRefreshSec %>;
+    const AG_AUTO_INTERVAL_SEC = Math.max(1, Number(<%= agRefreshSec %>) || 30);
 
 let agAutoTimer = null;
 let agAutoRemaining = AG_AUTO_INTERVAL_SEC;
+let agAutoReloading = false;
 
 function setAutoRefreshUI(isOn){
   const next = document.getElementById("agNextRefresh");
-  if(next) next.textContent = isOn ? `${agAutoRemaining}s` : "—";
+  if(!next) return;
+
+  if(!isOn){
+    next.textContent = "—";
+    return;
+  }
+
+  next.textContent = `${Math.max(0, agAutoRemaining)}s`;
 }
 
-function stopAutoRefresh(){
+function stopAutoRefresh(reset = true){
   if(agAutoTimer){
     clearInterval(agAutoTimer);
     agAutoTimer = null;
   }
-  agAutoRemaining = AG_AUTO_INTERVAL_SEC;
+
+  agAutoReloading = false;
+
+  if(reset){
+    agAutoRemaining = AG_AUTO_INTERVAL_SEC;
+  }
+
   setAutoRefreshUI(false);
 }
 
@@ -1958,7 +2028,7 @@ function startAutoRefreshIfNeeded(){
     return;
   }
 
-  if(agAutoTimer) return;
+  if(agAutoTimer || agAutoReloading) return;
 
   agAutoRemaining = AG_AUTO_INTERVAL_SEC;
   setAutoRefreshUI(true);
@@ -1972,12 +2042,19 @@ function startAutoRefreshIfNeeded(){
       return;
     }
 
-    agAutoRemaining -= 1;
-    const next = document.getElementById("agNextRefresh");
-    if(next) next.textContent = `${agAutoRemaining}s`;
+    agAutoRemaining = Math.max(0, agAutoRemaining - 1);
+    setAutoRefreshUI(true);
 
-    if(agAutoRemaining <= 0){
+    if(agAutoRemaining === 0){
+      agAutoReloading = true;
+
+      if(agAutoTimer){
+        clearInterval(agAutoTimer);
+        agAutoTimer = null;
+      }
+
       saveAgFilters();
+
       const url = new URL(window.location.href);
       url.searchParams.set("tab", "agendamentos");
       url.searchParams.set("_t", String(Date.now()));
@@ -2013,6 +2090,15 @@ function startAutoRefreshIfNeeded(){
 
     const swapOverlay = document.getElementById("swapOverlay");
     const swapPlanId = document.getElementById("swapPlanId");
+    const serviceOverlay = document.getElementById("serviceOverlay");
+    const svcNome = document.getElementById("svcNome");
+    const svcBarbeiro = document.getElementById("svcBarbeiro");
+    const svcHorario = document.getElementById("svcHorario");
+    const svcAgendamentoId = document.getElementById("svcAgendamentoId");
+    const svcServiceId = document.getElementById("svcServiceId");
+    const svcCancelBtn = document.getElementById("svcCancelBtn");
+    const svcForm = document.getElementById("svcForm");
+    const svcSubmitBtn = document.getElementById("svcSubmitBtn");
     const swapBarberId = document.getElementById("swapBarberId");
     const swapOriginalDate = document.getElementById("swapOriginalDate");
     const swapOriginalHorario = document.getElementById("swapOriginalHorario");
@@ -2066,6 +2152,72 @@ function startAutoRefreshIfNeeded(){
       }
     }
     function closeSwapOverlay(){ swapOverlay.classList.remove("show"); }
+   
+function closeServiceOverlay(){
+  serviceOverlay.classList.remove("show");
+
+  if (svcForm) {
+    delete svcForm.dataset.submitting;
+  }
+
+  if (svcSubmitBtn) {
+    svcSubmitBtn.disabled = false;
+    svcSubmitBtn.textContent = "Salvar";
+  }
+
+  if (svcCancelBtn) {
+    svcCancelBtn.disabled = false;
+  }
+}
+
+window.abrirTrocaServico = function(btn){
+  const slot = btn.closest(".agSlot");
+  if(!slot) return;
+
+  const id = slot.dataset.id || "";
+  const nome = slot.dataset.nome || "—";
+  const barbeiro = slot.dataset.barberName || "—";
+  const horario = slot.dataset.horario || "—";
+
+  svcAgendamentoId.value = id;
+  svcNome.textContent = nome;
+  svcBarbeiro.textContent = barbeiro;
+  svcHorario.textContent = horario;
+
+  [...svcServiceId.options].forEach(opt => {
+    opt.selected = false;
+  });
+
+  const currentServiceText =
+    slot.querySelector(".info small:last-child")?.textContent || "";
+
+  let currentServiceName = "";
+  const match = currentServiceText.match(/Serviço:\s*(.+?)(\s*•|$)/);
+  if (match) currentServiceName = match[1].trim();
+
+  const optionFound = [...svcServiceId.options].find(opt =>
+    (opt.dataset.serviceName || "").trim() === currentServiceName
+  );
+
+    if (optionFound) {
+    optionFound.selected = true;
+  } else if (svcServiceId.options.length) {
+    svcServiceId.selectedIndex = 0;
+  }
+
+  if (svcForm) {
+    delete svcForm.dataset.submitting;
+  }
+  if (svcSubmitBtn) {
+    svcSubmitBtn.disabled = false;
+    svcSubmitBtn.textContent = "Salvar";
+  }
+  if (svcCancelBtn) {
+    svcCancelBtn.disabled = false;
+  }
+
+  serviceOverlay.classList.add("show");
+};
 
     function renderCal(){
       const y = calMonth.getFullYear();
@@ -2244,6 +2396,32 @@ function startAutoRefreshIfNeeded(){
       swapCancelBtn.addEventListener("click", closeSwapOverlay);
     }
 
+    if(svcCancelBtn){
+  svcCancelBtn.addEventListener("click", closeServiceOverlay);
+    }
+
+    if (svcForm) {
+  svcForm.addEventListener("submit", (e) => {
+    if (svcForm.dataset.submitting === "1") {
+      e.preventDefault();
+      return;
+    }
+
+    svcForm.dataset.submitting = "1";
+
+    if (svcSubmitBtn) {
+      svcSubmitBtn.disabled = true;
+      svcSubmitBtn.textContent = "Salvando...";
+    }
+
+    if (svcCancelBtn) {
+      svcCancelBtn.disabled = true;
+    }
+
+    stopAutoRefresh();
+  });
+}
+
     const menForm = document.getElementById("mensalistaForm");
     const menPlanId = document.getElementById("menPlanId");
     const menBarberId = document.getElementById("menBarberId");
@@ -2389,20 +2567,30 @@ function startAutoRefreshIfNeeded(){
       });
     }
 
-    document.addEventListener("DOMContentLoaded", ()=>{
+document.addEventListener("DOMContentLoaded", ()=>{
   setAutoRefreshUI(false);
 
   if(menStart && !menStart.value) menStart.value = fmtDMYSlash(new Date());
   updateMensalistaDateFields();
 
-  const tab = new URLSearchParams(window.location.search).get("tab");
+  const params = new URLSearchParams(window.location.search);
+  const tab = params.get("tab");
+  const updated = params.get("updated");
+
   if(tab === "configgeral") activateTab("tabBtnBarbeiros");
   if(tab === "config") activateTab("tabBtnConfig");
   if(tab === "mensalistas") activateTab("tabBtnMensalistas");
   if(tab === "manual") activateTab("tabBtnManual");
   if(tab === "agendamentos") activateTab("tabBtnAgendamentos");
 
-  startAutoRefreshIfNeeded();
+  if (updated === "servico") {
+    stopAutoRefresh();
+    setTimeout(() => {
+      startAutoRefreshIfNeeded();
+    }, 15000);
+  } else {
+    startAutoRefreshIfNeeded();
+  }
 });
 
     function urlBase64ToUint8Array(base64String) {
@@ -2459,13 +2647,7 @@ function startAutoRefreshIfNeeded(){
     }
 
     async function getServiceWorkerRegistrationReady() {
-  const existing = await navigator.serviceWorker.getRegistration("/sw.js");
-  if (existing) {
-    await navigator.serviceWorker.ready;
-    return existing;
-  }
-
-  const reg = await navigator.serviceWorker.register("/sw.js");
+  const reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
   await navigator.serviceWorker.ready;
   return reg;
 }

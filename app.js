@@ -1701,6 +1701,77 @@ app.post("/admin/status", requireAdmin, async (req, res) => {
   res.json({ ok: true });
 });
 
+// -------------------- ADMIN: TROCAR SERVIÇO --------------------
+app.post("/admin/agendamento/trocar-servico", requireAdmin, async (req, res) => {
+  try {
+    const agendamentoId = Number(req.body.agendamentoId);
+    const serviceId = Number(req.body.serviceId);
+
+    if (!agendamentoId || !serviceId) {
+      return res.status(400).send("❌ Dados inválidos.");
+    }
+
+    const agendamento = await dbGet(
+      `SELECT * FROM agendamentos WHERE id = ? LIMIT 1`,
+      [agendamentoId]
+    );
+
+    if (!agendamento) {
+      return res.status(404).send("❌ Agendamento não encontrado.");
+    }
+
+    const service = await dbGet(
+      `SELECT id, name, duration_minutes, slots_required, price_cents
+       FROM services
+       WHERE id = ?
+       AND is_active = 1
+       LIMIT 1`,
+      [serviceId]
+    );
+
+    if (!service) {
+      return res.status(400).send("❌ Serviço inválido.");
+    }
+
+    const slotsRequired = normalizeServiceSlots(service);
+
+    const conflict = await hasServiceConflict(
+      agendamento.barber_id,
+      agendamento.data,
+      agendamento.horario,
+      slotsRequired,
+      { ignoreAgendamentoId: agendamentoId }
+    );
+
+    if (conflict) {
+      return res.status(400).send("❌ O novo serviço não cabe nesse horário.");
+    }
+
+    await dbRun(
+      `UPDATE agendamentos
+       SET service_id = ?,
+           service_name = ?,
+           service_duration_minutes = ?,
+           service_slots_required = ?,
+           service_price_cents = ?
+       WHERE id = ?`,
+      [
+        service.id,
+        service.name,
+        service.duration_minutes,
+        slotsRequired,
+        service.price_cents,
+        agendamentoId,
+      ]
+    );
+
+    res.redirect("/admin?tab=agendamentos&updated=servico");
+  } catch (err) {
+    console.error("Erro trocar serviço:", err);
+    res.status(500).send("Erro ao trocar serviço.");
+  }
+});
+
 app.post("/admin/config/reserva", requireAdmin, async (req, res) => {
   const minutos = Number((req.body || {}).reservaExpiraMinutos);
   const fixed = Number.isFinite(minutos)
