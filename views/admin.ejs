@@ -710,8 +710,12 @@
     const agendaDates = Object.keys(agendaByDate).sort((a,b) => String(a).localeCompare(String(b)));
     agendaDates.forEach(d => agendaByDate[d].sort((x,y) => String(x.horario).localeCompare(String(y.horario))));
 
-    const expMin = (typeof reservaExpiraMinutos !== "undefined" && reservaExpiraMinutos !== null)
+        const expMin = (typeof reservaExpiraMinutos !== "undefined" && reservaExpiraMinutos !== null)
       ? Number(reservaExpiraMinutos)
+      : 30;
+
+    const cancelMin = (typeof cancelamentoAntecedenciaMinutos !== "undefined" && cancelamentoAntecedenciaMinutos !== null)
+      ? Number(cancelamentoAntecedenciaMinutos)
       : 30;
 
     const agRefreshSec = (typeof agendamentosRefreshSegundos !== "undefined" && agendamentosRefreshSegundos !== null)
@@ -763,21 +767,43 @@
   <div class="cols">
     <div>
       <label>Tempo para expirar reserva (minutos)</label>
-      <input type="number" name="reservaExpiraMinutos" min="1" max="720" value="<%= expMin %>" required />
+      <input
+        type="number"
+        name="reservaExpiraMinutos"
+        min="1"
+        max="720"
+        value="<%= expMin %>"
+        required
+      />
       <div class="muted">Padrão: 30. Máximo: 720 (12h).</div>
+    </div>
+
+    <div>
+      <label>Prazo para cancelar antes do horário (minutos)</label>
+      <input
+        type="number"
+        name="cancelamentoAntecedenciaMinutos"
+        min="0"
+        max="10080"
+        value="<%= cancelMin %>"
+        required
+      />
+      <div class="muted">
+        Ex.: 30 = o cliente só pode cancelar até 30 minutos antes do horário agendado.
+      </div>
     </div>
 
     <div>
       <label>Atualização automática da aba Agendamentos (minutos)</label>
       <input
-      type="number"
-      name="agendamentosRefreshMinutos"
-      min="1"
-      max="60"
-      value="<%= Math.ceil(agRefreshSec / 60) %>"
-      required
+        type="number"
+        name="agendamentosRefreshMinutos"
+        min="1"
+        max="60"
+        value="<%= Math.ceil(agRefreshSec / 60) %>"
+        required
       />
-    <div class="muted">Ex.: 1 = 1 minuto, 10 = 10 minutos.</div>
+      <div class="muted">Ex.: 1 = 1 minuto, 10 = 10 minutos.</div>
     </div>
 
     <div class="full" style="display:flex; align-items:flex-end;">

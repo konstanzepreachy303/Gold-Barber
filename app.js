@@ -210,7 +210,7 @@ async function getSetting(key, fallback) {
 async function getSettingInt(key, fallback) {
   const raw = await getSetting(key, String(fallback));
   const n = Number(raw);
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : fallback;
 }
 async function setSetting(key, value) {
   await dbRun(
@@ -305,6 +305,31 @@ function canBookSlotLive(ymd, hhmm, minAdvanceMinutes = BOOKING_MIN_ADVANCE_MINU
   const now = getNowInAppTimezone();
   const slotStart = new Date(y, mo - 1, d, hh, mm, 0, 0);
   const cutoff = new Date(slotStart.getTime() - Number(minAdvanceMinutes) * 60 * 1000);
+
+  return now.getTime() <= cutoff.getTime();
+}
+
+function buildAppDateTime(ymd, hhmm) {
+  if (!isValidYMD(ymd)) return null;
+  if (!/^\d{2}:\d{2}$/.test(String(hhmm || ""))) return null;
+
+  const [y, mo, d] = ymd.split("-").map(Number);
+  const [hh, mm] = hhmm.split(":").map(Number);
+
+  return new Date(y, mo - 1, d, hh, mm, 0, 0);
+}
+
+/**
+ * Pode cancelar se: agora <= (dataHoraAgendamento - cancelBeforeMinutes)
+ */
+function canCancelBookingLive(ymd, hhmm, cancelBeforeMinutes) {
+  const agendamentoAt = buildAppDateTime(ymd, hhmm);
+  if (!agendamentoAt) return false;
+
+  const now = getNowInAppTimezone();
+  const cutoff = new Date(
+    agendamentoAt.getTime() - Number(cancelBeforeMinutes || 0) * 60 * 1000
+  );
 
   return now.getTime() <= cutoff.getTime();
 }
@@ -1175,19 +1200,33 @@ app.get("/cancelar", async (req, res) => {
     if (!row) return res.status(400).send("❌ Link inválido ou expirado.");
 
     const ag = await getAgendamentoComBarbeiro(row.agendamento_id);
-    if (!ag) return res.status(404).send("❌ Agendamento não encontrado.");
+if (!ag) return res.status(404).send("❌ Agendamento não encontrado.");
 
-    const alreadyCancelled = ag.status === "cancelado" || !!row.used_at;
+const cancelamentoAntecedenciaMinutos = await getSettingInt(
+  "cancelamento_antecedencia_minutos",
+  30
+);
+
+const canCancelNow = canCancelBookingLive(
+  ag.data,
+  ag.horario,
+  cancelamentoAntecedenciaMinutos
+);
+
+const alreadyCancelled =
+  ag.status === "cancelado" || !!row.used_at || !canCancelNow;
 
     return res.render("cancelar_agendamento", {
-      token,
-      barberName: ag?.barber_name || "",
-      nome: ag?.nome || "",
-      data: ag?.data || "",
-      horario: ag?.horario || "",
-      statusLabel: buildStatusLabel(ag?.status),
-      alreadyCancelled,
-    });
+  token,
+  barberName: ag?.barber_name || "",
+  nome: ag?.nome || "",
+  data: ag?.data || "",
+  horario: ag?.horario || "",
+  statusLabel: buildStatusLabel(ag?.status),
+  alreadyCancelled,
+  cancelamentoAntecedenciaMinutos,
+  canCancelNow,
+});
   } catch (e) {
     console.error(e);
     return res.status(500).send("❌ Erro ao abrir a tela de cancelamento.");
@@ -1215,9 +1254,20 @@ app.post("/cancelar/confirmar", async (req, res) => {
     if (!row) return res.status(400).send("❌ Link inválido ou expirado.");
 
     const agAntes = await getAgendamentoComBarbeiro(row.agendamento_id);
-    if (!agAntes) return res.status(404).send("❌ Agendamento não encontrado.");
+if (!agAntes) return res.status(404).send("❌ Agendamento não encontrado.");
 
-    if (agAntes.status === "cancelado" || row.used_at) {
+const cancelamentoAntecedenciaMinutos = await getSettingInt(
+  "cancelamento_antecedencia_minutos",
+  30
+);
+
+const canCancelNow = canCancelBookingLive(
+  agAntes.data,
+  agAntes.horario,
+  cancelamentoAntecedenciaMinutos
+);
+
+if (agAntes.status === "cancelado" || row.used_at) {
       return res.render(
         "sucesso",
         buildSuccessViewPayload(agAntes, "", {
@@ -1231,18 +1281,23 @@ app.post("/cancelar/confirmar", async (req, res) => {
     }
 
     const stillValid = await dbGet(
-      `SELECT 1 AS ok
-         FROM agendamento_cancel_tokens
-        WHERE id = ?
-          AND datetime(expires_at) > datetime('now')
-        LIMIT 1`,
-      [row.token_id]
-    );
+  `SELECT 1 AS ok
+     FROM agendamento_cancel_tokens
+    WHERE id = ?
+      AND datetime(expires_at) > datetime('now')
+    LIMIT 1`,
+  [row.token_id]
+);
 
-    if (!stillValid) {
-      return res.status(400).send("❌ Link de cancelamento expirado.");
-    }
+if (!stillValid) {
+  return res.status(400).send("❌ Link de cancelamento expirado.");
+}
 
+if (!canCancelNow) {
+  return res.status(400).send(
+    `❌ O prazo para cancelamento expirou. Este horário só podia ser cancelado até ${cancelamentoAntecedenciaMinutos} minuto(s) antes do agendamento.`
+  );
+}
         await dbRun(`UPDATE agendamentos SET status = 'cancelado' WHERE id = ?`, [
       row.agendamento_id,
     ]);
@@ -1382,7 +1437,10 @@ app.post("/agendar", async (req, res) => {
 
     const minutos = await getSettingInt("reserva_expira_minutos", 30);
 
+    const cancelamentoAntecedenciaMinutos = await getSettingInt("cancelamento_antecedencia_minutos",  30);
+
     const confirmToken = crypto.randomBytes(24).toString("hex");
+
     const cancelToken = crypto.randomBytes(24).toString("hex");
 
     await dbRun(
@@ -1393,13 +1451,13 @@ app.post("/agendar", async (req, res) => {
       [agendamentoId, confirmToken, `+${minutos} minutes`]
     );
 
-    await dbRun(
-      `
-      INSERT INTO agendamento_cancel_tokens (agendamento_id, token, expires_at)
-      VALUES (?, ?, datetime('now', ?))
-    `,
-      [agendamentoId, cancelToken, `+${minutos} minutes`]
-    );
+   await dbRun(
+  `
+  INSERT INTO agendamento_cancel_tokens (agendamento_id, token, expires_at)
+  VALUES (?, ?, datetime('now', ?))
+`,
+  [agendamentoId, cancelToken, "+365 days"]
+);
 
     const baseUrl = buildBaseUrl(req);
     const confirmUrl = `${baseUrl}/confirmar?token=${encodeURIComponent(confirmToken)}`;
@@ -1440,7 +1498,8 @@ ${cancelUrl}
 ━━━━━━━━━━━━━━━
 
 ⚠️ A confirmação é necessária para manter o horário reservado.
-⏳ O link expira em ${minutos} minutos.
+⏳ O link de confirmação expira em ${minutos} minutos.
+⏰ O cancelamento pode ser feito até ${cancelamentoAntecedenciaMinutos} minuto(s) antes do horário agendado.
 
 *COMPROVANTE DE AGENDAMENTO*`;
 
@@ -1655,6 +1714,7 @@ app.get("/admin", requireAdmin, async (req, res) => {
   }
 
 const reservaExpiraMinutos = await getSettingInt("reserva_expira_minutos", 30);
+const cancelamentoAntecedenciaMinutos = await getSettingInt("cancelamento_antecedencia_minutos", 30);
 const agendamentosRefreshSegundos = await getSettingInt("agendamentos_refresh_segundos", 30);
 
 res.render("admin", {
@@ -1665,6 +1725,7 @@ res.render("admin", {
   mensalistaConfirmados,
   adminUser: req.session.adminUser,
   reservaExpiraMinutos,
+  cancelamentoAntecedenciaMinutos,
   agendamentosRefreshSegundos,
   services,
   selectedConfigBarberId,
@@ -1778,12 +1839,18 @@ app.post("/admin/config/reserva", requireAdmin, async (req, res) => {
     ? Math.max(1, Math.min(720, Math.floor(minutos)))
     : 30;
 
+  const cancelamentoMinutos = Number((req.body || {}).cancelamentoAntecedenciaMinutos);
+  const cancelamentoFixed = Number.isFinite(cancelamentoMinutos)
+    ? Math.max(0, Math.min(10080, Math.floor(cancelamentoMinutos)))
+    : 30;
+
   const refreshMinutos = Number((req.body || {}).agendamentosRefreshMinutos);
   const refreshFixed = Number.isFinite(refreshMinutos)
-     ? Math.max(1, Math.min(60, Math.floor(refreshMinutos))) * 60
-     : 30;
+    ? Math.max(1, Math.min(60, Math.floor(refreshMinutos))) * 60
+    : 30;
 
   await setSetting("reserva_expira_minutos", fixed);
+  await setSetting("cancelamento_antecedencia_minutos", cancelamentoFixed);
   await setSetting("agendamentos_refresh_segundos", refreshFixed);
 
   await cleanupReservasExpiradas();
