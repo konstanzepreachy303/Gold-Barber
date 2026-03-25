@@ -1320,6 +1320,7 @@ mesmo com o painel em segundo plano.
           <div class="muted">✅ Todo agendamento manual é salvo automaticamente como <strong>aprovado</strong>.</div>
 
           <form method="POST" action="/admin/agendar" id="adminAgendarForm" style="margin-top:10px;">
+	   <input type="hidden" name="allowPast" value="1" />
             <div class="cols">
               <div>
                 <label>Barbeiro</label>
@@ -2320,48 +2321,39 @@ window.abrirTrocaServico = function(btn){
 
     admData.addEventListener("click", ()=>openSharedCal("manual"));
 
-    async function refreshAdminHorarios(){
-      admHorario.innerHTML = `<option value="">Selecione barbeiro, serviço e data</option>`;
+async function refreshAdminHorarios(){
+  admHorario.innerHTML = `<option value="">Selecione barbeiro, serviço e data</option>`;
+  admHorario.disabled = true;
+  admHorarioMsg.textContent = "";
+
+  const b = admBarberId.value;
+  const s = admServiceId.value;
+  const dmy = admData.value;
+  if(!b || !s || !dmy) return;
+
+  const ymd = dmyToYMD(dmy);
+  if(!ymd) return;
+
+  try{
+    const r = await fetch(`/horarios?barberId=${encodeURIComponent(b)}&serviceId=${encodeURIComponent(s)}&data=${encodeURIComponent(ymd)}&allowPast=1`);
+    const slots = await r.json();
+
+    const finalSlots = Array.isArray(slots) ? slots.slice() : [];
+
+    if(!finalSlots.length){
+      admHorario.innerHTML = `<option value="">Sem horários disponíveis</option>`;
       admHorario.disabled = true;
-      admHorarioMsg.textContent = "";
-
-      const b = admBarberId.value;
-      const s = admServiceId.value;
-      const dmy = admData.value;
-      if(!b || !s || !dmy) return;
-
-      const ymd = dmyToYMD(dmy);
-      if(!ymd) return;
-
-      try{
-        const r = await fetch(`/horarios?barberId=${encodeURIComponent(b)}&serviceId=${encodeURIComponent(s)}&data=${encodeURIComponent(ymd)}`);
-        const slots = await r.json();
-
-        let finalSlots = Array.isArray(slots) ? slots.slice() : [];
-
-        const today = new Date();
-        const todayYMD = fmtYMD(new Date(today.getFullYear(), today.getMonth(), today.getDate()));
-        if(ymd === todayYMD){
-          const nowMin = minutesNow();
-          finalSlots = finalSlots.filter(h=>{
-            const slotMin = timeToMinutes(h);
-            return slotMin != null && (slotMin - nowMin) >= 10;
-          });
-        }
-
-        if(!finalSlots.length){
-          admHorario.innerHTML = `<option value="">Sem horários disponíveis</option>`;
-          admHorario.disabled = true;
-          admHorarioMsg.textContent = "Sem horários disponíveis.";
-          return;
-        }
-
-        admHorario.innerHTML = `<option value="">Selecione</option>` + finalSlots.map(h=>`<option value="${h}">${h}</option>`).join("");
-        admHorario.disabled = false;
-      }catch(e){
-        admHorarioMsg.textContent = "Erro ao carregar horários.";
-      }
+      admHorarioMsg.textContent = "Sem horários disponíveis.";
+      return;
     }
+
+    admHorario.innerHTML = `<option value="">Selecione</option>` + finalSlots.map(h=>`<option value="${h}">${h}</option>`).join("");
+    admHorario.disabled = false;
+  }catch(e){
+    admHorarioMsg.textContent = "Erro ao carregar horários.";
+  }
+}
+    
     admBarberId.addEventListener("change", refreshAdminHorarios);
     if (admServiceId) admServiceId.addEventListener("change", refreshAdminHorarios);
 
