@@ -2269,26 +2269,28 @@ window.abrirTrocaServico = function(btn){
       }
 
       for(let d=1; d<=daysInMonth; d++){
-        const dt = new Date(y, m, d);
-        const ymd = fmtYMD(dt);
-        const div = document.createElement("div");
-        div.className = "day";
-        div.textContent = String(d);
+  const dt = new Date(y, m, d);
+  const ymd = fmtYMD(dt);
+  const div = document.createElement("div");
+  div.className = "day";
+  div.textContent = String(d);
 
-        const allowPastDates = calTarget === "mensalista";
+  const allowPastDates =
+    calTarget === "mensalista" ||
+    calTarget === "manual";
 
-        if(!allowPastDates && dt < todayStart){
-          div.classList.add("disabled");
-        }else{
-          div.addEventListener("click", ()=>{
-            selectedYMD = ymd;
-            renderCal();
-          });
-        }
+  if(!allowPastDates && dt < todayStart){
+    div.classList.add("disabled");
+  }else{
+    div.addEventListener("click", ()=>{
+      selectedYMD = ymd;
+      renderCal();
+    });
+  }
 
-        if(selectedYMD === ymd) div.classList.add("selected");
-        admDays.appendChild(div);
-      }
+  if(selectedYMD === ymd) div.classList.add("selected");
+  admDays.appendChild(div);
+}
     }
 
     admPrevMonth.addEventListener("click", ()=>{ calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth()-1, 1); renderCal(); });
