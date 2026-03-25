@@ -611,7 +611,7 @@ async function getMensalistaBlocked30MinSlotsForDate(barberId, ymd, opts = {}) {
   return set;
 }
 
-async function getAvailableSlotsForService({ barberId, ymd, serviceId }) {
+async function getAvailableSlotsForService({ barberId, ymd, serviceId, allowPast = false }) {
   const service = await dbGet(
     `SELECT id, name, duration_minutes, slots_required, price_cents
        FROM services
@@ -641,7 +641,11 @@ async function getAvailableSlotsForService({ barberId, ymd, serviceId }) {
     );
     if (!allFree) return false;
 
-    return canBookSlotLive(ymd, startSlot, BOOKING_MIN_ADVANCE_MINUTES);
+    if (!allowPast) {
+      return canBookSlotLive(ymd, startSlot, BOOKING_MIN_ADVANCE_MINUTES);
+    }
+
+    return true;
   });
 
   return livres;
@@ -994,6 +998,10 @@ app.get("/horarios", async (req, res) => {
   const bId = Number(barberId);
   const sId = Number(serviceId);
 
+  const allowPast =
+    req.query.allowPast === "1" &&
+    !!req.session?.adminUser;
+
   if (!data || !bId) return res.status(400).json([]);
 
   const barber = await dbGet(
@@ -1020,7 +1028,11 @@ app.get("/horarios", async (req, res) => {
       (h) => !ocupados.includes(h) && !travados.includes(h)
     );
 
-    livres = livres.filter((h) => canBookSlotLive(data, h, BOOKING_MIN_ADVANCE_MINUTES));
+    if (!allowPast) {
+      livres = livres.filter((h) =>
+        canBookSlotLive(data, h, BOOKING_MIN_ADVANCE_MINUTES)
+      );
+    }
 
     return res.json(livres);
   }
@@ -1029,8 +1041,9 @@ app.get("/horarios", async (req, res) => {
     const livres = await getAvailableSlotsForService({
       barberId: bId,
       ymd: data,
-      serviceId: sId,
-    });
+     serviceId: sId,
+    allowPast,
+});
 
     return res.json(livres);
   } catch (e) {
@@ -1350,6 +1363,10 @@ app.post("/agendar", async (req, res) => {
     const body = req.body || {};
     const nome = String(body.nome || "").trim();
 
+    const allowPast =
+    String(body.allowPast || "") === "1" &&
+    !!req.session?.adminUser;
+
     const telefoneRaw = String(body.telefone || "").trim();
     const telefone = telefoneRaw ? telefoneRaw.replace(/\D+/g, "") : "";
 
@@ -1385,18 +1402,19 @@ app.post("/agendar", async (req, res) => {
     const servicePriceLabel = formatCentsBRL(servicePriceCents);
 
     const available = await getAvailableSlotsForService({
-      barberId: bId,
-      ymd: data,
-      serviceId,
+    barberId: bId,
+    ymd: data,
+    serviceId,
+    allowPast,
     });
 
     if (!available.includes(horario)) {
       return res.status(400).send("❌ Horário indisponível para esse serviço.");
     }
 
-    if (!canBookSlotLive(data, horario, BOOKING_MIN_ADVANCE_MINUTES)) {
-      return res.status(400).send(`❌ Esse horário já passou do limite mínimo de antecedência (${BOOKING_MIN_ADVANCE_MINUTES} min).`);
-    }
+    if (!allowPast && !canBookSlotLive(data, horario, BOOKING_MIN_ADVANCE_MINUTES)) {
+    return res.status(400).send(`❌ Esse horário já passou do limite mínimo de antecedência (${BOOKING_MIN_ADVANCE_MINUTES} min).`);
+  }
 
     const hasConflict = await hasServiceConflict(bId, data, horario, serviceSlotsRequired);
     if (hasConflict) {
