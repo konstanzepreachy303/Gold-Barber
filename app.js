@@ -2439,14 +2439,15 @@ app.post("/admin/agendar", requireAdmin, async (req, res) => {
   const servicePriceLabel = formatCentsBRL(servicePriceCents);
 
   const available = await getAvailableSlotsForService({
-    barberId,
-    ymd: data,
-    serviceId,
-  });
+  barberId,
+  ymd: data,
+  serviceId,
+  allowPast: true
+});
 
-  if (!available.includes(horario)) {
-    return res.status(400).send("❌ Horário indisponível para esse serviço.");
-  }
+if (!available.includes(horario)) {
+  return res.status(400).send("❌ Horário indisponível para esse serviço.");
+}
 
   const conflict = await hasServiceConflict(barberId, data, horario, serviceSlotsRequired);
   if (conflict) {
@@ -2506,4 +2507,3 @@ app.post("/admin/agendar", requireAdmin, async (req, res) => {
     if (BASE_URL) console.log(`🌐 BASE_URL: ${BASE_URL}`);
   });
 })();
-
