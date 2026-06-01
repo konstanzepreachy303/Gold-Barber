@@ -628,7 +628,6 @@
     .notifStatus.err{ color: #ff8a96; }
 
     .notifActions{
-<<<<<<< HEAD
   display:flex;
   gap:10px;
   flex-wrap:wrap;
@@ -666,13 +665,11 @@
   }
 }
 </style>
-=======
       display:flex;
       gap:10px;
       flex-wrap:wrap;
     }
   </style>
->>>>>>> 1552483afa435b104e1d06e68985ef9990335e30
 </head>
 
 <body>
@@ -764,7 +761,6 @@
 
     const servicesList = Array.isArray(services) ? services : [];
 
-<<<<<<< HEAD
     const financeiroBase = (agendaAll || []).filter(a => a.status === "aprovado");
 
 const hoje = new Date();
@@ -803,8 +799,6 @@ financeiroMes.forEach(a => {
 
 const rankingServicos = Object.values(porServico).sort((a,b) => b.total - a.total);
 
-=======
->>>>>>> 1552483afa435b104e1d06e68985ef9990335e30
     const selectedCfgBarberId = Number(selectedConfigBarberId || 0);
     const selectedCfgBarberObj = selectedConfigBarber || null;
     const selectedCfg = selectedCfgBarberId && barberConfigs ? barberConfigs[selectedCfgBarberId] : null;
@@ -831,10 +825,8 @@ const rankingServicos = Object.values(porServico).sort((a,b) => b.total - a.tota
     <button class="tabBtn" id="tabBtnMensalistas" type="button">Plano mensalista</button>
     <button class="tabBtn" id="tabBtnManual" type="button">Agendar manualmente</button>
     <button class="tabBtn" id="tabBtnAgendamentos" type="button">Agendamentos</button>
-<<<<<<< HEAD
+
     <button class="tabBtn" id="tabBtnFinanceiro" type="button">Dashboard Financeiro</button>
-=======
->>>>>>> 1552483afa435b104e1d06e68985ef9990335e30
   </div>
 
   <main>
@@ -1455,7 +1447,6 @@ mesmo com o painel em segundo plano.
         </div>
       </div>
     </div>
-<<<<<<< HEAD
 <div class="tabPanel" id="tabFinanceiro">
   <div class="grid">
     <div class="card">
@@ -1580,9 +1571,6 @@ mesmo com o painel em segundo plano.
     </div>
   </div>
 </div>
-=======
->>>>>>> 1552483afa435b104e1d06e68985ef9990335e30
-
     <div class="tabPanel" id="tabAgendamentos">
       <div class="grid">
         <div class="card">
@@ -1922,7 +1910,6 @@ Trocar serviço
       return d ? fmtDMYSlash(d) : "";
     }
 
-<<<<<<< HEAD
    const tabs = [
        { btn: "tabBtnBarbeiros", panel:"tabBarbeiros" },
        { btn: "tabBtnConfig", panel:"tabConfig" },
@@ -1930,14 +1917,12 @@ Trocar serviço
        { btn: "tabBtnManual", panel:"tabManual" },
        { btn: "tabBtnAgendamentos", panel:"tabAgendamentos" },
        { btn: "tabBtnFinanceiro", panel:"tabFinanceiro" }
-=======
     const tabs = [
       { btn: "tabBtnBarbeiros", panel:"tabBarbeiros" },
       { btn: "tabBtnConfig", panel:"tabConfig" },
       { btn: "tabBtnMensalistas", panel:"tabMensalistas" },
       { btn: "tabBtnManual", panel:"tabManual" },
       { btn: "tabBtnAgendamentos", panel:"tabAgendamentos" },
->>>>>>> 1552483afa435b104e1d06e68985ef9990335e30
     ];
 
     function activateTab(btnId){
@@ -1948,7 +1933,6 @@ Trocar serviço
         b.classList.toggle("active", active);
         p.classList.toggle("active", active);
       });
-<<<<<<< HEAD
     
       if(btnId === "tabBtnAgendamentos") applyAgendamentos();
 
@@ -1957,9 +1941,7 @@ Trocar serviço
         applyFinanceiro();
       }
     }
-=======
       if(btnId === "tabBtnAgendamentos") applyAgendamentos();
->>>>>>> 1552483afa435b104e1d06e68985ef9990335e30
       stopAutoRefresh();
       startAutoRefreshIfNeeded();
       if(btnId === "tabBtnMensalistas"){
@@ -2376,7 +2358,6 @@ function startAutoRefreshIfNeeded(){
     let calTarget = "manual";
 
     function openSharedCal(target){
-<<<<<<< HEAD
   calTarget = target || "manual";
 
   let initialYMD = null;
@@ -2410,7 +2391,6 @@ function startAutoRefreshIfNeeded(){
   admOverlay.classList.add("show");
   renderCal();
 }
-=======
       calTarget = target || "manual";
 
       let initialYMD = null;
@@ -2439,7 +2419,6 @@ function startAutoRefreshIfNeeded(){
       admOverlay.classList.add("show");
       renderCal();
     }
->>>>>>> 1552483afa435b104e1d06e68985ef9990335e30
 
     function closeAdmCal(){
       admOverlay.classList.remove("show");
@@ -2545,14 +2524,12 @@ window.abrirTrocaServico = function(btn){
   div.textContent = String(d);
 
   const allowPastDates =
-<<<<<<< HEAD
+
   calTarget === "mensalista" ||
   calTarget === "manual" ||
   calTarget === "financeiro";
-=======
     calTarget === "mensalista" ||
     calTarget === "manual";
->>>>>>> 1552483afa435b104e1d06e68985ef9990335e30
 
   if(!allowPastDates && dt < todayStart){
     div.classList.add("disabled");
@@ -2572,7 +2549,6 @@ window.abrirTrocaServico = function(btn){
     admNextMonth.addEventListener("click", ()=>{ calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth()+1, 1); renderCal(); });
     admCancelCal.addEventListener("click", closeAdmCal);
     admOkCal.addEventListener("click", ()=>{
-<<<<<<< HEAD
   const d = parseYMD(selectedYMD);
   if(!d) return;
 
@@ -2610,7 +2586,6 @@ window.abrirTrocaServico = function(btn){
   closeAdmCal();
   refreshAdminHorarios();
 });
-=======
       if(!selectedYMD) { alert("Selecione uma data."); return; }
       const d = parseYMD(selectedYMD);
 
@@ -2634,7 +2609,6 @@ window.abrirTrocaServico = function(btn){
       closeAdmCal();
       refreshAdminHorarios();
     });
->>>>>>> 1552483afa435b104e1d06e68985ef9990335e30
 
     admData.addEventListener("click", ()=>openSharedCal("manual"));
 
@@ -2917,10 +2891,8 @@ document.addEventListener("DOMContentLoaded", ()=>{
   if(tab === "mensalistas") activateTab("tabBtnMensalistas");
   if(tab === "manual") activateTab("tabBtnManual");
   if(tab === "agendamentos") activateTab("tabBtnAgendamentos");
-<<<<<<< HEAD
+
   if(tab === "financeiro") activateTab("tabBtnFinanceiro");
-=======
->>>>>>> 1552483afa435b104e1d06e68985ef9990335e30
 
   if (updated === "servico") {
     stopAutoRefresh();
@@ -3211,11 +3183,6 @@ async function getPushSupportInfo() {
       syncPushUIState();
     });
 
-<<<<<<< HEAD
-/* ==========================
-   DASHBOARD FINANCEIRO
-========================== */
-
 const financeiroData = <%- JSON.stringify(
   financeiroBase.map(a => ({
     barber_id: a.barber_id,
@@ -3377,9 +3344,6 @@ finDataFim.addEventListener("click", () => {
 
   applyFinanceiro();
 }
-
-=======
->>>>>>> 1552483afa435b104e1d06e68985ef9990335e30
   </script>
 </body>
 </html>
