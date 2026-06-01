@@ -786,7 +786,7 @@ const rankingBarbeiros = Object.values(porBarbeiro).sort((a,b) => b.total - a.to
 
 const porServico = {};
 financeiroMes.forEach(a => {
-  const nome = a.service_name || "Serviço não informado";
+  const nome = a.service_name || "Mensalistas";
   if (!porServico[nome]) porServico[nome] = { nome, qtd: 0, total: 0 };
   porServico[nome].qtd += 1;
   porServico[nome].total += getValorAgendamento(a);
