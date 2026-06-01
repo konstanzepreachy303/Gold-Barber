@@ -1906,19 +1906,13 @@ Trocar serviço
     }
 
    const tabs = [
-       { btn: "tabBtnBarbeiros", panel:"tabBarbeiros" },
-       { btn: "tabBtnConfig", panel:"tabConfig" },
-       { btn: "tabBtnMensalistas", panel:"tabMensalistas" },
-       { btn: "tabBtnManual", panel:"tabManual" },
-       { btn: "tabBtnAgendamentos", panel:"tabAgendamentos" },
-       { btn: "tabBtnFinanceiro", panel:"tabFinanceiro" }
-    const tabs = [
-      { btn: "tabBtnBarbeiros", panel:"tabBarbeiros" },
-      { btn: "tabBtnConfig", panel:"tabConfig" },
-      { btn: "tabBtnMensalistas", panel:"tabMensalistas" },
-      { btn: "tabBtnManual", panel:"tabManual" },
-      { btn: "tabBtnAgendamentos", panel:"tabAgendamentos" },
-    ];
+  { btn: "tabBtnBarbeiros", panel:"tabBarbeiros" },
+  { btn: "tabBtnConfig", panel:"tabConfig" },
+  { btn: "tabBtnMensalistas", panel:"tabMensalistas" },
+  { btn: "tabBtnManual", panel:"tabManual" },
+  { btn: "tabBtnAgendamentos", panel:"tabAgendamentos" },
+  { btn: "tabBtnFinanceiro", panel:"tabFinanceiro" }
+];
 
     function activateTab(btnId){
       tabs.forEach(t=>{
@@ -2352,7 +2346,7 @@ function startAutoRefreshIfNeeded(){
     let selectedYMD = null;
     let calTarget = "manual";
 
-    function openSharedCal(target){
+  function openSharedCal(target){
   calTarget = target || "manual";
 
   let initialYMD = null;
@@ -2383,46 +2377,21 @@ function startAutoRefreshIfNeeded(){
     swapOverlay.classList.remove("show");
   }
 
-  admOverlay.classList.add("show");
+   admOverlay.classList.add("show");
   renderCal();
 }
-      calTarget = target || "manual";
 
-      let initialYMD = null;
-      if(calTarget === "mensalista"){
-        initialYMD = dmyToYMD(menStart?.value || "");
-      }else if(calTarget === "trocaMensalista"){
-        initialYMD = swapDate?.value || swapOriginalDate?.value || null;
-      }else{
-        initialYMD = dmyToYMD(admData?.value || "");
-      }
+function closeAdmCal(){
+  admOverlay.classList.remove("show");
+  if(calTarget === "trocaMensalista"){
+    swapOverlay.classList.add("show");
+  }
+}
 
-      if(initialYMD){
-        selectedYMD = initialYMD;
-        const d = parseYMD(initialYMD);
-        if(d) calMonth = new Date(d.getFullYear(), d.getMonth(), 1);
-      }else{
-        const now = new Date();
-        calMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        selectedYMD = fmtYMD(new Date(now.getFullYear(), now.getMonth(), now.getDate()));
-      }
+function closeSwapOverlay(){
+  swapOverlay.classList.remove("show");
+}
 
-      if(calTarget === "trocaMensalista"){
-        swapOverlay.classList.remove("show");
-      }
-
-      admOverlay.classList.add("show");
-      renderCal();
-    }
-
-    function closeAdmCal(){
-      admOverlay.classList.remove("show");
-      if(calTarget === "trocaMensalista"){
-        swapOverlay.classList.add("show");
-      }
-    }
-    function closeSwapOverlay(){ swapOverlay.classList.remove("show"); }
-   
 function closeServiceOverlay(){
   serviceOverlay.classList.remove("show");
 
@@ -2519,12 +2488,9 @@ window.abrirTrocaServico = function(btn){
   div.textContent = String(d);
 
   const allowPastDates =
-
   calTarget === "mensalista" ||
   calTarget === "manual" ||
   calTarget === "financeiro";
-    calTarget === "mensalista" ||
-    calTarget === "manual";
 
   if(!allowPastDates && dt < todayStart){
     div.classList.add("disabled");
@@ -2543,7 +2509,8 @@ window.abrirTrocaServico = function(btn){
     admPrevMonth.addEventListener("click", ()=>{ calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth()-1, 1); renderCal(); });
     admNextMonth.addEventListener("click", ()=>{ calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth()+1, 1); renderCal(); });
     admCancelCal.addEventListener("click", closeAdmCal);
-    admOkCal.addEventListener("click", ()=>{
+
+admOkCal.addEventListener("click", ()=>{
   const d = parseYMD(selectedYMD);
   if(!d) return;
 
@@ -2581,31 +2548,8 @@ window.abrirTrocaServico = function(btn){
   closeAdmCal();
   refreshAdminHorarios();
 });
-      if(!selectedYMD) { alert("Selecione uma data."); return; }
-      const d = parseYMD(selectedYMD);
 
-      if(calTarget === "mensalista"){
-        menStart.value = fmtDMYSlash(d);
-        closeAdmCal();
-        updateMensalistaDateFields();
-        refreshMensalistaHorarios();
-        return;
-      }
-
-      if(calTarget === "trocaMensalista"){
-        swapDate.value = selectedYMD;
-        swapDateDisplay.value = fmtDMYSlash(d);
-        closeAdmCal();
-        refreshTrocaMensalistaHorarios();
-        return;
-      }
-
-      admData.value = fmtDMYSlash(d);
-      closeAdmCal();
-      refreshAdminHorarios();
-    });
-
-    admData.addEventListener("click", ()=>openSharedCal("manual"));
+admData.addEventListener("click", ()=>openSharedCal("manual"));
 
 async function refreshAdminHorarios(){
   admHorario.innerHTML = `<option value="">Selecione barbeiro, serviço e data</option>`;
