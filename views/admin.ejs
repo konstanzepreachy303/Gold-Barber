@@ -3126,7 +3126,7 @@ const financeiroData = <%- JSON.stringify(
   financeiroBase.map(a => ({
     barber_id: a.barber_id,
     barber_name: a.barber_name || "Sem barbeiro",
-    service_name: a.service_name || "Serviço não informado",
+    service_name: a.service_name || "Mensalistas",
     service_price_cents: Number(a.service_price_cents || 0),
     data: a.data,
     status: a.status
@@ -3247,12 +3247,12 @@ function applyFinanceiro(){
     : `<tr><td colspan="3" class="muted">Nenhum faturamento encontrado no período.</td></tr>`;
 
   const porServico = {};
-  lista.forEach(a => {
-    const nome = a.service_name || "Serviço não informado";
-    if(!porServico[nome]) porServico[nome] = { nome, qtd:0, total:0 };
-    porServico[nome].qtd++;
-    porServico[nome].total += Number(a.service_price_cents || 0);
-  });
+lista.forEach(a => {
+  const nome = a.service_name || "Mensalistas";
+  if(!porServico[nome]) porServico[nome] = { nome, qtd:0, total:0 };
+  porServico[nome].qtd++;
+  porServico[nome].total += Number(a.service_price_cents || 0);
+});
 
   const servicos = Object.values(porServico).sort((a,b) => b.total - a.total);
 
