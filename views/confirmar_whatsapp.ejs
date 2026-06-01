@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Confirmar pelo WhatsApp</title>
+
+  <style>
+    body{
+      margin:0;
+      font-family: Arial, sans-serif;
+      background:#0b0b0b;
+      color:#fff;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+    }
+    .box{
+      width:720px;
+      max-width:100%;
+      background:#111;
+      border:1px solid #222;
+      border-radius:18px;
+      padding:18px;
+      box-shadow:0 14px 40px rgba(0,0,0,.55);
+    }
+    h1{margin:0 0 8px; font-size:22px;}
+    .muted{color:#cfcfcf; font-weight:700; line-height:1.4;}
+    .card{
+      margin-top:14px;
+      background:#0f0f0f;
+      border:1px solid #222;
+      border-radius:14px;
+      padding:12px;
+    }
+    textarea{
+      width:100%;
+      min-height:320px;
+      resize:vertical;
+      border-radius:12px;
+      border:1px solid #2a2a2a;
+      background:#0b0b0b;
+      color:#fff;
+      padding:12px;
+      font-size:14px;
+      line-height:1.55;
+      font-family: Arial, sans-serif;
+      box-sizing:border-box;
+      white-space:pre-wrap;
+    }
+    .btns{
+      display:flex;
+      gap:10px;
+      margin-top:12px;
+      flex-wrap:wrap;
+    }
+    button, a{
+      display:inline-block;
+      text-decoration:none;
+      padding:12px 14px;
+      border-radius:14px;
+      border:1px solid #333;
+      font-weight:900;
+      cursor:pointer;
+      flex:1;
+      min-width:220px;
+      text-align:center;
+    }
+    .primary{
+      background:#25D366;
+      color:#111;
+      border:none;
+    }
+    .secondary{
+      background:#151515;
+      color:#fff;
+      border:1px solid #2a2a2a;
+    }
+    .hint{
+      margin-top:10px;
+      color:#bdbdbd;
+      font-size:12px;
+      font-weight:800;
+      line-height:1.5;
+    }
+    .pill{
+      display:inline-block;
+      margin-top:10px;
+      padding:6px 10px;
+      border-radius:999px;
+      background:#1a1a1a;
+      border:1px solid #2a2a2a;
+      color:#ddd;
+      font-size:12px;
+      font-weight:900;
+    }
+  </style>
+</head>
+
+<body>
+  <%
+    function onlyDigits(s){
+      return String(s || "").replace(/\D/g, "");
+    }
+
+    function formatDateBR(d){
+      if(!d) return "";
+      if(/^\d{4}-\d{2}-\d{2}$/.test(d)){
+        const [y,m,day] = d.split("-");
+        return `${day}/${m}/${y}`;
+      }
+      return d;
+    }
+
+    const _nome = (typeof nome !== "undefined" ? String(nome) : "").trim();
+    const _barberName = (typeof barberName !== "undefined" ? String(barberName) : "").trim();
+    const _dataRaw = (typeof data !== "undefined" ? String(data) : "").trim();
+    const _data = formatDateBR(_dataRaw);
+    const _horario = (typeof horario !== "undefined" ? String(horario) : "").trim();
+    const _confirmUrl = (typeof confirmUrl !== "undefined" ? String(confirmUrl) : "").trim();
+    const _cancelUrl = (typeof cancelUrl !== "undefined" ? String(cancelUrl) : "").trim();
+
+    const _wppDisplay = (typeof barbershopWppDisplay !== "undefined" ? String(barbershopWppDisplay) : "").trim();
+    const _phoneDigits = onlyDigits(_wppDisplay) || "";
+
+    const _expMin = (typeof reservaExpiraMinutos !== "undefined" && reservaExpiraMinutos !== null)
+      ? Number(reservaExpiraMinutos)
+      : 30;
+
+    const niceText =
+      `💈 GOLD BARBER\n` +
+      `Confirmação de Agendamento\n\n` +
+      `Olá${_nome ? `, ${_nome}` : ""}!\n\n` +
+      `Seu horário foi reservado com sucesso.\n` +
+      `Para garantir o atendimento, confirme pelo link abaixo.\n\n` +
+      `📌 Detalhes do agendamento:\n` +
+      `• Barbeiro: ${_barberName || "-"}\n` +
+      `• Data: ${_data || "-"}\n` +
+      `• Horário: ${_horario || "-"}\n` +
+      `• Status atual: reservado\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `✅ Confirmar horário:\n` +
+      `${_confirmUrl || "-"}\n\n` +
+      `❌ Cancelar horário:\n` +
+      `${_cancelUrl || "-"}\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `⚠️ A confirmação é necessária para manter o horário reservado.\n` +
+      `⏳ O link expira em ${_expMin} minutos.\n\n` +
+      `Estamos prontos para deixar seu visual impecável!`;
+
+    const _waText =
+      (typeof waText !== "undefined" && waText)
+        ? String(waText)
+        : niceText;
+  %>
+
+  <div class="box">
+    <h1>📲 Confirmar pelo WhatsApp</h1>
+
+    <div class="pill">
+      WhatsApp do barbeiro selecionado:
+      <strong><%= _wppDisplay || "—" %></strong>
+      <% if (_barberName) { %>
+        · <%= _barberName %>
+      <% } %>
+    </div>
+
+    <div class="card">
+      <textarea id="msg" readonly><%- _waText %></textarea>
+
+      <div class="btns">
+        <a class="primary" id="openWpp" href="#" rel="noopener">Abrir WhatsApp</a>
+      </div>
+
+      <div class="hint">
+        Dica: clique em <strong>“Abrir WhatsApp”</strong> para enviar a mensagem ao barbeiro selecionado.
+        O cliente receberá no texto o link para <strong>confirmar</strong> e também o link para <strong>cancelar horário</strong>.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const text = <%- JSON.stringify(_waText) %>;
+      const enc = encodeURIComponent(text);
+
+      const phoneDigits = "<%= _phoneDigits %>";
+      const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+
+      let url;
+      if (!phoneDigits){
+        url = isMobile
+          ? `https://wa.me/?text=${enc}`
+          : `https://web.whatsapp.com/send?text=${enc}`;
+      } else {
+        url = isMobile
+          ? `https://wa.me/${phoneDigits}?text=${enc}`
+          : `https://web.whatsapp.com/send?phone=${phoneDigits}&text=${enc}`;
+      }
+
+      const a = document.getElementById("openWpp");
+      if(a) a.href = url;
+    })();
+  </script>
+</body>
+</html>

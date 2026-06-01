@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title><%= pageTitle || "Agendamento" %></title>
+  <style>
+    body{
+      margin:0;
+      font-family: Arial, sans-serif;
+      background:#0b0b0b;
+      color:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-height:100vh;
+      padding:18px;
+    }
+    .box{
+      width:560px;
+      max-width:100%;
+      background:#111;
+      border:1px solid #222;
+      border-radius:18px;
+      padding:18px;
+      box-shadow:0 14px 40px rgba(0,0,0,.55);
+    }
+    h1{margin:0 0 8px; font-size:22px;}
+    .ok{color:#7CFF92; font-weight:900;}
+    .warn{color:#ffd166; font-weight:900;}
+    .danger{color:#ff7b7b; font-weight:900;}
+    .sub{
+      color:#cfcfcf;
+      margin:0 0 14px;
+      font-weight:700;
+      line-height:1.4;
+    }
+    .card{
+      margin-top:12px;
+      background:#0f0f0f;
+      border:1px solid #222;
+      border-radius:14px;
+      padding:12px;
+      color:#eaeaea;
+      font-weight:700;
+      font-size:14px;
+    }
+    .row{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      padding:6px 0;
+      border-bottom:1px solid #1f1f1f;
+    }
+    .row:last-child{border-bottom:none;}
+    .k{color:#bdbdbd;}
+    .btns{
+      display:flex;
+      gap:10px;
+      margin-top:14px;
+      flex-wrap:wrap;
+    }
+    a, button{
+      display:inline-block;
+      text-decoration:none;
+      padding:12px 14px;
+      border-radius:14px;
+      border:1px solid #333;
+      color:#111;
+      font-weight:900;
+      background:#c9a227;
+      cursor:pointer;
+      flex:1;
+      text-align:center;
+      min-width:220px;
+    }
+    a.secondary, button.secondary{
+      background:#151515;
+      color:#fff;
+      border:1px solid #2a2a2a;
+      font-weight:900;
+    }
+    a.danger, button.danger{
+      background:#a61d24;
+      color:#fff;
+      border:1px solid #c53030;
+    }
+    form{
+      flex:1;
+      display:flex;
+    }
+    form button{
+      width:100%;
+    }
+    .badge{
+      display:inline-block;
+      margin-top:10px;
+      padding:8px 12px;
+      border-radius:999px;
+      background:#1a1a1a;
+      border:1px solid #2a2a2a;
+      color:#ddd;
+      font-size:12px;
+      font-weight:900;
+    }
+    .hint{
+      margin-top:10px;
+      color:#bdbdbd;
+      font-size:12px;
+      line-height:1.5;
+      font-weight:700;
+    }
+  </style>
+</head>
+<body>
+  <%
+    function formatDateBR(d){
+      if(!d) return "";
+      if(/^\d{4}-\d{2}-\d{2}$/.test(String(d))){
+        const [y,m,day] = String(d).split("-");
+        return `${day}/${m}/${y}`;
+      }
+      return String(d);
+    }
+
+    const _status =
+      (typeof statusLabel !== "undefined" && statusLabel)
+        ? String(statusLabel)
+        : "confirmado";
+
+    const _dataFmt = formatDateBR(typeof data !== "undefined" ? data : "");
+    const _heading = typeof heading !== "undefined" ? heading : "✅ Agendamento confirmado";
+    const _headingClass = typeof headingClass !== "undefined" ? headingClass : "ok";
+    const _subtitle = typeof subtitle !== "undefined"
+      ? subtitle
+      : "O agendamento foi confirmado com sucesso.";
+
+    const _cancelUrl = (typeof cancelUrl !== "undefined" && cancelUrl) ? String(cancelUrl) : "";
+    const _primaryHref = (typeof primaryHref !== "undefined" && primaryHref) ? String(primaryHref) : "/";
+    const _primaryLabel = (typeof primaryLabel !== "undefined" && primaryLabel) ? String(primaryLabel) : "Agendar um novo horário";
+    const _cancelLabel = (typeof cancelLabel !== "undefined" && cancelLabel) ? String(cancelLabel) : "Cancelar";
+    const _showCancelButton = !!_cancelUrl && _status !== "cancelado";
+    const _hint = (typeof hint !== "undefined" && hint) ? String(hint) : "";
+  %>
+
+  <div class="box">
+    <h1 class="<%= _headingClass %>"><%= _heading %></h1>
+
+    <p class="sub"><%= _subtitle %></p>
+
+    <div class="badge">Status atual: <%= _status %></div>
+
+    <div class="card">
+      <div class="row"><span class="k">Barbeiro</span><span><%= barberName || "-" %></span></div>
+      <div class="row"><span class="k">Cliente</span><span><%= nome || "-" %></span></div>
+      <div class="row"><span class="k">Data</span><span><%= _dataFmt || "-" %></span></div>
+      <div class="row"><span class="k">Horário</span><span><%= horario || "-" %></span></div>
+      <div class="row"><span class="k">Status</span><span><%= _status %></span></div>
+    </div>
+
+    <% if (_hint) { %>
+      <div class="hint"><%= _hint %></div>
+    <% } %>
+
+    <div class="btns">
+      <a href="<%= _primaryHref %>"><%= _primaryLabel %></a>
+
+      <% if (_showCancelButton) { %>
+        <a href="<%= _cancelUrl %>" class="danger"><%= _cancelLabel %></a>
+      <% } else { %>
+        <a href="/" class="secondary">Fechar</a>
+      <% } %>
+    </div>
+  </div>
+</body>
+</html>

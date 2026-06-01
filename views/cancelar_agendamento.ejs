@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Cancelar agendamento</title>
+  <style>
+    body{
+      margin:0;
+      font-family: Arial, sans-serif;
+      background:#0b0b0b;
+      color:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-height:100vh;
+      padding:18px;
+    }
+    .box{
+      width:620px;
+      max-width:100%;
+      background:#111;
+      border:1px solid #222;
+      border-radius:18px;
+      padding:18px;
+      box-shadow:0 14px 40px rgba(0,0,0,.55);
+    }
+    h1{margin:0 0 8px; font-size:22px;}
+    .danger{color:#ff7b7b; font-weight:900;}
+    .warn{color:#ffd166; font-weight:900;}
+    .sub{
+      color:#cfcfcf;
+      margin:0 0 14px;
+      font-weight:700;
+      line-height:1.4;
+    }
+    .pill{
+      display:inline-block;
+      margin-top:10px;
+      padding:8px 12px;
+      border-radius:999px;
+      background:#1a1a1a;
+      border:1px solid #2a2a2a;
+      color:#ddd;
+      font-size:12px;
+      font-weight:900;
+    }
+    .card{
+      margin-top:12px;
+      background:#0f0f0f;
+      border:1px solid #222;
+      border-radius:14px;
+      padding:12px;
+      color:#eaeaea;
+      font-weight:700;
+      font-size:14px;
+    }
+    .row{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      padding:6px 0;
+      border-bottom:1px solid #1f1f1f;
+    }
+    .row:last-child{border-bottom:none;}
+    .k{color:#bdbdbd;}
+    .btns{
+      display:flex;
+      gap:10px;
+      margin-top:14px;
+      flex-wrap:wrap;
+    }
+    a, button{
+      display:inline-block;
+      text-decoration:none;
+      padding:12px 14px;
+      border-radius:14px;
+      border:1px solid #333;
+      font-weight:900;
+      cursor:pointer;
+      flex:1;
+      text-align:center;
+      min-width:220px;
+    }
+    .primary{
+      background:#a61d24;
+      color:#fff;
+      border:1px solid #c53030;
+    }
+    .secondary{
+      background:#151515;
+      color:#fff;
+      border:1px solid #2a2a2a;
+    }
+    .hint{
+      margin-top:10px;
+      color:#bdbdbd;
+      font-size:12px;
+      line-height:1.5;
+      font-weight:700;
+    }
+  </style>
+</head>
+<body>
+  <%
+    function formatDateBR(d){
+      if(!d) return "";
+      if(/^\d{4}-\d{2}-\d{2}$/.test(String(d))){
+        const [y,m,day] = String(d).split("-");
+        return `${day}/${m}/${y}`;
+      }
+      return String(d);
+    }
+
+    const _dataFmt = formatDateBR(typeof data !== "undefined" ? data : "");
+    const _status = (typeof statusLabel !== "undefined" && statusLabel) ? String(statusLabel) : "reservado";
+    const _alreadyCancelled = !!alreadyCancelled;
+    const _token = (typeof token !== "undefined" && token) ? String(token) : "";
+  %>
+
+  <div class="box">
+    <h1 class="<%= _alreadyCancelled ? 'warn' : 'danger' %>">
+      <%= _alreadyCancelled ? '⚠️ Horário já cancelado' : '❌ Cancelar agendamento' %>
+    </h1>
+
+    <p class="sub">
+      <% if (_alreadyCancelled) { %>
+        Este horário já foi cancelado pelo cliente e o link de cancelamento não pode mais ser utilizado.
+      <% } else { %>
+        Confira os dados abaixo. Se tiver certeza, clique em <strong>“Cancelar agendamento”</strong>.
+      <% } %>
+    </p>
+
+    <div class="pill">Status atual: <%= _status %></div>
+
+    <div class="card">
+      <div class="row"><span class="k">Barbeiro</span><span><%= barberName || "-" %></span></div>
+      <div class="row"><span class="k">Cliente</span><span><%= nome || "-" %></span></div>
+      <div class="row"><span class="k">Data</span><span><%= _dataFmt || "-" %></span></div>
+      <div class="row"><span class="k">Horário</span><span><%= horario || "-" %></span></div>
+      <div class="row"><span class="k">Status</span><span><%= _status %></span></div>
+    </div>
+
+    <div class="hint">
+      <% if (_alreadyCancelled) { %>
+        Nenhuma ação adicional é necessária.
+      <% } else { %>
+        Essa ação é definitiva para este link. Depois do cancelamento, o cliente verá a mensagem de horário já cancelado.
+      <% } %>
+    </div>
+
+
+
+      <% if (!_alreadyCancelled) { %>
+        <form method="POST" action="/cancelar/confirmar" onsubmit="return confirm('Tem certeza que deseja cancelar este agendamento?');" style="flex:1;display:flex;">
+          <input type="hidden" name="token" value="<%= _token %>">
+          <button type="submit" class="primary">Cancelar agendamento</button>
+        </form>
+      <% } else { %>
+        <a href="/" class="secondary">Fechar</a>
+      <% } %>
+    </div>
+  </div>
+</body>
+</html>
