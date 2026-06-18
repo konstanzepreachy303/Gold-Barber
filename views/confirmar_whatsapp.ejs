@@ -120,6 +120,7 @@
     const _data = formatDateBR(_dataRaw);
     const _horario = (typeof horario !== "undefined" ? String(horario) : "").trim();
     const _confirmUrl = (typeof confirmUrl !== "undefined" ? String(confirmUrl) : "").trim();
+    const _autoConfirmar = !_confirmUrl;
     const _cancelUrl = (typeof cancelUrl !== "undefined" ? String(cancelUrl) : "").trim();
 
     const _wppDisplay = (typeof barbershopWppDisplay !== "undefined" ? String(barbershopWppDisplay) : "").trim();
@@ -129,26 +130,37 @@
       ? Number(reservaExpiraMinutos)
       : 30;
 
-    const niceText =
-      `💈 GOLD BARBER\n` +
-      `Confirmação de Agendamento\n\n` +
-      `Olá${_nome ? `, ${_nome}` : ""}!\n\n` +
-      `Seu horário foi reservado com sucesso.\n` +
-      `Para garantir o atendimento, confirme pelo link abaixo.\n\n` +
-      `📌 Detalhes do agendamento:\n` +
-      `• Barbeiro: ${_barberName || "-"}\n` +
-      `• Data: ${_data || "-"}\n` +
-      `• Horário: ${_horario || "-"}\n` +
-      `• Status atual: reservado\n\n` +
-      `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-      `✅ Confirmar horário:\n` +
-      `${_confirmUrl || "-"}\n\n` +
-      `❌ Cancelar horário:\n` +
-      `${_cancelUrl || "-"}\n\n` +
-      `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-      `⚠️ A confirmação é necessária para manter o horário reservado.\n` +
-      `⏳ O link expira em ${_expMin} minutos.\n\n` +
-      `Estamos prontos para deixar seu visual impecável!`;
+  const niceText =
+  `💈 GOLD BARBER\n` +
+  `Confirmação de Agendamento\n\n` +
+  `Olá${_nome ? `, ${_nome}` : ""}!\n\n` +
+(
+  !_autoConfirmar
+    ? `Seu horário foi reservado com sucesso.\n` +
+      `Para garantir o atendimento, confirme pelo link abaixo.\n\n`
+    : ""
+) +
+  `📌 Detalhes do agendamento:\n` +
+  `• Barbeiro: ${_barberName || "-"}\n` +
+  `• Data: ${_data || "-"}\n` +
+  `• Horário: ${_horario || "-"}\n` +
+  `• Status atual: ${_autoConfirmar ? "confirmado" : "reservado"}\n\n` +
+  `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+  (
+    _autoConfirmar
+      ? `✅ Horário confirmado automaticamente.\n\n`
+      : `✅ Confirmar horário:\n${_confirmUrl || "-"}\n\n`
+  ) +
+  `❌ Cancelar horário:\n` +
+  `${_cancelUrl || "-"}\n\n` +
+  `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+  (
+    _autoConfirmar
+      ? `⏰ Se precisar cancelar, use o link de cancelamento acima.\n\n`
+      : `⚠️ A confirmação é necessária para manter o horário reservado.\n` +
+        `⏳ O link expira em ${_expMin} minutos.\n\n`
+  ) +
+  `Estamos prontos para deixar seu visual impecável!`;
 
     const _waText =
       (typeof waText !== "undefined" && waText)
@@ -176,7 +188,11 @@
 
       <div class="hint">
         Dica: clique em <strong>“Abrir WhatsApp”</strong> para enviar a mensagem ao barbeiro selecionado.
+        <% if (_autoConfirmar) { %>
+      O cliente receberá no texto a confirmação automática e o link para <strong>cancelar horário</strong>.
+        <% } else { %>
         O cliente receberá no texto o link para <strong>confirmar</strong> e também o link para <strong>cancelar horário</strong>.
+        <% } %>
       </div>
     </div>
   </div>

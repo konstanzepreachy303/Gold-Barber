@@ -878,6 +878,21 @@ const rankingServicos = Object.values(porServico).sort((a,b) => b.total - a.tota
       <div class="muted">Ex.: 1 = 1 minuto, 10 = 10 minutos.</div>
     </div>
 
+    <div>
+      <label>Confirmação automática?</label>
+      <select name="confirmacaoAutomatica">
+      <option value="nao" <%= confirmacaoAutomatica === "nao" ? "selected" : "" %>>
+       Não
+        </option>
+      <option value="sim" <%= confirmacaoAutomatica === "sim" ? "selected" : "" %>>
+       Sim
+    </option>
+      </select>
+      <div class="muted">
+      Não = mantém o link de confirmação. Sim = confirma automaticamente e remove o link de confirmação.
+    </div>
+  </div>
+
     <div class="full" style="display:flex; align-items:flex-end;">
       <button class="btn btnPrimary" type="submit" style="width:100%;">Salvar</button>
     </div>

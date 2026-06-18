@@ -1423,63 +1423,87 @@ app.post("/agendar", async (req, res) => {
 
     const telefoneToSave = telefone ? telefone : "00000000000";
 
-    const ins = await dbRun(
-      `INSERT INTO agendamentos (
-         barber_id,
-         nome,
-         telefone,
-         data,
-         horario,
-         status,
-         service_id,
-         service_name,
-         service_duration_minutes,
-         service_slots_required,
-         service_price_cents
-       )
-       VALUES (?, ?, ?, ?, ?, 'reservado', ?, ?, ?, ?, ?)`,
-      [
-        bId,
-        nome,
-        telefoneToSave,
-        data,
-        horario,
-        service.id,
-        service.name,
-        Number(service.duration_minutes || 30),
-        serviceSlotsRequired,
-        servicePriceCents,
-      ]
-    );
+    const confirmacaoAutomatica = await getSetting("confirmacao_automatica", "nao");
+    const autoConfirmar = confirmacaoAutomatica === "sim";
+    const statusInicial = autoConfirmar ? "aprovado" : "reservado";
+
+const ins = await dbRun(
+  `INSERT INTO agendamentos (
+     barber_id,
+     nome,
+     telefone,
+     data,
+     horario,
+     status,
+     service_id,
+     service_name,
+     service_duration_minutes,
+     service_slots_required,
+     service_price_cents
+   )
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  [
+    bId,
+    nome,
+    telefoneToSave,
+    data,
+    horario,
+    statusInicial,
+    service.id,
+    service.name,
+    Number(service.duration_minutes || 30),
+    serviceSlotsRequired,
+    servicePriceCents,
+  ]
+);
     const agendamentoId = ins.lastID;
 
     const minutos = await getSettingInt("reserva_expira_minutos", 30);
 
     const cancelamentoAntecedenciaMinutos = await getSettingInt("cancelamento_antecedencia_minutos",  30);
 
-    const confirmToken = crypto.randomBytes(24).toString("hex");
+    const confirmToken =
+  autoConfirmar
+    ? null
+    : crypto.randomBytes(24).toString("hex");
 
-    const cancelToken = crypto.randomBytes(24).toString("hex");
+const cancelToken = crypto.randomBytes(24).toString("hex");
 
-    await dbRun(
-      `
-      INSERT INTO agendamento_confirm_tokens (agendamento_id, token, expires_at)
-      VALUES (?, ?, datetime('now', ?))
+if (!autoConfirmar) {
+  await dbRun(
+    `
+    INSERT INTO agendamento_confirm_tokens (
+      agendamento_id,
+      token,
+      expires_at
+    )
+    VALUES (?, ?, datetime('now', ?))
     `,
-      [agendamentoId, confirmToken, `+${minutos} minutes`]
-    );
+    [agendamentoId, confirmToken, `+${minutos} minutes`]
+  );
+}
 
-   await dbRun(
+await dbRun(
   `
-  INSERT INTO agendamento_cancel_tokens (agendamento_id, token, expires_at)
+  INSERT INTO agendamento_cancel_tokens (
+    agendamento_id,
+    token,
+    expires_at
+  )
   VALUES (?, ?, datetime('now', ?))
-`,
+  `,
   [agendamentoId, cancelToken, "+365 days"]
 );
 
-    const baseUrl = buildBaseUrl(req);
-    const confirmUrl = `${baseUrl}/confirmar?token=${encodeURIComponent(confirmToken)}`;
-    const cancelUrl = `${baseUrl}/cancelar?token=${encodeURIComponent(cancelToken)}`;
+const baseUrl = buildBaseUrl(req);
+
+let confirmUrl = "";
+
+if (!autoConfirmar) {
+  confirmUrl = `${baseUrl}/confirmar?token=${encodeURIComponent(confirmToken)}`;
+}
+
+const cancelUrl = `${baseUrl}/cancelar?token=${encodeURIComponent(cancelToken)}`;
 
     const redirectPhone = normalizePhoneDigits(barber.redirect_phone) || BARBERSHOP_WPP;
     const dataFormatada = formatDateToDMY(data);
@@ -1492,9 +1516,6 @@ _Confirmação de Agendamento_
 
 👥 *Olá*, _*${nome}!*_
 
-Seu horário foi reservado com sucesso.
-Para garantir o atendimento, *confirme pelo link abaixo.*
-
 ━━━━━━━━━━━━━━━
 
 *Detalhes do agendamento:*
@@ -1505,8 +1526,10 @@ ${servicePriceLine}📌 *DIA:* ${dataFormatada}
 
 ━━━━━━━━━━━━━━━
 
-✅ *Confirme clicando no link abaixo:*
-${confirmUrl}
+${autoConfirmar
+  ? "✅ *Seu horário já foi confirmado automaticamente.*"
+  : `✅ *Confirme clicando no link abaixo:*\n${confirmUrl}`
+}
 
 ━━━━━━━━━━━━━━━
 
@@ -1515,9 +1538,12 @@ ${cancelUrl}
 
 ━━━━━━━━━━━━━━━
 
-⚠️ A confirmação é necessária para manter o horário reservado.
+${autoConfirmar
+  ? `⏰ O cancelamento pode ser feito até ${cancelamentoAntecedenciaMinutos} minuto(s) antes do horário agendado.`
+  : `⚠️ A confirmação é necessária para manter o horário reservado.
 ⏳ O link de confirmação expira em ${minutos} minutos.
-⏰ O cancelamento pode ser feito até ${cancelamentoAntecedenciaMinutos} minuto(s) antes do horário agendado.
+⏰ O cancelamento pode ser feito até ${cancelamentoAntecedenciaMinutos} minuto(s) antes do horário agendado.`
+}
 
 *COMPROVANTE DE AGENDAMENTO*`;
 
@@ -1734,6 +1760,7 @@ app.get("/admin", requireAdmin, async (req, res) => {
 const reservaExpiraMinutos = await getSettingInt("reserva_expira_minutos", 30);
 const cancelamentoAntecedenciaMinutos = await getSettingInt("cancelamento_antecedencia_minutos", 30);
 const agendamentosRefreshSegundos = await getSettingInt("agendamentos_refresh_segundos", 30);
+const confirmacaoAutomatica = await getSetting("confirmacao_automatica", "nao");
 
 res.render("admin", {
   agendamentos,
@@ -1745,6 +1772,7 @@ res.render("admin", {
   reservaExpiraMinutos,
   cancelamentoAntecedenciaMinutos,
   agendamentosRefreshSegundos,
+  confirmacaoAutomatica,
   services,
   selectedConfigBarberId,
   selectedConfigBarber,
@@ -1867,9 +1895,15 @@ app.post("/admin/config/reserva", requireAdmin, async (req, res) => {
     ? Math.max(1, Math.min(60, Math.floor(refreshMinutos))) * 60
     : 30;
 
+  const confirmacaoAutomatica =
+    String((req.body || {}).confirmacaoAutomatica || "nao") === "sim"
+      ? "sim"
+      : "nao";
+
   await setSetting("reserva_expira_minutos", fixed);
   await setSetting("cancelamento_antecedencia_minutos", cancelamentoFixed);
   await setSetting("agendamentos_refresh_segundos", refreshFixed);
+  await setSetting("confirmacao_automatica", confirmacaoAutomatica);
 
   await cleanupReservasExpiradas();
 
